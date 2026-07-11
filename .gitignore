@@ -1,0 +1,73 @@
+# macOS 系统文件
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Swift Package Manager 与编译产物
+.build/
+.swiftpm/
+build/
+DerivedData/
+*.dSYM/
+*.dSYM.zip
+*.app
+*.dmg
+*.pkg
+*.xcarchive
+
+# Xcode 用户数据与缓存
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.moved-aside
+*.hmap
+*.ipa
+*.playground/
+timeline.xctimeline
+playground.xcworkspace
+
+# 日志、临时文件与备份
+*.log
+Logs/
+logs/
+tmp/
+temp/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+*.bak
+*.backup
+
+# 环境变量与本地配置
+.env
+.env.*
+!.env.example
+*.local
+*.secrets
+secrets/
+
+# 签名证书、私钥与描述文件
+*.cer
+*.crt
+*.der
+*.key
+*.pem
+*.p12
+*.pfx
+*.mobileprovision
+*.provisionprofile
+
+# 签名、公证与发布凭据
+AuthKey_*.p8
+*.keychain
+*.keychain-db
+notarytool-profile*
+signing-config*
+
+# 本项目不公开的历史脚本
+/Mac游戏辅助工具3.1.0.command
+/Disk_Setup_V2.7.1.scpt.backup
