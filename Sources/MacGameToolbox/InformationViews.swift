@@ -6,6 +6,10 @@ struct ChangelogView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("2.4.0") {
+                    Text(tr("MetalHUD 开关更名为“全局启用”，明确其作用范围", "Renamed the MetalHUD switch to “Enable globally” to clarify its scope"))
+                    Text(tr("新增对单个 App 启用 MetalHUD，可从应用程序目录选择并立即启动", "Added per-app MetalHUD launch from the Applications folder"))
+                }
                 Section("2.3.0") {
                     Text(tr("更新应用图标，优化品牌识别；同步版本到 2.3.0", "Updated the app icon, refined brand recognition, and synchronized the version to 2.3.0"))
                 }

@@ -39,6 +39,18 @@ public actor GamingService {
         _ = try await runner.run("/bin/launchctl", arguments: arguments)
     }
 
+    public func launchWithMetalHUD(applicationPath: String) async throws {
+        let applicationURL = URL(fileURLWithPath: applicationPath).standardizedFileURL
+        guard applicationURL.pathExtension.lowercased() == "app",
+              FileManager.default.fileExists(atPath: applicationURL.path) else {
+            throw ToolboxError.invalidPath(applicationPath)
+        }
+        _ = try await runner.run(
+            "/usr/bin/env",
+            arguments: ["MTL_HUD_ENABLED=1", "/usr/bin/open", "-a", applicationURL.path]
+        )
+    }
+
     public func wineProcesses(crossOverOnly: Bool = false) async throws -> [(pid: Int32, command: String)] {
         let result = try await runner.run("/bin/ps", arguments: ["-axo", "pid=,ppid=,command="])
         return Self.matchingProcesses(Self.parseProcessTable(result.outputString), crossOverOnly: crossOverOnly)

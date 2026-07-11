@@ -47,7 +47,7 @@ final class AppModel: ObservableObject {
     func launch() {
         guard !didLaunch else { return }
         didLaunch = true
-        DiagnosticFileLogger.write("App launched, version 2.3.0")
+        DiagnosticFileLogger.write("App launched, version 2.4.0")
         Task {
             do { configuration = try await configurationStore.load() }
             catch { report(error) }
@@ -64,6 +64,24 @@ final class AppModel: ObservableObject {
             try await self.gamingService.setMetalHUD(enabled: enabled)
             self.metalHUDEnabled = enabled
             return enabled ? tr("MetalHUD 已开启", "MetalHUD enabled") : tr("MetalHUD 已关闭", "MetalHUD disabled")
+        }
+    }
+
+    func launchAppWithMetalHUD() {
+        let panel = NSOpenPanel()
+        panel.title = tr("选择要启用 MetalHUD 的 App", "Choose an app for MetalHUD")
+        panel.prompt = tr("启用并打开", "Enable and Open")
+        panel.directoryURL = URL(fileURLWithPath: "/Applications", isDirectory: true)
+        panel.allowedContentTypes = [.application]
+        panel.allowsMultipleSelection = false
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.resolvesAliases = true
+        guard panel.runModal() == .OK, let applicationURL = panel.url else { return }
+
+        runTask(tr("正在使用 MetalHUD 启动 App", "Launching app with MetalHUD")) {
+            try await self.gamingService.launchWithMetalHUD(applicationPath: applicationURL.path)
+            return tr("已使用 MetalHUD 打开 \(applicationURL.deletingPathExtension().lastPathComponent)", "Opened \(applicationURL.deletingPathExtension().lastPathComponent) with MetalHUD")
         }
     }
 

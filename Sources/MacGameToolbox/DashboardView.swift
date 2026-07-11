@@ -103,7 +103,10 @@ struct DashboardView: View {
 
     @ViewBuilder private var featureCards: some View {
         FeatureCard(icon: "gauge.with.dots.needle.67percent", title: tr("MetalHUD性能监视器", "MetalHUD Performance Monitor"), subtitle: tr("开发者工具，可以查看游戏帧率等信息，也可以帮助你找到游戏异常的原因", "A developer tool for viewing game frame rates and diagnosing game issues")) {
-            Toggle(tr("启用", "Enabled"), isOn: Binding(get: { model.metalHUDEnabled }, set: { value in model.setMetalHUD(value) })).toggleStyle(.switch)
+            HStack {
+                Toggle(tr("全局启用", "Enable globally"), isOn: Binding(get: { model.metalHUDEnabled }, set: { value in model.setMetalHUD(value) })).toggleStyle(.switch)
+                Button(tr("对单个 App 启用", "Enable for one app")) { model.launchAppWithMetalHUD() }
+            }
         }
         FeatureCard(icon: "gamecontroller.fill", title: tr("HoYoGames 启动帮助", "HoYoGames Launch Assistant"), subtitle: tr("此选项可以帮助你启动HoYoGames，点击“开始运行”后需要在15秒内快速打开游戏", "Helps launch HoYoGames; open the game within 15 seconds after clicking Start")) {
             Button(tr("开始运行", "Start")) { model.startHoYoAssistant() }

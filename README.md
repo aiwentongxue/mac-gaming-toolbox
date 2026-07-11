@@ -1,10 +1,10 @@
 # Mac 游戏工具箱
 
-Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 2.3.0，支持中文与英文界面，并兼容 Intel Mac 和 Apple Silicon Mac。
+Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 2.4.0，支持中文与英文界面，并兼容 Intel Mac 和 Apple Silicon Mac。
 
 ## 功能
 
-- 开启或关闭 MetalHUD 性能监视器。
+- 全局开启或关闭 MetalHUD 性能监视器，或仅为选定 App 的本次启动启用 MetalHUD。
 - 辅助启动 HoYoGames，并在任务结束或取消时恢复应用管理的 hosts 配置。
 - 检测 CrossOver/Wine 进程并提高其运行优先级。
 - 将外接磁盘挂载到指定路径，保存预设并按需自动恢复挂载。
@@ -64,7 +64,7 @@ swift test --disable-sandbox
 ```bash
 export DEVELOPER_ID_APPLICATION='Developer ID Application: Your Name (TEAMID)'
 export NOTARY_KEYCHAIN_PROFILE='your-notary-profile'
-./Scripts/sign-and-notarize.sh '/path/to/Mac 游戏工具箱.app' 'MacGameToolbox-2.3.0.dmg'
+./Scripts/sign-and-notarize.sh '/path/to/Mac 游戏工具箱.app' 'MacGameToolbox-2.4.0.dmg'
 ```
 
 请勿把真实证书、公证密码、App Store Connect API Key 或环境变量文件提交到仓库。

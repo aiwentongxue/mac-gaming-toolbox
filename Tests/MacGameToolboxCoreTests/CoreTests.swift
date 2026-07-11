@@ -184,6 +184,31 @@ actor RecordingPrivilegedOperator: PrivilegedOperating {
     func perform(_ operation: PrivilegedOperation) async throws { operations.append(operation) }
 }
 
+actor RecordingCommandRunner: CommandRunning {
+    private(set) var calls: [(String, [String])] = []
+
+    func run(_ executable: String, arguments: [String]) async throws -> CommandResult {
+        calls.append((executable, arguments))
+        return CommandResult(exitCode: 0, standardOutput: Data(), standardError: Data())
+    }
+}
+
+@Test func perAppMetalHUDLaunchUsesScopedEnvironment() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let application = root.appendingPathComponent("Example Game.app", isDirectory: true)
+    try FileManager.default.createDirectory(at: application, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let runner = RecordingCommandRunner()
+    let service = GamingService(runner: runner, privileged: RecordingPrivilegedOperator())
+    try await service.launchWithMetalHUD(applicationPath: application.path)
+
+    let calls = await runner.calls
+    #expect(calls.count == 1)
+    #expect(calls.first?.0 == "/usr/bin/env")
+    #expect(calls.first?.1 == ["MTL_HUD_ENABLED=1", "/usr/bin/open", "-a", application.path])
+}
+
 actor HostnameRunner: CommandRunning {
     func run(_ executable: String, arguments: [String]) async throws -> CommandResult {
         switch arguments.last {
