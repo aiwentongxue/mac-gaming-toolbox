@@ -107,6 +107,7 @@ struct DashboardView: View {
         FeatureCard(icon: "gauge.with.dots.needle.67percent", title: tr("MetalHUD性能监视器", "MetalHUD Performance Monitor"), subtitle: tr("开发者工具，可以查看游戏帧率等信息，也可以帮助你找到游戏异常的原因", "A developer tool for viewing game frame rates and diagnosing game issues")) {
             HStack {
                 Toggle(tr("全局启用", "Enable globally"), isOn: Binding(get: { model.metalHUDEnabled }, set: { value in model.setMetalHUD(value) })).toggleStyle(.switch)
+                Spacer()
                 Button(tr("对单个 App 启用", "Enable for one app")) {
                     if model.configuration.recentMetalHUDApps.isEmpty {
                         model.launchAppWithMetalHUD()
@@ -475,14 +476,26 @@ private struct WindowAppearanceConfigurator: NSViewRepresentable {
             : NSColor(calibratedRed: 0.965, green: 0.97, blue: 0.995, alpha: 1.0)
     }
 
-    final class Coordinator: NSObject {
+    @MainActor final class Coordinator: NSObject {
         private weak var observedWindow: NSWindow?
         private var willMiniaturize: (() -> Void)?
         private var didRestore: (() -> Void)?
+        private var windowMenuTemplate: NSMenu?
+        private var observesApplicationUpdates = false
 
         func configure(for window: NSWindow, willMiniaturize: @escaping () -> Void, didRestore: @escaping () -> Void) {
             self.willMiniaturize = willMiniaturize
             self.didRestore = didRestore
+            preserveAndRestoreWindowMenu()
+            if !observesApplicationUpdates {
+                observesApplicationUpdates = true
+                NotificationCenter.default.addObserver(
+                    self,
+                    selector: #selector(applicationDidUpdate),
+                    name: NSApplication.didUpdateNotification,
+                    object: NSApp
+                )
+            }
             guard observedWindow !== window else { return }
             if let observedWindow {
                 NotificationCenter.default.removeObserver(self, name: NSWindow.willMiniaturizeNotification, object: observedWindow)
@@ -509,6 +522,34 @@ private struct WindowAppearanceConfigurator: NSViewRepresentable {
 
         @objc private func windowDidDeminiaturize() {
             didRestore?()
+        }
+
+        @objc private func applicationDidUpdate() {
+            restoreWindowMenuIfNeeded()
+        }
+
+        private func preserveAndRestoreWindowMenu() {
+            if windowMenuTemplate == nil {
+                let source = NSApp.windowsMenu ?? windowMenuItem()?.submenu
+                windowMenuTemplate = source?.copy() as? NSMenu
+            }
+            restoreWindowMenuIfNeeded()
+        }
+
+        private func restoreWindowMenuIfNeeded() {
+            guard let windowMenuTemplate, let item = windowMenuItem() else { return }
+            if let current = item.submenu,
+               current.numberOfItems >= windowMenuTemplate.numberOfItems,
+               NSApp.windowsMenu === current { return }
+            guard let restored = windowMenuTemplate.copy() as? NSMenu else { return }
+            item.submenu = restored
+            NSApp.windowsMenu = restored
+        }
+
+        private func windowMenuItem() -> NSMenuItem? {
+            NSApp.mainMenu?.items.first {
+                $0.title == tr("窗口", "Window") || $0.submenu === NSApp.windowsMenu
+            }
         }
 
         deinit {

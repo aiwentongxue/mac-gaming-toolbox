@@ -12,7 +12,7 @@ actor DiagnosticsService {
 
     func collect(taskStatus: TaskStatus, helperStatus: String, configuration: AppConfiguration) async -> String {
         var sections: [(String, String)] = []
-        sections.append(("Report", "Generated: \(ISO8601DateFormatter().string(from: Date()))\nApp: Mac Game Toolbox 3.0.0\nHelper: \(helperStatus)\nTask phase: \(taskStatus.phase.rawValue)\nTask message: \(taskStatus.message)"))
+        sections.append(("Report", "Generated: \(ISO8601DateFormatter().string(from: Date()))\nApp: Mac Game Toolbox 3.0.1\nHelper: \(helperStatus)\nTask phase: \(taskStatus.phase.rawValue)\nTask message: \(taskStatus.message)"))
         let restorableMounts = configuration.restorableDiskMounts.map {
             "\($0.diskIdentifier) [\($0.volumeUUID ?? "no UUID")] -> \($0.mountPath ?? "no path")"
         }.joined(separator: "\n")

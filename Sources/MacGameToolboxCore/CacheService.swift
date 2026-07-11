@@ -15,10 +15,12 @@ public struct CacheScan: Equatable, Sendable {
 public actor CacheService {
     private let fileManager: FileManager
     private let privileged: any PrivilegedOperating
+    private let removeItem: (URL) throws -> Void
 
-    public init(fileManager: FileManager = .default, privileged: any PrivilegedOperating) {
+    public init(fileManager: FileManager = .default, privileged: any PrivilegedOperating, removeItem: ((URL) throws -> Void)? = nil) {
         self.fileManager = fileManager
         self.privileged = privileged
+        self.removeItem = removeItem ?? { try fileManager.removeItem(at: $0) }
     }
 
     public func scan(excludingSensitiveFiles: Bool = false, homeURL: URL = FileManager.default.homeDirectoryForCurrentUser) -> CacheScan {
@@ -44,13 +46,17 @@ public actor CacheService {
         // Complete authorization before deleting locally when the full cleanup
         // will also mutate protected system directories.
         if !scan.systemTargets.isEmpty { try await privileged.perform(.healthCheck) }
-        for directory in scan.userTargets { try removeVisibleContents(of: directory) }
+        for directory in scan.userTargets { removeVisibleContents(of: directory) }
         if !scan.systemTargets.isEmpty { try await privileged.perform(.clearSystemCaches) }
     }
 
-    private func removeVisibleContents(of directory: URL) throws {
+    private func removeVisibleContents(of directory: URL) {
         guard let entries = try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return }
-        for entry in entries where !entry.lastPathComponent.hasPrefix(".") { try fileManager.removeItem(at: entry) }
+        for entry in entries where !entry.lastPathComponent.hasPrefix(".") {
+            // Cache directories often contain protected system-owned entries.
+            // Skip those entries and continue cleaning everything else.
+            try? removeItem(entry)
+        }
     }
 
     private func directorySize(_ directory: URL) -> UInt64 {

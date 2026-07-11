@@ -315,6 +315,26 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
     #expect(await privileged.operations.isEmpty)
 }
 
+@Test func cacheCleanupContinuesAfterAnInaccessibleEntry() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let blocked = root.appendingPathComponent("com.apple.HomeKit")
+    let removable = root.appendingPathComponent("removable.cache")
+    try FileManager.default.createDirectory(at: blocked, withIntermediateDirectories: true)
+    try Data("remove".utf8).write(to: removable)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let service = CacheService(privileged: RecordingPrivilegedOperator()) { url in
+        if url.lastPathComponent == blocked.lastPathComponent {
+            throw CocoaError(.fileWriteNoPermission)
+        }
+        try FileManager.default.removeItem(at: url)
+    }
+    try await service.clear(CacheScan(userTargets: [root], systemTargets: [], estimatedBytes: 6))
+
+    #expect(FileManager.default.fileExists(atPath: blocked.path))
+    #expect(!FileManager.default.fileExists(atPath: removable.path))
+}
+
 @Test func configurationNormalizesNewVersionThreePreferences() async throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     let store = ConfigurationStore(configurationURL: root.appendingPathComponent("configuration.json"))

@@ -12,6 +12,11 @@ struct MacGameToolboxApp: App {
         }
         .defaultSize(width: 1040, height: 760)
         .commands {
+            CommandGroup(replacing: .newItem) {
+                Button(tr("新Mac游戏工具箱窗口", "New Mac Game Toolbox Window")) {}
+                    .keyboardShortcut("n")
+                    .disabled(true)
+            }
             CommandMenu(tr("问题解决", "Troubleshooting")) {
                 Button(tr("导出诊断日志", "Export Diagnostics")) {
                     model.requestDiagnosticsExport()

@@ -6,6 +6,11 @@ struct ChangelogView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("3.0.1") {
+                    Text(tr("将 MetalHUD 的单 App 启用按钮移动到选项框右下角", "Moved the per-app MetalHUD button to the lower-right corner of its card"))
+                    Text(tr("修复安全缓存清理遇到无权限文件时提前终止的问题", "Fixed safe cache cleanup stopping when it encounters inaccessible files"))
+                    Text(tr("修复窗口菜单在应用启动后自动缩减的问题", "Fixed the Window menu collapsing shortly after app launch"))
+                }
                 Section("3.0.0") {
                     Text(tr("MetalHUD 新增最近 App 启动台，可快速重开、移除记录或选择其他 App", "Added a MetalHUD recent-app launcher with quick reopen, removal, and Other App selection"))
                     Text(tr("HoYoGames 启动帮助新增 10、15、20 秒等待时间", "Added 10, 15, and 20 second wait options to the HoYoGames Launch Assistant"))
