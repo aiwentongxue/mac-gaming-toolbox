@@ -8,6 +8,7 @@ struct DashboardView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.colorScheme) private var colorScheme
     @State private var nativeGlassEnabled = NSApp.isActive
+    @State private var showingMetalHUDApps = false
 
     private let columns = [GridItem(.adaptive(minimum: 280), spacing: 18)]
     private var hasCustomWallpaper: Bool { model.configuration.customWallpaperPath != nil }
@@ -36,9 +37,10 @@ struct DashboardView: View {
         .sheet(isPresented: $model.showingDiskManager) { DiskManagerView().environmentObject(model) }
         .sheet(isPresented: $model.showingChangelog) { ChangelogView() }
         .sheet(isPresented: $model.showingTutorials) { TutorialsView() }
+        .sheet(isPresented: $model.showingProcessSelection) { ProcessSelectionView().environmentObject(model) }
         .alert(cacheAlertTitle, isPresented: $model.showingCacheConfirmation) {
             Button(tr("取消", "Cancel"), role: .cancel) {}
-            Button(model.cacheConfirmationStage == 1 ? tr("继续", "Continue") : tr("确认删除", "Delete"), role: .destructive) { model.confirmCacheCleaning() }
+            Button(model.cacheConfirmationStage == 1 ? tr("继续", "Continue") : tr("确认删除", "Delete"), role: model.configuration.excludesSensitiveCacheFiles ? nil : .destructive) { model.confirmCacheCleaning() }
         } message: { Text(cacheAlertMessage) }
         .environment(\.colorScheme, effectiveColorScheme)
         .environment(\.dashboardColorScheme, effectiveColorScheme)
@@ -105,21 +107,53 @@ struct DashboardView: View {
         FeatureCard(icon: "gauge.with.dots.needle.67percent", title: tr("MetalHUD性能监视器", "MetalHUD Performance Monitor"), subtitle: tr("开发者工具，可以查看游戏帧率等信息，也可以帮助你找到游戏异常的原因", "A developer tool for viewing game frame rates and diagnosing game issues")) {
             HStack {
                 Toggle(tr("全局启用", "Enable globally"), isOn: Binding(get: { model.metalHUDEnabled }, set: { value in model.setMetalHUD(value) })).toggleStyle(.switch)
-                Button(tr("对单个 App 启用", "Enable for one app")) { model.launchAppWithMetalHUD() }
+                Button(tr("对单个 App 启用", "Enable for one app")) {
+                    if model.configuration.recentMetalHUDApps.isEmpty {
+                        model.launchAppWithMetalHUD()
+                    } else {
+                        showingMetalHUDApps.toggle()
+                    }
+                }
+                .popover(isPresented: $showingMetalHUDApps, arrowEdge: .bottom) {
+                    MetalHUDAppMenu(isPresented: $showingMetalHUDApps).environmentObject(model)
+                }
             }
         }
-        FeatureCard(icon: "gamecontroller.fill", title: tr("HoYoGames 启动帮助", "HoYoGames Launch Assistant"), subtitle: tr("此选项可以帮助你启动HoYoGames，点击“开始运行”后需要在15秒内快速打开游戏", "Helps launch HoYoGames; open the game within 15 seconds after clicking Start")) {
-            Button(tr("开始运行", "Start")) { model.startHoYoAssistant() }
-                .liquidGlassButton(prominent: true)
+        FeatureCard(icon: "gamecontroller.fill", title: tr("HoYoGames 启动帮助", "HoYoGames Launch Assistant"), subtitle: tr("此选项可以帮助你启动HoYoGames，点击“开始运行”后需要在指定时间内打开游戏", "Helps launch HoYoGames; open the game within the selected time after clicking Start")) {
+            HStack(alignment: .bottom) {
+                Button(tr("开始运行", "Start")) { model.startHoYoAssistant() }
+                    .liquidGlassButton(prominent: true)
+                Spacer()
+                Picker(tr("等待时间", "Wait time"), selection: Binding(get: { model.configuration.hoYoWaitSeconds }, set: { model.setHoYoWaitSeconds($0) })) {
+                    ForEach([10, 15, 20], id: \.self) { Text("\($0) \(tr("秒", "sec"))").tag($0) }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .frame(width: 92)
+            }
         }
         FeatureCard(icon: "bolt.fill", title: tr("提高CrossOver优先级", "Increase CrossOver Priority"), subtitle: tr("检测并提高Windows游戏优先级", "Detect and increase Windows game priority")) {
-            Button(tr("检测并优化", "Detect and optimize")) { model.increaseCrossOverPriority() }
+            HStack(alignment: .bottom) {
+                Button(tr("检测并优化", "Detect and optimize")) { model.increaseCrossOverPriority() }
+                Spacer()
+                Button(tr("手动选择进程", "Select processes")) { model.loadProcessesForManualSelection() }
+            }
         }
         FeatureCard(icon: "externaldrive.fill", title: tr("将磁盘挂载指定路径", "Mount a Disk at a Specified Path"), subtitle: tr("此方法可自定义外接磁盘的挂载路径，可将部分原本不可放在外接磁盘的游戏资源转移到外接磁盘以节省内置磁盘储存空间", "Customize an external disk's mount path and move supported game resources there to save internal storage space")) {
-            Button(tr("管理磁盘", "Manage volumes")) { model.loadDisks() }
+            HStack(alignment: .bottom) {
+                Button(tr("管理磁盘", "Manage volumes")) { model.loadDisks() }
+                Spacer()
+                Button(tr("恢复上次挂载", "Restore last mount")) { model.restorePreviousMounts() }
+            }
         }
-        FeatureCard(icon: "trash.fill", title: tr("缓存日志一键清理", "One-click Cache and Log Cleanup"), subtitle: tr("此选项可以帮你一键删除系统中所有的缓存和日志，但风险极大", "Deletes all system caches and logs in one click, but carries extreme risk")) {
-            Button(tr("扫描清理范围", "Scan"), role: .destructive) { model.prepareCacheScan() }
+        FeatureCard(icon: "trash.fill", title: tr("缓存日志一键清理", "One-click Cache and Log Cleanup"), subtitle: tr("默认仅清理用户缓存和日志；关闭敏感文件排除后将执行高风险完整清理", "Cleans user caches and logs by default; disabling sensitive-file exclusion performs the high-risk full cleanup")) {
+            HStack(alignment: .bottom) {
+                Button(tr("一键清理", "Clean now"), role: .destructive) { model.prepareCacheScan() }
+                Spacer()
+                Toggle(tr("排除敏感文件", "Exclude sensitive files"), isOn: Binding(get: { model.configuration.excludesSensitiveCacheFiles }, set: { model.setExcludesSensitiveCacheFiles($0) }))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+            }
         }
         FeatureCard(icon: "rectangle.2.swap", title: tr("切换到SteamDeck模式", "Switch to SteamDeck Mode"), subtitle: tr("部分游戏反作弊只给SteamDeck后门，伪装成SteamDeck让Mac也能玩", "Some anti-cheat systems allow SteamDeck; impersonating one may let the game run on Mac")) {
             Button(tr("切换模式", "Toggle mode")) { model.toggleSteamDeck() }
@@ -191,14 +225,145 @@ struct DashboardView: View {
             : [Color.white.opacity(0.04), Color.white.opacity(0.12)]
     }
 
-    private var cacheAlertTitle: String { model.cacheConfirmationStage == 1 ? tr("高风险操作", "High Risk") : tr("最终确认", "Final Confirmation") }
+    private var cacheAlertTitle: String {
+        if model.configuration.excludesSensitiveCacheFiles { return tr("准备清理", "Ready to Clean") }
+        return model.cacheConfirmationStage == 1 ? tr("高风险操作", "High Risk") : tr("最终确认", "Final Confirmation")
+    }
     private var cacheAlertMessage: String {
         guard let scan = model.cacheScan else { return "" }
         let size = ByteCountFormatter.string(fromByteCount: Int64(scan.estimatedBytes), countStyle: .file)
+        if model.configuration.excludesSensitiveCacheFiles {
+            return tr("预计清理 \(size)，点击继续进行清理", "About \(size) will be cleaned. Click Continue to proceed.")
+        }
         if model.cacheConfirmationStage == 1 {
             return tr("预计删除 \(size)，涉及 \(scan.userTargets.count) 个用户目录和系统日志。登录状态及游戏缓存可能丢失。", "About \(size) will be deleted across \(scan.userTargets.count) user folders and system logs. Login state and game caches may be lost.")
         }
         return tr("此操作不可撤销。首次使用时会启用系统辅助服务。确认永久删除这些缓存和日志吗？", "This cannot be undone. The system helper will be enabled on first use. Permanently delete these caches and logs?")
+    }
+}
+
+private struct MetalHUDAppMenu: View {
+    @EnvironmentObject private var model: AppModel
+    @Binding var isPresented: Bool
+    @State private var launchingPath: String?
+
+    private let columns = Array(repeating: GridItem(.fixed(88), spacing: 14), count: 4)
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text(tr("最近使用 MetalHUD 打开的 App", "Recently opened with MetalHUD"))
+                .font(.headline)
+            LazyVGrid(columns: columns, spacing: 16) {
+                ForEach(model.configuration.recentMetalHUDApps) { app in
+                    Button {
+                        launch(app)
+                    } label: {
+                        VStack(spacing: 6) {
+                            Image(nsImage: NSWorkspace.shared.icon(forFile: app.path))
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 58, height: 58)
+                                .scaleEffect(launchingPath == app.path ? 1.35 : 1)
+                                .opacity(launchingPath == app.path ? 0 : 1)
+                            Text(app.displayName)
+                                .font(.caption)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
+                                .frame(width: 84)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button(tr("移除", "Remove"), role: .destructive) { model.removeRecentMetalHUDApp(app) }
+                    }
+                    .transaction { $0.animation = .easeInOut(duration: 0.22) }
+                }
+            }
+            Divider()
+            Button {
+                isPresented = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { model.launchAppWithMetalHUD() }
+            } label: {
+                Label(tr("其他 App", "Other App"), systemImage: "plus.app")
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(20)
+        .frame(width: 430)
+    }
+
+    private func launch(_ app: RecentMetalHUDApp) {
+        withAnimation(.easeInOut(duration: 0.22)) { launchingPath = app.path }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+            isPresented = false
+            launchingPath = nil
+            model.launchRecordedAppWithMetalHUD(app.path)
+        }
+    }
+}
+
+private struct ProcessSelectionView: View {
+    @EnvironmentObject private var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var searchText = ""
+
+    private var filteredProcesses: [SystemProcess] {
+        guard !searchText.isEmpty else { return model.runningProcesses }
+        return model.runningProcesses.filter {
+            $0.command.localizedCaseInsensitiveContains(searchText) || String($0.pid).contains(searchText)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(tr("手动选择进程", "Select Processes")).font(.title2.bold())
+                    Text(tr("选择需要提高优先级的进程", "Choose processes whose priority should be increased"))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(tr("取消", "Cancel")) { dismiss() }
+            }
+            TextField(tr("搜索进程名称或 PID", "Search process name or PID"), text: $searchText)
+                .textFieldStyle(.roundedBorder)
+            if model.runningProcesses.isEmpty {
+                ProgressView(tr("正在读取进程", "Loading processes"))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(filteredProcesses) { process in
+                    Toggle(isOn: Binding(
+                        get: { model.selectedProcessIDs.contains(process.pid) },
+                        set: { selected in
+                            if selected, model.selectedProcessIDs.count < 64 { model.selectedProcessIDs.insert(process.pid) }
+                            else { model.selectedProcessIDs.remove(process.pid) }
+                        }
+                    )) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(process.command.split(separator: "/").last.map(String.init) ?? process.command)
+                                .font(.headline)
+                            Text("PID \(process.pid) · \(process.command)")
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                    }
+                    .toggleStyle(.checkbox)
+                }
+            }
+            HStack {
+                Text(tr("已选择 \(model.selectedProcessIDs.count)/64 个进程", "\(model.selectedProcessIDs.count)/64 process(es) selected"))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button(tr("提高优先级", "Increase Priority")) { model.increaseSelectedProcessPriority() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(model.selectedProcessIDs.isEmpty)
+            }
+        }
+        .padding(22)
+        .frame(minWidth: 680, minHeight: 520)
     }
 }
 

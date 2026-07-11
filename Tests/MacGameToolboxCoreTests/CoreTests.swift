@@ -60,6 +60,9 @@ import Testing
     #expect(!configuration.automaticallyRestoreMountsOnLaunch)
     #expect(configuration.restorableDiskMounts.isEmpty)
     #expect(configuration.customWallpaperPath == nil)
+    #expect(configuration.recentMetalHUDApps.isEmpty)
+    #expect(configuration.hoYoWaitSeconds == 15)
+    #expect(configuration.excludesSensitiveCacheFiles)
     #expect(configuration.diskPresets.first?.diskIdentifier == "disk4s1")
 }
 
@@ -73,7 +76,7 @@ import Testing
     let loaded = try await store.load(importLegacy: false)
     #expect(loaded.automaticallyRestoreMountsOnLaunch)
     #expect(loaded.restorableDiskMounts == configuration.restorableDiskMounts)
-    #expect(loaded.schemaVersion == 2)
+    #expect(loaded.schemaVersion == 3)
 }
 
 @Test func wallpaperServiceImportsAndRemovesManagedWallpapersOnly() throws {
@@ -277,13 +280,57 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
     let privileged = RejectingPrivilegedOperator()
     let service = CacheService(privileged: privileged)
     do {
-        try await service.clear(CacheScan(userTargets: [root], systemTargets: [], estimatedBytes: 9))
+        try await service.clear(CacheScan(userTargets: [root], systemTargets: [URL(fileURLWithPath: "/Library/Caches")], estimatedBytes: 9))
         Issue.record("Expected authorization failure")
     } catch {
         #expect(error as? ToolboxError == .authorizationCancelled)
     }
     #expect(FileManager.default.fileExists(atPath: file.path))
     #expect(await privileged.operations == [.healthCheck])
+}
+
+@Test func sensitiveCacheExclusionScansAndClearsOnlyUserCachesAndLogs() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let caches = root.appendingPathComponent("Library/Caches", isDirectory: true)
+    let logs = root.appendingPathComponent("Library/Logs", isDirectory: true)
+    let sensitive = root.appendingPathComponent("Library/Application Support/Game/Caches", isDirectory: true)
+    try FileManager.default.createDirectory(at: caches, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: logs, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: sensitive, withIntermediateDirectories: true)
+    try Data("cache".utf8).write(to: caches.appendingPathComponent("user.cache"))
+    try Data("log".utf8).write(to: logs.appendingPathComponent("user.log"))
+    try Data("keep".utf8).write(to: sensitive.appendingPathComponent("sensitive.cache"))
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let privileged = RecordingPrivilegedOperator()
+    let service = CacheService(privileged: privileged)
+    let scan = await service.scan(excludingSensitiveFiles: true, homeURL: root)
+    #expect(scan.userTargets.map(\.standardizedFileURL.path) == [caches, logs].map(\.standardizedFileURL.path))
+    #expect(scan.systemTargets.isEmpty)
+    try await service.clear(scan)
+
+    #expect(!FileManager.default.fileExists(atPath: caches.appendingPathComponent("user.cache").path))
+    #expect(!FileManager.default.fileExists(atPath: logs.appendingPathComponent("user.log").path))
+    #expect(FileManager.default.fileExists(atPath: sensitive.appendingPathComponent("sensitive.cache").path))
+    #expect(await privileged.operations.isEmpty)
+}
+
+@Test func configurationNormalizesNewVersionThreePreferences() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let store = ConfigurationStore(configurationURL: root.appendingPathComponent("configuration.json"))
+    var configuration = AppConfiguration()
+    configuration.hoYoWaitSeconds = 99
+    configuration.excludesSensitiveCacheFiles = false
+    configuration.recentMetalHUDApps = [
+        RecentMetalHUDApp(path: "/Applications/A.app", displayName: "A"),
+        RecentMetalHUDApp(path: "/Applications/A.app", displayName: "Duplicate")
+    ]
+    try await store.save(configuration)
+    let loaded = try await store.load(importLegacy: false)
+    #expect(loaded.schemaVersion == 3)
+    #expect(loaded.hoYoWaitSeconds == 15)
+    #expect(!loaded.excludesSensitiveCacheFiles)
+    #expect(loaded.recentMetalHUDApps == [RecentMetalHUDApp(path: "/Applications/A.app", displayName: "A")])
 }
 
 @Test func processRunnerDrainsOutputLargerThanPipeBuffer() async throws {

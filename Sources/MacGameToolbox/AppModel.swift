@@ -21,6 +21,9 @@ final class AppModel: ObservableObject {
     @Published var showingChangelog = false
     @Published var showingTutorials = false
     @Published var isHoYoAssistantRunning = false
+    @Published var showingProcessSelection = false
+    @Published var runningProcesses: [SystemProcess] = []
+    @Published var selectedProcessIDs = Set<Int32>()
 
     private let privileged = PrivilegedHelperClient()
     private let configurationStore: ConfigurationStore
@@ -47,7 +50,7 @@ final class AppModel: ObservableObject {
     func launch() {
         guard !didLaunch else { return }
         didLaunch = true
-        DiagnosticFileLogger.write("App launched, version 2.4.0")
+        DiagnosticFileLogger.write("App launched, version 3.0.0")
         Task {
             do { configuration = try await configurationStore.load() }
             catch { report(error) }
@@ -79,10 +82,21 @@ final class AppModel: ObservableObject {
         panel.resolvesAliases = true
         guard panel.runModal() == .OK, let applicationURL = panel.url else { return }
 
+        launchRecordedAppWithMetalHUD(applicationURL.path)
+    }
+
+    func launchRecordedAppWithMetalHUD(_ path: String) {
+        let applicationURL = URL(fileURLWithPath: path)
         runTask(tr("正在使用 MetalHUD 启动 App", "Launching app with MetalHUD")) {
             try await self.gamingService.launchWithMetalHUD(applicationPath: applicationURL.path)
+            self.rememberMetalHUDApp(applicationURL)
             return tr("已使用 MetalHUD 打开 \(applicationURL.deletingPathExtension().lastPathComponent)", "Opened \(applicationURL.deletingPathExtension().lastPathComponent) with MetalHUD")
         }
+    }
+
+    func removeRecentMetalHUDApp(_ app: RecentMetalHUDApp) {
+        configuration.recentMetalHUDApps.removeAll { $0.path == app.path }
+        saveConfiguration()
     }
 
     func increaseCrossOverPriority() {
@@ -98,19 +112,47 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func loadProcessesForManualSelection() {
+        showingProcessSelection = true
+        runningProcesses = []
+        selectedProcessIDs.removeAll()
+        Task {
+            do { runningProcesses = try await gamingService.runningProcesses() }
+            catch { report(error) }
+        }
+    }
+
+    func increaseSelectedProcessPriority() {
+        let identifiers = Array(selectedProcessIDs)
+        guard !identifiers.isEmpty else { return }
+        showingProcessSelection = false
+        runTask(tr("正在提高所选进程优先级", "Increasing selected process priority")) {
+            self.status.phase = .awaitingAuthorization
+            try await self.privileged.perform(.renice(identifiers))
+            return tr("已提高 \(identifiers.count) 个进程的优先级", "Updated \(identifiers.count) selected process(es)")
+        }
+    }
+
+    func setHoYoWaitSeconds(_ seconds: Int) {
+        guard [10, 15, 20].contains(seconds) else { return }
+        configuration.hoYoWaitSeconds = seconds
+        saveConfiguration()
+    }
+
     func startHoYoAssistant() {
         guard hoyoTask == nil else { return }
+        let waitSeconds = configuration.hoYoWaitSeconds
         isHoYoAssistantRunning = true
         status = TaskStatus(phase: .awaitingAuthorization, message: tr("正在启用系统辅助服务", "Enabling system helper"), progress: 0, log: [])
         hoyoTask = Task {
             do {
                 try await gamingService.beginHoYoLaunch()
                 status.phase = .running
-                status.log.append(tr("已写入临时 hosts，等待 15 秒", "Temporary hosts applied; waiting 15 seconds"))
-                for remaining in stride(from: 15, through: 1, by: -1) {
+                status.log.append(tr("已写入临时 hosts，等待 \(waitSeconds) 秒", "Temporary hosts applied; waiting \(waitSeconds) seconds"))
+                for remaining in stride(from: waitSeconds, through: 1, by: -1) {
                     try Task.checkCancellation()
                     status.message = tr("请启动游戏，剩余 \(remaining) 秒", "Launch the game; \(remaining) seconds remaining")
-                    status.progress = Double(15 - remaining) / 15.0
+                    status.progress = Double(waitSeconds - remaining) / Double(waitSeconds)
                     try await Task.sleep(for: .seconds(1))
                 }
 
@@ -118,9 +160,9 @@ final class AppModel: ObservableObject {
                 status.message = tr("正在检测 Wine 进程", "Detecting Wine processes")
                 status.log.append(tr("等待完成，开始检测 Wine 进程", "Wait complete; detecting Wine processes"))
                 let processes = try await gamingService.wineProcesses()
-                DiagnosticFileLogger.write("HoYo Wine check after 15 seconds: \(processes.count) process(es)")
+                DiagnosticFileLogger.write("HoYo Wine check after \(waitSeconds) seconds: \(processes.count) process(es)")
                 guard !processes.isEmpty else {
-                    throw ToolboxError.commandFailed(tr("15 秒后未检测到 Wine 进程", "No Wine process detected after 15 seconds"))
+                    throw ToolboxError.commandFailed(tr("\(waitSeconds) 秒后未检测到 Wine 进程", "No Wine process detected after \(waitSeconds) seconds"))
                 }
 
                 status.phase = .awaitingAuthorization
@@ -216,6 +258,21 @@ final class AppModel: ObservableObject {
         startAutomaticMountMonitoring()
     }
 
+    func restorePreviousMounts() {
+        status = TaskStatus(phase: .running, message: tr("正在恢复上次挂载", "Restoring previous mounts"))
+        Task {
+            do {
+                let availableVolumes = try await diskService.listEligibleVolumes()
+                disks = availableVolumes
+                enrichRestorableMountUUIDs(from: availableVolumes)
+                guard !configuration.restorableDiskMounts.isEmpty else {
+                    throw ToolboxError.commandFailed(tr("没有可恢复的挂载记录", "No previous mounts to restore"))
+                }
+                await restoreMounts(from: availableVolumes, manual: true)
+            } catch { report(error) }
+        }
+    }
+
     func addDefaultPath() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
@@ -272,7 +329,7 @@ final class AppModel: ObservableObject {
     func prepareCacheScan() {
         status = TaskStatus(phase: .running, message: tr("正在扫描缓存", "Scanning caches"))
         Task {
-            cacheScan = await cacheService.scan()
+            cacheScan = await cacheService.scan(excludingSensitiveFiles: configuration.excludesSensitiveCacheFiles)
             cacheConfirmationStage = 1
             showingCacheConfirmation = true
             status = TaskStatus()
@@ -280,17 +337,22 @@ final class AppModel: ObservableObject {
     }
 
     func confirmCacheCleaning() {
-        if cacheConfirmationStage == 1 {
+        if cacheConfirmationStage == 1, !configuration.excludesSensitiveCacheFiles {
             cacheConfirmationStage = 2
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { self.showingCacheConfirmation = true }
             return
         }
         guard let scan = cacheScan else { return }
         runTask(tr("正在清理缓存", "Cleaning caches")) {
-            self.status.phase = .awaitingAuthorization
+            if !scan.systemTargets.isEmpty { self.status.phase = .awaitingAuthorization }
             try await self.cacheService.clear(scan)
             return tr("缓存清理完成", "Cache cleaning completed")
         }
+    }
+
+    func setExcludesSensitiveCacheFiles(_ enabled: Bool) {
+        configuration.excludesSensitiveCacheFiles = enabled
+        saveConfiguration()
     }
 
     func toggleSteamDeck() {
@@ -426,7 +488,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func restoreMounts(from volumes: [DiskVolume]) async {
+    private func restoreMounts(from volumes: [DiskVolume], manual: Bool = false) async {
         let assignments = configuration.restorableDiskMounts.compactMap { preset -> (String, String)? in
             guard let path = preset.mountPath,
                   let volume = DiskService.matchingVolume(for: preset, in: volumes),
@@ -435,6 +497,10 @@ final class AppModel: ObservableObject {
             return (volume.id, path)
         }
         guard !assignments.isEmpty else {
+            if manual {
+                report(ToolboxError.commandFailed(tr("没有找到可恢复的磁盘和路径", "No matching volume and path found to restore")))
+                return
+            }
             if !configuration.restorableDiskMounts.isEmpty {
                 DiagnosticFileLogger.write("Automatic mount restore waiting: no matching unmounted target with an existing path")
             }
@@ -486,6 +552,16 @@ final class AppModel: ObservableObject {
     private func saveConfiguration() {
         let value = configuration
         Task { try? await configurationStore.save(value) }
+    }
+
+    private func rememberMetalHUDApp(_ applicationURL: URL) {
+        let normalizedURL = applicationURL.standardizedFileURL
+        let displayName = FileManager.default.displayName(atPath: normalizedURL.path)
+        let name = (displayName as NSString).deletingPathExtension
+        configuration.recentMetalHUDApps.removeAll { $0.path == normalizedURL.path }
+        configuration.recentMetalHUDApps.insert(RecentMetalHUDApp(path: normalizedURL.path, displayName: name), at: 0)
+        configuration.recentMetalHUDApps = Array(configuration.recentMetalHUDApps.prefix(ConfigurationStore.maxRecentMetalHUDApps))
+        saveConfiguration()
     }
 
     private func runTask(_ message: String, operation: @escaping @MainActor () async throws -> String) {

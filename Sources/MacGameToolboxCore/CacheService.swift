@@ -21,28 +21,31 @@ public actor CacheService {
         self.privileged = privileged
     }
 
-    public func scan(homeURL: URL = FileManager.default.homeDirectoryForCurrentUser) -> CacheScan {
+    public func scan(excludingSensitiveFiles: Bool = false, homeURL: URL = FileManager.default.homeDirectoryForCurrentUser) -> CacheScan {
         let library = homeURL.appendingPathComponent("Library")
         var userTargets = [library.appendingPathComponent("Caches"), library.appendingPathComponent("Logs")]
-        for rootName in ["Application Support", "Containers"] {
-            let root = library.appendingPathComponent(rootName)
-            guard let enumerator = fileManager.enumerator(at: root, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { continue }
-            for case let url as URL in enumerator where ["Cache", "Caches", "Logs"].contains(url.lastPathComponent) {
-                userTargets.append(url)
-                enumerator.skipDescendants()
+        if !excludingSensitiveFiles {
+            for rootName in ["Application Support", "Containers"] {
+                let root = library.appendingPathComponent(rootName)
+                guard let enumerator = fileManager.enumerator(at: root, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { continue }
+                for case let url as URL in enumerator where ["Cache", "Caches", "Logs"].contains(url.lastPathComponent) {
+                    userTargets.append(url)
+                    enumerator.skipDescendants()
+                }
             }
         }
         userTargets = uniqueExisting(userTargets)
-        let systemTargets = [URL(fileURLWithPath: "/Library/Caches"), URL(fileURLWithPath: "/Library/Logs"), URL(fileURLWithPath: "/private/var/log")]
+        let systemTargets = excludingSensitiveFiles ? [] : [URL(fileURLWithPath: "/Library/Caches"), URL(fileURLWithPath: "/Library/Logs"), URL(fileURLWithPath: "/private/var/log")]
         let bytes = (userTargets + systemTargets).reduce(UInt64(0)) { $0 + directorySize($1) }
         return CacheScan(userTargets: userTargets, systemTargets: systemTargets, estimatedBytes: bytes)
     }
 
     public func clear(_ scan: CacheScan) async throws {
-        // Complete first-use authorization before deleting anything locally.
-        try await privileged.perform(.healthCheck)
+        // Complete authorization before deleting locally when the full cleanup
+        // will also mutate protected system directories.
+        if !scan.systemTargets.isEmpty { try await privileged.perform(.healthCheck) }
         for directory in scan.userTargets { try removeVisibleContents(of: directory) }
-        try await privileged.perform(.clearSystemCaches)
+        if !scan.systemTargets.isEmpty { try await privileged.perform(.clearSystemCaches) }
     }
 
     private func removeVisibleContents(of directory: URL) throws {

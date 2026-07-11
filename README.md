@@ -1,14 +1,14 @@
 # Mac 游戏工具箱
 
-Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 2.4.0，支持中文与英文界面，并兼容 Intel Mac 和 Apple Silicon Mac。
+Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 3.0.0，支持中文与英文界面，并兼容 Intel Mac 和 Apple Silicon Mac。
 
 ## 功能
 
-- 全局开启或关闭 MetalHUD 性能监视器，或仅为选定 App 的本次启动启用 MetalHUD。
-- 辅助启动 HoYoGames，并在任务结束或取消时恢复应用管理的 hosts 配置。
-- 检测 CrossOver/Wine 进程并提高其运行优先级。
-- 将外接磁盘挂载到指定路径，保存预设并按需自动恢复挂载。
-- 扫描并清理用户缓存、应用缓存和系统日志。
+- 全局开启或关闭 MetalHUD，或通过最近 App 启动台仅为选定 App 的本次启动启用 MetalHUD。
+- 按 10、15 或 20 秒的可选等待时间辅助启动 HoYoGames，并在任务结束或取消时恢复应用管理的 hosts 配置。
+- 自动检测 CrossOver/Wine 进程，或手动选择进程并提高其运行优先级。
+- 将外接磁盘挂载到指定路径，保存预设，并自动或手动恢复上次挂载。
+- 一键清理缓存日志，默认仅清理用户缓存和用户日志，也可关闭敏感文件排除执行完整高风险清理。
 - 切换或恢复用于兼容性测试的 Steam Deck 主机名模式。
 - 导入自定义界面壁纸、导出诊断信息，并提供 Mac 游戏与 CrossOver 教程入口。
 
@@ -64,7 +64,7 @@ swift test --disable-sandbox
 ```bash
 export DEVELOPER_ID_APPLICATION='Developer ID Application: Your Name (TEAMID)'
 export NOTARY_KEYCHAIN_PROFILE='your-notary-profile'
-./Scripts/sign-and-notarize.sh '/path/to/Mac 游戏工具箱.app' 'MacGameToolbox-2.4.0.dmg'
+./Scripts/sign-and-notarize.sh '/path/to/Mac 游戏工具箱.app' 'MacGameToolbox-3.0.0.dmg'
 ```
 
 请勿把真实证书、公证密码、App Store Connect API Key 或环境变量文件提交到仓库。

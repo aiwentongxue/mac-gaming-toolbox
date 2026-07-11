@@ -3,6 +3,7 @@ import Foundation
 public actor ConfigurationStore {
     public static let maxDefaultPaths = 3
     public static let maxPresets = 5
+    public static let maxRecentMetalHUDApps = 12
 
     private let configurationURL: URL
     private let fileManager: FileManager
@@ -33,10 +34,12 @@ public actor ConfigurationStore {
 
     public func save(_ configuration: AppConfiguration) throws {
         var normalized = configuration
-        normalized.schemaVersion = 2
+        normalized.schemaVersion = 3
         normalized.defaultPaths = Array(unique(configuration.defaultPaths).prefix(Self.maxDefaultPaths))
         normalized.diskPresets = Array(uniquePresets(configuration.diskPresets).prefix(Self.maxPresets))
         normalized.restorableDiskMounts = Array(uniquePresets(configuration.restorableDiskMounts).prefix(3))
+        normalized.recentMetalHUDApps = Array(uniqueRecentApps(configuration.recentMetalHUDApps).prefix(Self.maxRecentMetalHUDApps))
+        if ![10, 15, 20].contains(normalized.hoYoWaitSeconds) { normalized.hoYoWaitSeconds = 15 }
         try fileManager.createDirectory(at: configurationURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -77,5 +80,10 @@ public actor ConfigurationStore {
     private func uniquePresets(_ values: [DiskPreset]) -> [DiskPreset] {
         var seen = Set<String>()
         return values.filter { seen.insert($0.diskIdentifier).inserted }
+    }
+
+    private func uniqueRecentApps(_ values: [RecentMetalHUDApp]) -> [RecentMetalHUDApp] {
+        var seen = Set<String>()
+        return values.filter { seen.insert($0.path).inserted }
     }
 }

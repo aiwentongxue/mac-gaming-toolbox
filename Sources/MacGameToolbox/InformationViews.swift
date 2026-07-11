@@ -6,6 +6,13 @@ struct ChangelogView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("3.0.0") {
+                    Text(tr("MetalHUD 新增最近 App 启动台，可快速重开、移除记录或选择其他 App", "Added a MetalHUD recent-app launcher with quick reopen, removal, and Other App selection"))
+                    Text(tr("HoYoGames 启动帮助新增 10、15、20 秒等待时间", "Added 10, 15, and 20 second wait options to the HoYoGames Launch Assistant"))
+                    Text(tr("CrossOver 优先级优化新增手动选择进程", "Added manual process selection for CrossOver priority optimization"))
+                    Text(tr("磁盘挂载新增手动恢复上次挂载", "Added manual restoration of previous disk mounts"))
+                    Text(tr("缓存清理新增默认开启的敏感文件排除模式", "Added a sensitive-file exclusion mode enabled by default for cache cleanup"))
+                }
                 Section("2.4.0") {
                     Text(tr("MetalHUD 开关更名为“全局启用”，明确其作用范围", "Renamed the MetalHUD switch to “Enable globally” to clarify its scope"))
                     Text(tr("新增对单个 App 启用 MetalHUD，可从应用程序目录选择并立即启动", "Added per-app MetalHUD launch from the Applications folder"))

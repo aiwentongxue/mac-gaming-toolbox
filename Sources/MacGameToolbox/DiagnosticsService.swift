@@ -12,11 +12,11 @@ actor DiagnosticsService {
 
     func collect(taskStatus: TaskStatus, helperStatus: String, configuration: AppConfiguration) async -> String {
         var sections: [(String, String)] = []
-        sections.append(("Report", "Generated: \(ISO8601DateFormatter().string(from: Date()))\nApp: Mac Game Toolbox 2.4.0\nHelper: \(helperStatus)\nTask phase: \(taskStatus.phase.rawValue)\nTask message: \(taskStatus.message)"))
+        sections.append(("Report", "Generated: \(ISO8601DateFormatter().string(from: Date()))\nApp: Mac Game Toolbox 3.0.0\nHelper: \(helperStatus)\nTask phase: \(taskStatus.phase.rawValue)\nTask message: \(taskStatus.message)"))
         let restorableMounts = configuration.restorableDiskMounts.map {
             "\($0.diskIdentifier) [\($0.volumeUUID ?? "no UUID")] -> \($0.mountPath ?? "no path")"
         }.joined(separator: "\n")
-        sections.append(("Configuration Summary", "Default paths: \(configuration.defaultPaths.count)\nDisk presets: \(configuration.diskPresets.count)\nAutomatic restore enabled: \(configuration.automaticallyRestoreMountsOnLaunch)\nRestorable mounts:\n\(restorableMounts.isEmpty ? "(none)" : restorableMounts)\nLegacy imported: \(configuration.didImportLegacyConfiguration)\nHostname backup present: \(configuration.hostnameBackup != nil)"))
+        sections.append(("Configuration Summary", "Default paths: \(configuration.defaultPaths.count)\nDisk presets: \(configuration.diskPresets.count)\nAutomatic restore enabled: \(configuration.automaticallyRestoreMountsOnLaunch)\nRestorable mounts:\n\(restorableMounts.isEmpty ? "(none)" : restorableMounts)\nMetalHUD recent apps: \(configuration.recentMetalHUDApps.count)\nHoYo wait: \(configuration.hoYoWaitSeconds)s\nSensitive cache exclusion: \(configuration.excludesSensitiveCacheFiles)\nLegacy imported: \(configuration.didImportLegacyConfiguration)\nHostname backup present: \(configuration.hostnameBackup != nil)"))
         sections.append(("Task Log", taskStatus.log.isEmpty ? "(empty)" : taskStatus.log.joined(separator: "\n")))
         let appLog = (try? String(contentsOf: DiagnosticFileLogger.logURL, encoding: .utf8)) ?? "(not available)"
         sections.append(("Persistent App Log", appLog))

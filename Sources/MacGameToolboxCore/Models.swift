@@ -69,7 +69,8 @@ public struct HostnameBackup: Codable, Equatable, Sendable {
     }
 }
 
-public struct SystemProcess: Equatable, Sendable {
+public struct SystemProcess: Identifiable, Hashable, Sendable {
+    public var id: Int32 { pid }
     public let pid: Int32
     public let parentPID: Int32
     public let command: String
@@ -81,8 +82,19 @@ public struct SystemProcess: Equatable, Sendable {
     }
 }
 
+public struct RecentMetalHUDApp: Codable, Hashable, Identifiable, Sendable {
+    public var path: String
+    public var displayName: String
+    public var id: String { path }
+
+    public init(path: String, displayName: String) {
+        self.path = path
+        self.displayName = displayName
+    }
+}
+
 public struct AppConfiguration: Codable, Equatable, Sendable {
-    public var schemaVersion = 2
+    public var schemaVersion = 3
     public var didImportLegacyConfiguration = false
     public var defaultPaths: [String] = []
     public var diskPresets: [DiskPreset] = []
@@ -90,12 +102,16 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
     public var restorableDiskMounts: [DiskPreset] = []
     public var hostnameBackup: HostnameBackup?
     public var customWallpaperPath: String?
+    public var recentMetalHUDApps: [RecentMetalHUDApp] = []
+    public var hoYoWaitSeconds = 15
+    public var excludesSensitiveCacheFiles = true
 
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, didImportLegacyConfiguration, defaultPaths, diskPresets
         case automaticallyRestoreMountsOnLaunch, restorableDiskMounts, hostnameBackup, customWallpaperPath
+        case recentMetalHUDApps, hoYoWaitSeconds, excludesSensitiveCacheFiles
     }
 
     public init(from decoder: Decoder) throws {
@@ -108,6 +124,10 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
         restorableDiskMounts = try container.decodeIfPresent([DiskPreset].self, forKey: .restorableDiskMounts) ?? []
         hostnameBackup = try container.decodeIfPresent(HostnameBackup.self, forKey: .hostnameBackup)
         customWallpaperPath = try container.decodeIfPresent(String.self, forKey: .customWallpaperPath)
+        recentMetalHUDApps = try container.decodeIfPresent([RecentMetalHUDApp].self, forKey: .recentMetalHUDApps) ?? []
+        let decodedWait = try container.decodeIfPresent(Int.self, forKey: .hoYoWaitSeconds) ?? 15
+        hoYoWaitSeconds = [10, 15, 20].contains(decodedWait) ? decodedWait : 15
+        excludesSensitiveCacheFiles = try container.decodeIfPresent(Bool.self, forKey: .excludesSensitiveCacheFiles) ?? true
     }
 }
 

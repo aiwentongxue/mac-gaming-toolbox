@@ -57,6 +57,13 @@ public actor GamingService {
             .map { ($0.pid, $0.command) }
     }
 
+    public func runningProcesses() async throws -> [SystemProcess] {
+        let result = try await runner.run("/bin/ps", arguments: ["-axo", "pid=,ppid=,command="])
+        return Self.parseProcessTable(result.outputString)
+            .filter { $0.pid > 1 && !$0.command.lowercased().contains("macgametoolbox") }
+            .sorted { $0.command.localizedStandardCompare($1.command) == .orderedAscending }
+    }
+
     public func increasePriority(crossOverOnly: Bool = true) async throws -> Int {
         let processes = try await wineProcesses(crossOverOnly: crossOverOnly)
         guard !processes.isEmpty else { throw ToolboxError.commandFailed(coreText("未检测到 Wine 进程", "No Wine process found")) }
