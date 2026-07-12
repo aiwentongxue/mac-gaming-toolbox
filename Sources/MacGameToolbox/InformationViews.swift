@@ -6,6 +6,10 @@ struct ChangelogView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("3.0.2") {
+                    Text(tr("修复窗口菜单在启动后闪变的问题，稳定保留最小化、缩放、填充和居中", "Fixed the Window menu changing shortly after launch and kept Minimize, Zoom, Fill, and Center stable"))
+                    Text(tr("移除“显示”菜单中的标签页栏和所有标签页命令", "Removed the tab bar and tab overview commands from the View menu"))
+                }
                 Section("3.0.1") {
                     Text(tr("将 MetalHUD 的单 App 启用按钮移动到选项框右下角", "Moved the per-app MetalHUD button to the lower-right corner of its card"))
                     Text(tr("修复安全缓存清理遇到无权限文件时提前终止的问题", "Fixed safe cache cleanup stopping when it encounters inaccessible files"))

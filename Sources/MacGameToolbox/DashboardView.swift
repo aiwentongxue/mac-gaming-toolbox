@@ -70,6 +70,7 @@ struct DashboardView: View {
         .transaction { transaction in
             transaction.animation = nil
         }
+        .onAppear { MenuCommandCoordinator.shared.install(model: model) }
     }
 
     @ViewBuilder private var statusPanel: some View {
@@ -480,22 +481,10 @@ private struct WindowAppearanceConfigurator: NSViewRepresentable {
         private weak var observedWindow: NSWindow?
         private var willMiniaturize: (() -> Void)?
         private var didRestore: (() -> Void)?
-        private var windowMenuTemplate: NSMenu?
-        private var observesApplicationUpdates = false
 
         func configure(for window: NSWindow, willMiniaturize: @escaping () -> Void, didRestore: @escaping () -> Void) {
             self.willMiniaturize = willMiniaturize
             self.didRestore = didRestore
-            preserveAndRestoreWindowMenu()
-            if !observesApplicationUpdates {
-                observesApplicationUpdates = true
-                NotificationCenter.default.addObserver(
-                    self,
-                    selector: #selector(applicationDidUpdate),
-                    name: NSApplication.didUpdateNotification,
-                    object: NSApp
-                )
-            }
             guard observedWindow !== window else { return }
             if let observedWindow {
                 NotificationCenter.default.removeObserver(self, name: NSWindow.willMiniaturizeNotification, object: observedWindow)
@@ -522,34 +511,6 @@ private struct WindowAppearanceConfigurator: NSViewRepresentable {
 
         @objc private func windowDidDeminiaturize() {
             didRestore?()
-        }
-
-        @objc private func applicationDidUpdate() {
-            restoreWindowMenuIfNeeded()
-        }
-
-        private func preserveAndRestoreWindowMenu() {
-            if windowMenuTemplate == nil {
-                let source = NSApp.windowsMenu ?? windowMenuItem()?.submenu
-                windowMenuTemplate = source?.copy() as? NSMenu
-            }
-            restoreWindowMenuIfNeeded()
-        }
-
-        private func restoreWindowMenuIfNeeded() {
-            guard let windowMenuTemplate, let item = windowMenuItem() else { return }
-            if let current = item.submenu,
-               current.numberOfItems >= windowMenuTemplate.numberOfItems,
-               NSApp.windowsMenu === current { return }
-            guard let restored = windowMenuTemplate.copy() as? NSMenu else { return }
-            item.submenu = restored
-            NSApp.windowsMenu = restored
-        }
-
-        private func windowMenuItem() -> NSMenuItem? {
-            NSApp.mainMenu?.items.first {
-                $0.title == tr("窗口", "Window") || $0.submenu === NSApp.windowsMenu
-            }
         }
 
         deinit {
