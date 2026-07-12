@@ -6,6 +6,11 @@ struct ChangelogView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("3.0.3") {
+                    Text(tr("恢复 ⌘W 隐藏窗口但保持应用运行，以及 ⌘Q、应用菜单和 Dock 正常退出", "Restored Command-W to hide the window while keeping the app running, while Command-Q, the app menu, and Dock quit normally"))
+                    Text(tr("稳定菜单栏结构：保留“关于”和系统窗口管理，并将诊断、修复和教程集中到帮助菜单", "Stabilized the menu bar with About, system window controls, and diagnostics, repair, and tutorials in Help"))
+                    Text(tr("调整首页顺序：导入壁纸、教程总导航、更新日志依次排列", "Reordered the dashboard cards to Import Wallpaper, Tutorial Hub, then Changelog"))
+                }
                 Section("3.0.2") {
                     Text(tr("修复窗口菜单在启动后闪变的问题，稳定保留最小化、缩放、填充和居中", "Fixed the Window menu changing shortly after launch and kept Minimize, Zoom, Fill, and Center stable"))
                     Text(tr("移除“显示”菜单中的标签页栏和所有标签页命令", "Removed the tab bar and tab overview commands from the View menu"))

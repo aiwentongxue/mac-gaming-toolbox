@@ -160,12 +160,6 @@ struct DashboardView: View {
         FeatureCard(icon: "rectangle.2.swap", title: tr("切换到SteamDeck模式", "Switch to SteamDeck Mode"), subtitle: tr("部分游戏反作弊只给SteamDeck后门，伪装成SteamDeck让Mac也能玩", "Some anti-cheat systems allow SteamDeck; impersonating one may let the game run on Mac")) {
             Button(tr("切换模式", "Toggle mode")) { model.toggleSteamDeck() }
         }
-        FeatureCard(icon: "clock.arrow.circlepath", title: tr("更新日志", "Changelog"), subtitle: tr("查看版本变化", "Review version changes")) {
-            Button(tr("查看", "View")) { model.showingChangelog = true }
-        }
-        FeatureCard(icon: "book.pages.fill", title: tr("教程总导航", "Tutorial Hub"), subtitle: tr("Mac 游戏与 CrossOver 教程", "Mac gaming and CrossOver tutorials")) {
-            Button(tr("打开导航", "Open hub")) { model.showingTutorials = true }
-        }
         FeatureCard(icon: "photo.fill.on.rectangle.fill", title: tr("导入壁纸", "Import Wallpaper"), subtitle: tr("自定义工具箱背景，图片会按比例填充整个界面", "Customize the toolbox background; images fill the window without stretching")) {
             HStack {
                 Button(model.configuration.customWallpaperPath == nil ? tr("导入壁纸", "Import wallpaper") : tr("重新导入", "Import again")) {
@@ -177,6 +171,12 @@ struct DashboardView: View {
                     }
                 }
             }
+        }
+        FeatureCard(icon: "book.pages.fill", title: tr("教程总导航", "Tutorial Hub"), subtitle: tr("Mac 游戏与 CrossOver 教程", "Mac gaming and CrossOver tutorials")) {
+            Button(tr("打开导航", "Open hub")) { model.showingTutorials = true }
+        }
+        FeatureCard(icon: "clock.arrow.circlepath", title: tr("更新日志", "Changelog"), subtitle: tr("查看版本变化", "Review version changes")) {
+            Button(tr("查看", "View")) { model.showingChangelog = true }
         }
     }
 
