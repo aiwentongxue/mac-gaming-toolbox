@@ -51,6 +51,8 @@ swift build
 4. HoYoGames 启动帮助开启后，请在倒计时内启动游戏；取消任务会尝试恢复由本项目添加的 hosts 项目。
 5. 自定义磁盘挂载前先选择外接磁盘和目标目录；需要开机恢复时，可保存预设、启用自动恢复，并将应用加入登录项。
 
+视频教程：[【Mac游戏工具箱重磅发布!支持MetalHUD米游启动磁盘挂载等功能!】](https://b23.tv/qnJBcbk) · [YouTube](https://youtu.be/Y9g4F0_6ipI?si=i3G9dxiXMbk2NSzY)
+
 ## 测试
 
 ```bash
