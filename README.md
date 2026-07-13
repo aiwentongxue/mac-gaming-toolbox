@@ -1,5 +1,7 @@
 # Mac 游戏工具箱
 
+[简体中文](README.md) | [English](README_EN.md)
+
 Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 3.0.3，支持中文与英文界面，并兼容 Intel Mac 和 Apple Silicon Mac。
 
 ## 功能
