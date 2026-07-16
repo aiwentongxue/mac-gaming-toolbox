@@ -52,6 +52,7 @@ struct DashboardView: View {
             nativeGlassEnabled = false
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            model.refreshTrackpadPreference()
             guard useLiquidGlassUI else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                 nativeGlassEnabled = NSApp.isActive
@@ -140,6 +141,17 @@ struct DashboardView: View {
                 Spacer()
                 Button(tr("手动选择进程", "Select processes")) { model.loadProcessesForManualSelection() }
             }
+        }
+        FeatureCard(icon: model.trackpadDisabledWhenMouseConnected ? "hand.raised.slash.fill" : "hand.point.up.left.fill", title: tr("连接鼠标时禁用 Mac 触控板", "Disable Mac Trackpad with a Mouse"), subtitle: tr("连接鼠标或无线触控板时忽略内建触控板，防止游戏中误触", "Ignore the built-in trackpad while a mouse or wireless trackpad is connected to prevent accidental input while gaming")) {
+            Toggle(
+                tr("连接外部指针设备时禁用", "Disable with external pointing device"),
+                isOn: Binding(
+                    get: { model.trackpadDisabledWhenMouseConnected },
+                    set: { model.setTrackpadDisabledWhenMouseConnected($0) }
+                )
+            )
+            .toggleStyle(.switch)
+            .disabled(model.isUpdatingTrackpadPreference)
         }
         FeatureCard(icon: "externaldrive.fill", title: tr("将磁盘挂载指定路径", "Mount a Disk at a Specified Path"), subtitle: tr("此方法可自定义外接磁盘的挂载路径，可将部分原本不可放在外接磁盘的游戏资源转移到外接磁盘以节省内置磁盘储存空间", "Customize an external disk's mount path and move supported game resources there to save internal storage space")) {
             HStack(alignment: .bottom) {

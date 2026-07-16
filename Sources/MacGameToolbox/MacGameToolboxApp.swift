@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import SwiftUI
 
 @main
@@ -28,6 +29,12 @@ struct MacGameToolboxApp: App {
             CommandGroup(replacing: .windowSize) { }
         }
         .commands {
+            CommandMenu(tr("游戏工具", "Game Tools")) {
+                Button(tr("切换 Mac 触控板", "Toggle Mac Trackpad")) {
+                    MenuCommandCoordinator.shared.toggleTrackpad()
+                }
+                .keyboardShortcut("t", modifiers: [.control, .option])
+            }
             CommandMenu(tr("帮助", "Help")) {
                 Button(tr("导出诊断日志", "Export Diagnostics")) { MenuCommandCoordinator.shared.exportDiagnostics() }
                 Button(tr("修复核心功能", "Repair Core Features")) { MenuCommandCoordinator.shared.repairCoreFeatures() }
@@ -68,6 +75,7 @@ final class MenuCommandCoordinator: NSObject {
     static let shared = MenuCommandCoordinator()
     private weak var model: AppModel?
     private var keyMonitor: Any?
+    private var trackpadHotKey: GlobalHotKey?
     private var explicitQuitRequested = false
     private var menuObserverInstalled = false
     private var isReorderingMenus = false
@@ -76,6 +84,17 @@ final class MenuCommandCoordinator: NSObject {
         self.model = model
         installMenuOrderObserverIfNeeded()
         stabilizeTopLevelMenuOrder()
+        if trackpadHotKey == nil {
+            trackpadHotKey = GlobalHotKey.register(
+                keyCode: UInt32(kVK_ANSI_T),
+                modifiers: UInt32(controlKey | optionKey)
+            ) {
+                Task { @MainActor in MenuCommandCoordinator.shared.toggleTrackpad() }
+            }
+            if trackpadHotKey == nil {
+                DiagnosticFileLogger.write("Unable to register global trackpad shortcut: Control-Option-T")
+            }
+        }
         guard keyMonitor == nil else { return }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             let relevantModifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
@@ -168,4 +187,65 @@ final class MenuCommandCoordinator: NSObject {
     func exportDiagnostics() { model?.requestDiagnosticsExport() }
     func repairCoreFeatures() { model?.repairCoreFeatures() }
     func showTutorials() { model?.showingTutorials = true }
+    func toggleTrackpad() { model?.toggleTrackpadDisabledWhenMouseConnected() }
+}
+
+private final class GlobalHotKey: @unchecked Sendable {
+    private let action: @Sendable () -> Void
+    private var eventHandler: EventHandlerRef?
+    private var hotKey: EventHotKeyRef?
+
+    private init(action: @escaping @Sendable () -> Void) {
+        self.action = action
+    }
+
+    static func register(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping @Sendable () -> Void
+    ) -> GlobalHotKey? {
+        let instance = GlobalHotKey(action: action)
+        return instance.install(keyCode: keyCode, modifiers: modifiers) ? instance : nil
+    }
+
+    private func install(keyCode: UInt32, modifiers: UInt32) -> Bool {
+        var eventType = EventTypeSpec(
+            eventClass: OSType(kEventClassKeyboard),
+            eventKind: UInt32(kEventHotKeyPressed)
+        )
+        let handlerStatus = InstallEventHandler(
+            GetApplicationEventTarget(),
+            { _, _, userData in
+                guard let userData else { return OSStatus(eventNotHandledErr) }
+                Unmanaged<GlobalHotKey>.fromOpaque(userData).takeUnretainedValue().action()
+                return noErr
+            },
+            1,
+            &eventType,
+            Unmanaged.passUnretained(self).toOpaque(),
+            &eventHandler
+        )
+        guard handlerStatus == noErr else { return false }
+
+        let identifier = EventHotKeyID(signature: OSType(0x4D47_5442), id: 1)
+        let hotKeyStatus = RegisterEventHotKey(
+            keyCode,
+            modifiers,
+            identifier,
+            GetApplicationEventTarget(),
+            OptionBits(kEventHotKeyExclusive),
+            &hotKey
+        )
+        if hotKeyStatus != noErr {
+            if let eventHandler { RemoveEventHandler(eventHandler) }
+            eventHandler = nil
+            return false
+        }
+        return true
+    }
+
+    deinit {
+        if let hotKey { UnregisterEventHotKey(hotKey) }
+        if let eventHandler { RemoveEventHandler(eventHandler) }
+    }
 }

@@ -117,6 +117,59 @@ public actor GamingService {
     }
 }
 
+public actor TrackpadService {
+    public static let preferenceKey = "USBMouseStopsTrackpad"
+    public static let preferenceDomains = [
+        "com.apple.AppleMultitouchTrackpad",
+        "com.apple.driver.AppleBluetoothMultitouch.trackpad"
+    ]
+
+    private let runner: any CommandRunning
+
+    public init(runner: any CommandRunning = ProcessCommandRunner()) {
+        self.runner = runner
+    }
+
+    public func disabledWhenMouseConnected() async -> Bool {
+        for domain in Self.preferenceDomains {
+            guard let result = try? await runner.run(
+                "/usr/bin/defaults",
+                arguments: ["read", domain, Self.preferenceKey]
+            ), let value = Self.parsePreferenceValue(result.outputString) else { continue }
+            return value
+        }
+        return false
+    }
+
+    public func runtimeDisabledWhenMouseConnected() async -> Bool? {
+        guard let result = try? await runner.run(
+            "/usr/sbin/ioreg",
+            arguments: ["-r", "-c", "AppleMultitouchTrackpadHIDEventDriver", "-l"]
+        ) else { return nil }
+        return Self.parseRuntimePreference(result.outputString)
+    }
+
+    public static func parsePreferenceValue(_ value: String) -> Bool? {
+        switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "1", "true", "yes": true
+        case "0", "false", "no": false
+        default: nil
+        }
+    }
+
+    public static func parseRuntimePreference(_ value: String) -> Bool? {
+        let enabledPattern = #"\"USBMouseStopsTrackpad\"\s*=\s*(1|Yes|true)"#
+        if value.range(of: enabledPattern, options: [.regularExpression, .caseInsensitive]) != nil {
+            return true
+        }
+        let disabledPattern = #"\"USBMouseStopsTrackpad\"\s*=\s*(0|No|false)"#
+        if value.range(of: disabledPattern, options: [.regularExpression, .caseInsensitive]) != nil {
+            return false
+        }
+        return nil
+    }
+}
+
 public actor HostnameService {
     private let runner: any CommandRunning
     private let privileged: any PrivilegedOperating

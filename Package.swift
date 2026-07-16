@@ -15,7 +15,7 @@ let package = Package(
             name: "MacGameToolbox",
             dependencies: ["MacGameToolboxCore"],
             resources: [.process("Assets.xcassets")],
-            linkerSettings: [.linkedFramework("ServiceManagement"), .linkedFramework("Security")]
+            linkerSettings: [.linkedFramework("ServiceManagement"), .linkedFramework("Security"), .linkedFramework("Carbon")]
         ),
         .executableTarget(
             name: "MacGameToolboxPrivilegedHelper",

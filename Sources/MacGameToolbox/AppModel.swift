@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import Darwin
 import Foundation
 import UniformTypeIdentifiers
 #if SWIFT_PACKAGE
@@ -14,6 +15,8 @@ final class AppModel: ObservableObject {
     @Published var selectedDiskIDs = Set<String>()
     @Published var diskPaths: [String: String] = [:]
     @Published var metalHUDEnabled = false
+    @Published var trackpadDisabledWhenMouseConnected = false
+    @Published private(set) var isUpdatingTrackpadPreference = false
     @Published var cacheScan: CacheScan?
     @Published var showingDiskManager = false
     @Published var showingCacheConfirmation = false
@@ -29,6 +32,7 @@ final class AppModel: ObservableObject {
     private let configurationStore: ConfigurationStore
     private let diskService: DiskService
     private let gamingService: GamingService
+    private let trackpadService: TrackpadService
     private let hostnameService: HostnameService
     private let cacheService: CacheService
     private let wallpaperService: WallpaperService
@@ -41,6 +45,7 @@ final class AppModel: ObservableObject {
         configurationStore = ConfigurationStore()
         diskService = DiskService()
         gamingService = GamingService(privileged: privileged)
+        trackpadService = TrackpadService()
         hostnameService = HostnameService(privileged: privileged)
         cacheService = CacheService(privileged: privileged)
         wallpaperService = WallpaperService()
@@ -55,6 +60,7 @@ final class AppModel: ObservableObject {
             do { configuration = try await configurationStore.load() }
             catch { report(error) }
             metalHUDEnabled = await gamingService.metalHUDEnabled()
+            trackpadDisabledWhenMouseConnected = await currentTrackpadRuntimeState()
             if (try? String(contentsOfFile: "/etc/hosts", encoding: .utf8))?.contains("# BEGIN MAC GAME TOOLBOX HOYO") == true {
                 await gamingService.cleanStaleHoYoEntries()
             }
@@ -68,6 +74,55 @@ final class AppModel: ObservableObject {
             self.metalHUDEnabled = enabled
             return enabled ? tr("MetalHUD 已开启", "MetalHUD enabled") : tr("MetalHUD 已关闭", "MetalHUD disabled")
         }
+    }
+
+    func setTrackpadDisabledWhenMouseConnected(_ disabled: Bool) {
+        guard !isUpdatingTrackpadPreference else { return }
+        isUpdatingTrackpadPreference = true
+        runTask(tr("正在更新触控板设置", "Updating trackpad settings")) {
+            defer { self.isUpdatingTrackpadPreference = false }
+            try TrackpadSystemSettings.setDisabledWhenMouseConnected(disabled)
+            self.trackpadDisabledWhenMouseConnected = disabled
+            guard await self.waitForTrackpadRuntimeState(disabled) else {
+                self.trackpadDisabledWhenMouseConnected = await self.currentTrackpadRuntimeState()
+                throw ToolboxError.commandFailed(
+                    tr("系统未应用触控板设置，请在“系统设置 > 辅助功能 > 指针控制”中确认此功能可用", "macOS did not apply the trackpad setting; verify it under System Settings > Accessibility > Pointer Control")
+                )
+            }
+            return disabled
+                ? tr("连接鼠标时将禁用内建触控板", "Built-in trackpad will be disabled while a mouse is connected")
+                : tr("内建触控板已恢复", "Built-in trackpad restored")
+        }
+    }
+
+    func toggleTrackpadDisabledWhenMouseConnected() {
+        setTrackpadDisabledWhenMouseConnected(!trackpadDisabledWhenMouseConnected)
+    }
+
+    func refreshTrackpadPreference() {
+        guard !isUpdatingTrackpadPreference else { return }
+        Task {
+            let current = await currentTrackpadRuntimeState()
+            guard !isUpdatingTrackpadPreference else { return }
+            trackpadDisabledWhenMouseConnected = current
+        }
+    }
+
+    private func currentTrackpadRuntimeState() async -> Bool {
+        if let runtime = await trackpadService.runtimeDisabledWhenMouseConnected() {
+            return runtime
+        }
+        return await trackpadService.disabledWhenMouseConnected()
+    }
+
+    private func waitForTrackpadRuntimeState(_ expected: Bool) async -> Bool {
+        for _ in 0..<10 {
+            if await trackpadService.runtimeDisabledWhenMouseConnected() == expected {
+                return true
+            }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        return false
     }
 
     func launchAppWithMetalHUD() {
@@ -581,5 +636,35 @@ final class AppModel: ObservableObject {
     private func report(_ error: Error) {
         status = TaskStatus(phase: error is CancellationError ? .cancelled : .failed, message: error.localizedDescription)
         DiagnosticFileLogger.write("Task failed: \(error.localizedDescription)")
+    }
+}
+
+private enum TrackpadSystemSettings {
+    private typealias SetEnabled = @convention(c) (Bool) -> Void
+
+    static func setDisabledWhenMouseConnected(_ disabled: Bool) throws {
+        let preferencePanesPath = "/System/Library/PrivateFrameworks/PreferencePanesSupport.framework/PreferencePanesSupport"
+        let universalAccessCorePath = "/System/Library/PrivateFrameworks/UniversalAccess.framework/Versions/A/Frameworks/UniversalAccessCore.framework/UniversalAccessCore"
+
+        guard let preferencePanes = dlopen(preferencePanesPath, RTLD_NOW | RTLD_GLOBAL) else {
+            throw loadError(tr("无法加载系统触控板设置组件", "Unable to load the system trackpad settings component"))
+        }
+        defer { dlclose(preferencePanes) }
+
+        guard let universalAccessCore = dlopen(universalAccessCorePath, RTLD_NOW | RTLD_GLOBAL) else {
+            throw loadError(tr("无法加载系统辅助功能组件", "Unable to load the system accessibility component"))
+        }
+        defer { dlclose(universalAccessCore) }
+
+        guard let symbol = dlsym(universalAccessCore, "UAIgnoreTrackpadWhenExternalMouseSetEnabled") else {
+            throw loadError(tr("当前 macOS 不支持即时切换触控板", "This macOS version does not support live trackpad switching"))
+        }
+        unsafeBitCast(symbol, to: SetEnabled.self)(disabled)
+    }
+
+    private static func loadError(_ fallback: String) -> ToolboxError {
+        guard let error = dlerror() else { return .commandFailed(fallback) }
+        let details = String(cString: error)
+        return .commandFailed(details.isEmpty ? fallback : "\(fallback)：\(details)")
     }
 }
