@@ -16,6 +16,7 @@ final class AppModel: ObservableObject {
     @Published var diskPaths: [String: String] = [:]
     @Published var metalHUDEnabled = false
     @Published var trackpadDisabledWhenMouseConnected = false
+    @Published private(set) var isUpdatingTrackpadPreference = false
     @Published var cacheScan: CacheScan?
     @Published var showingDiskManager = false
     @Published var showingCacheConfirmation = false
@@ -76,14 +77,18 @@ final class AppModel: ObservableObject {
     }
 
     func setTrackpadDisabledWhenMouseConnected(_ disabled: Bool) {
+        guard !isUpdatingTrackpadPreference else { return }
+        isUpdatingTrackpadPreference = true
         runTask(tr("正在更新触控板设置", "Updating trackpad settings")) {
+            defer { self.isUpdatingTrackpadPreference = false }
             try TrackpadSystemSettings.setDisabledWhenMouseConnected(disabled)
+            self.trackpadDisabledWhenMouseConnected = disabled
             guard await self.waitForTrackpadRuntimeState(disabled) else {
+                self.trackpadDisabledWhenMouseConnected = await self.currentTrackpadRuntimeState()
                 throw ToolboxError.commandFailed(
                     tr("系统未应用触控板设置，请在“系统设置 > 辅助功能 > 指针控制”中确认此功能可用", "macOS did not apply the trackpad setting; verify it under System Settings > Accessibility > Pointer Control")
                 )
             }
-            self.trackpadDisabledWhenMouseConnected = disabled
             return disabled
                 ? tr("连接鼠标时将禁用内建触控板", "Built-in trackpad will be disabled while a mouse is connected")
                 : tr("内建触控板已恢复", "Built-in trackpad restored")
@@ -95,8 +100,11 @@ final class AppModel: ObservableObject {
     }
 
     func refreshTrackpadPreference() {
+        guard !isUpdatingTrackpadPreference else { return }
         Task {
-            trackpadDisabledWhenMouseConnected = await currentTrackpadRuntimeState()
+            let current = await currentTrackpadRuntimeState()
+            guard !isUpdatingTrackpadPreference else { return }
+            trackpadDisabledWhenMouseConnected = current
         }
     }
 
