@@ -1,6 +1,8 @@
 import Foundation
 
 public actor DiskService {
+    public static let maximumBatchMounts = 999
+
     private let runner: any CommandRunning
 
     public init(runner: any CommandRunning = ProcessCommandRunner()) {
@@ -44,7 +46,7 @@ public actor DiskService {
     public func mountBatch(_ assignments: [(String, String)]) async -> [String: Result<Void, Error>] {
         var results: [String: Result<Void, Error>] = [:]
         var mounted: [String] = []
-        for (identifier, path) in assignments.prefix(3) {
+        for (identifier, path) in assignments.prefix(Self.maximumBatchMounts) {
             do {
                 try await mount(identifier, at: path)
                 mounted.append(identifier)

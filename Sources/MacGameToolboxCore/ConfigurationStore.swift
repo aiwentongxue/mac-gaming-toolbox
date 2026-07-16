@@ -37,7 +37,7 @@ public actor ConfigurationStore {
         normalized.schemaVersion = 3
         normalized.defaultPaths = Array(unique(configuration.defaultPaths).prefix(Self.maxDefaultPaths))
         normalized.diskPresets = Array(uniquePresets(configuration.diskPresets).prefix(Self.maxPresets))
-        normalized.restorableDiskMounts = Array(uniquePresets(configuration.restorableDiskMounts).prefix(3))
+        normalized.restorableDiskMounts = Array(uniquePresets(configuration.restorableDiskMounts).prefix(DiskService.maximumBatchMounts))
         normalized.recentMetalHUDApps = Array(uniqueRecentApps(configuration.recentMetalHUDApps).prefix(Self.maxRecentMetalHUDApps))
         if ![10, 15, 20].contains(normalized.hoYoWaitSeconds) { normalized.hoYoWaitSeconds = 15 }
         try fileManager.createDirectory(at: configurationURL.deletingLastPathComponent(), withIntermediateDirectories: true)

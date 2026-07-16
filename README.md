@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 3.0.3，支持中文与英文界面，并兼容 Intel Mac 和 Apple Silicon Mac。
+Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 3.0.4，支持中文与英文界面，并兼容 Intel Mac 和 Apple Silicon Mac。
 
 ## 功能
 
@@ -68,7 +68,7 @@ swift test --disable-sandbox
 ```bash
 export DEVELOPER_ID_APPLICATION='Developer ID Application: Your Name (TEAMID)'
 export NOTARY_KEYCHAIN_PROFILE='your-notary-profile'
-./Scripts/sign-and-notarize.sh '/path/to/Mac 游戏工具箱.app' 'MacGameToolbox-3.0.3.dmg'
+./Scripts/sign-and-notarize.sh '/path/to/Mac 游戏工具箱.app' 'MacGameToolbox-3.0.4.dmg'
 ```
 
 请勿把真实证书、公证密码、App Store Connect API Key 或环境变量文件提交到仓库。

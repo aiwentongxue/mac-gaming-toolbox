@@ -50,7 +50,7 @@ final class AppModel: ObservableObject {
     func launch() {
         guard !didLaunch else { return }
         didLaunch = true
-        DiagnosticFileLogger.write("App launched, version 3.0.3")
+        DiagnosticFileLogger.write("App launched, version 3.0.4")
         Task {
             do { configuration = try await configurationStore.load() }
             catch { report(error) }
@@ -533,7 +533,7 @@ final class AppModel: ObservableObject {
             identifiers.contains($0.diskIdentifier) || ($0.volumeUUID.map(volumeUUIDs.contains) ?? false)
         }
         configuration.restorableDiskMounts.insert(contentsOf: presets, at: 0)
-        configuration.restorableDiskMounts = Array(configuration.restorableDiskMounts.prefix(3))
+        configuration.restorableDiskMounts = Array(configuration.restorableDiskMounts.prefix(DiskService.maximumBatchMounts))
         saveConfiguration()
     }
 

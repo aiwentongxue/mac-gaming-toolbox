@@ -79,6 +79,22 @@ import Testing
     #expect(loaded.schemaVersion == 3)
 }
 
+@Test func configurationKeepsAtMost999RestorableMounts() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let store = ConfigurationStore(configurationURL: root.appendingPathComponent("configuration.json"))
+    var configuration = AppConfiguration()
+    configuration.restorableDiskMounts = (1...1_000).map {
+        DiskPreset(diskIdentifier: "disk\($0)s1", mountPath: "/tmp/Games-\($0)")
+    }
+
+    try await store.save(configuration)
+    let loaded = try await store.load(importLegacy: false)
+
+    #expect(loaded.restorableDiskMounts.count == DiskService.maximumBatchMounts)
+    #expect(loaded.restorableDiskMounts.first?.diskIdentifier == "disk1s1")
+    #expect(loaded.restorableDiskMounts.last?.diskIdentifier == "disk999s1")
+}
+
 @Test func wallpaperServiceImportsAndRemovesManagedWallpapersOnly() throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     let wallpaperDirectory = root.appendingPathComponent("Wallpapers", isDirectory: true)
@@ -387,4 +403,17 @@ actor MockRunner: CommandRunning {
     _ = await service.mountBatch([("disk4s1", "/tmp/one"), ("disk5s1", "/tmp/two")])
     let calls = await runner.calls
     #expect(calls.contains(["mount", "disk4s1"]))
+}
+
+@Test func batchMountProcessesFourthVolumeAndCapsAt999() async {
+    let runner = MockRunner()
+    let service = DiskService(runner: runner)
+    let assignments = (1...1_000).map { ("disk\($0)s1", "/tmp/volume-\($0)") }
+
+    let results = await service.mountBatch(assignments)
+
+    #expect(results.count == DiskService.maximumBatchMounts)
+    #expect(results["disk4s1"] != nil)
+    #expect(results["disk999s1"] != nil)
+    #expect(results["disk1000s1"] == nil)
 }

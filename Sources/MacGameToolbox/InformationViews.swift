@@ -6,6 +6,10 @@ struct ChangelogView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("3.0.4") {
+                    Text(tr("更新应用图标，移除工具箱正面的苹果标志", "Updated the app icon and removed the Apple logo from the front of the toolbox"))
+                    Text(tr("将同时选择、批量挂载和自动恢复的磁盘上限由 3 提高到 999", "Raised the limit for selected, batch-mounted, and automatically restored volumes from 3 to 999"))
+                }
                 Section("3.0.3") {
                     Text(tr("恢复 ⌘W 隐藏窗口但保持应用运行，以及 ⌘Q、应用菜单和 Dock 正常退出", "Restored Command-W to hide the window while keeping the app running, while Command-Q, the app menu, and Dock quit normally"))
                     Text(tr("稳定菜单栏结构：保留“关于”和系统窗口管理，并将诊断、修复和教程集中到帮助菜单", "Stabilized the menu bar with About, system window controls, and diagnostics, repair, and tutorials in Help"))

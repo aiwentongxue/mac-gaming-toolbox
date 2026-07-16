@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 3.0.3 supports both Chinese and English interfaces and is compatible with Intel and Apple Silicon Macs.
+Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 3.0.4 supports both Chinese and English interfaces and is compatible with Intel and Apple Silicon Macs.
 
 ## Features
 
@@ -68,7 +68,7 @@ For release distribution, developers must provide their own Apple Developer ID A
 ```bash
 export DEVELOPER_ID_APPLICATION='Developer ID Application: Your Name (TEAMID)'
 export NOTARY_KEYCHAIN_PROFILE='your-notary-profile'
-./Scripts/sign-and-notarize.sh '/path/to/Mac 游戏工具箱.app' 'MacGameToolbox-3.0.3.dmg'
+./Scripts/sign-and-notarize.sh '/path/to/Mac 游戏工具箱.app' 'MacGameToolbox-3.0.4.dmg'
 ```
 
 Never commit real certificates, notarization passwords, App Store Connect API keys, or environment-variable files to the repository.
