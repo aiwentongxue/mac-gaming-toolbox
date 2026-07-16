@@ -12,7 +12,7 @@ struct DiskManagerView: View {
             HStack {
                 VStack(alignment: .leading) {
                     Text(tr("磁盘挂载", "Volume Mounting")).font(.title.bold())
-                    Text(tr("最多选择 \(DiskService.maximumBatchMounts) 个卷；启动磁盘已自动排除。", "Select up to \(DiskService.maximumBatchMounts) volumes. The startup disk is excluded automatically.")).foregroundStyle(.secondary)
+                    Text(tr("启动磁盘已自动排除。", "The startup disk is excluded automatically.")).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button(tr("刷新", "Refresh")) { model.loadDisks() }
@@ -98,7 +98,7 @@ struct DiskManagerView: View {
             }
 
             HStack {
-                Text(tr("已选择 \(model.selectedDiskIDs.count)/\(DiskService.maximumBatchMounts)", "Selected \(model.selectedDiskIDs.count)/\(DiskService.maximumBatchMounts)")).foregroundStyle(.secondary)
+                Text(tr("已选择 \(model.selectedDiskIDs.count)", "Selected \(model.selectedDiskIDs.count)")).foregroundStyle(.secondary)
                 Spacer()
                 Button(tr("恢复默认挂载", "Restore Default")) { model.restoreSelectedDisks() }.disabled(model.selectedDiskIDs.isEmpty)
                 Button(tr("挂载到指定路径", "Mount")) { model.mountSelectedDisks() }
@@ -113,7 +113,7 @@ struct DiskManagerView: View {
             model.selectedDiskIDs.contains(id)
         } set: { selected in
             if selected {
-                if model.selectedDiskIDs.count < DiskService.maximumBatchMounts { model.selectedDiskIDs.insert(id) }
+                model.selectedDiskIDs.insert(id)
             } else {
                 model.selectedDiskIDs.remove(id)
             }

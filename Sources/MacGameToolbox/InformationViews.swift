@@ -6,6 +6,14 @@ struct ChangelogView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("3.0.5") {
+                    Text(tr("更新应用图标，采用铺满画布的蓝紫色背景", "Updated the app icon with a blue-purple background that fills the canvas"))
+                    Text(tr("移除磁盘挂载数量限制，支持选择、批量挂载和自动恢复任意数量的磁盘", "Removed the disk mount limit and added support for selecting, batch-mounting, and automatically restoring any number of volumes"))
+                    Text(tr("优化磁盘选择计数，仅显示当前已选择数量", "Simplified the disk selection counter to show only the current selection count"))
+                    Text(tr("修复自动恢复将扫描次数误当成秒数的问题，改为按真实经过时间触发", "Fixed automatic restoration treating scan cycles as seconds; it now triggers using real elapsed time"))
+                    Text(tr("挂载后会等待系统更新状态并核对规范路径，避免实际成功却显示失败", "Mount verification now waits for system state updates and compares canonical paths to avoid false failure reports"))
+                    Text(tr("挂载确认失败时会完整回滚当前卷和已处理卷，避免残留错误挂载", "A failed mount verification now rolls back both the current volume and previously processed volumes to prevent incorrect residual mounts"))
+                }
                 Section("3.0.4") {
                     Text(tr("更新应用图标，移除工具箱正面的苹果标志", "Updated the app icon and removed the Apple logo from the front of the toolbox"))
                     Text(tr("将同时选择、批量挂载和自动恢复的磁盘上限由 3 提高到 999", "Raised the limit for selected, batch-mounted, and automatically restored volumes from 3 to 999"))

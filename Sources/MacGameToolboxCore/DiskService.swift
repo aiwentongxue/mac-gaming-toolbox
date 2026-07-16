@@ -1,7 +1,7 @@
 import Foundation
 
 public actor DiskService {
-    public static let maximumBatchMounts = 999
+    public static let maximumBatchMounts = Int.max
 
     private let runner: any CommandRunning
 
@@ -29,11 +29,24 @@ public actor DiskService {
         guard InputValidation.diskIdentifier(identifier) else { throw ToolboxError.invalidDisk(identifier) }
         let normalizedPath = try InputValidation.normalizedAbsolutePath(path)
         _ = try? await runner.run("/usr/sbin/diskutil", arguments: ["unmount", identifier])
-        _ = try await runner.run("/usr/sbin/diskutil", arguments: ["mount", "-mountPoint", normalizedPath, "/dev/\(identifier)"])
-        let info = try await runner.run("/usr/sbin/diskutil", arguments: ["info", "-plist", identifier])
-        let plist = try Self.propertyList(info.standardOutput)
-        guard Self.string(plist, keys: ["MountPoint"]) == normalizedPath else {
+        do {
+            _ = try await runner.run("/usr/sbin/diskutil", arguments: ["mount", "-mountPoint", normalizedPath, "/dev/\(identifier)"])
+            for attempt in 0..<10 {
+                if let info = try? await runner.run("/usr/sbin/diskutil", arguments: ["info", "-plist", identifier]),
+                   let plist = try? Self.propertyList(info.standardOutput),
+                   let reportedPath = Self.string(plist, keys: ["MountPoint"]),
+                   Self.canonicalMountPath(reportedPath) == Self.canonicalMountPath(normalizedPath) {
+                    return
+                }
+                if attempt < 9 { try await Task.sleep(for: .milliseconds(200)) }
+            }
             throw ToolboxError.commandFailed(coreText("磁盘未挂载到指定路径", "Volume did not mount at requested path"))
+        } catch {
+            // A successful diskutil mount can become visible to `info` slightly later.
+            // If confirmation ultimately fails, also roll back this current volume;
+            // mountBatch only knows about volumes that were already confirmed.
+            try? await restoreDefaultMount(identifier)
+            throw error
         }
     }
 
@@ -46,7 +59,7 @@ public actor DiskService {
     public func mountBatch(_ assignments: [(String, String)]) async -> [String: Result<Void, Error>] {
         var results: [String: Result<Void, Error>] = [:]
         var mounted: [String] = []
-        for (identifier, path) in assignments.prefix(Self.maximumBatchMounts) {
+        for (identifier, path) in assignments {
             do {
                 try await mount(identifier, at: path)
                 mounted.append(identifier)
@@ -156,5 +169,9 @@ public actor DiskService {
             if let value = dictionary[key] as? String, !value.isEmpty { return value }
         }
         return nil
+    }
+
+    private static func canonicalMountPath(_ path: String) -> String {
+        URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
     }
 }

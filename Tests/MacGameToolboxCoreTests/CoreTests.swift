@@ -79,7 +79,7 @@ import Testing
     #expect(loaded.schemaVersion == 3)
 }
 
-@Test func configurationKeepsAtMost999RestorableMounts() async throws {
+@Test func configurationPreservesAllRestorableMounts() async throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     let store = ConfigurationStore(configurationURL: root.appendingPathComponent("configuration.json"))
     var configuration = AppConfiguration()
@@ -90,9 +90,10 @@ import Testing
     try await store.save(configuration)
     let loaded = try await store.load(importLegacy: false)
 
-    #expect(loaded.restorableDiskMounts.count == DiskService.maximumBatchMounts)
+    #expect(DiskService.maximumBatchMounts == Int.max)
+    #expect(loaded.restorableDiskMounts.count == configuration.restorableDiskMounts.count)
     #expect(loaded.restorableDiskMounts.first?.diskIdentifier == "disk1s1")
-    #expect(loaded.restorableDiskMounts.last?.diskIdentifier == "disk999s1")
+    #expect(loaded.restorableDiskMounts.last?.diskIdentifier == "disk1000s1")
 }
 
 @Test func wallpaperServiceImportsAndRemovesManagedWallpapersOnly() throws {
@@ -379,8 +380,14 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
 actor MockRunner: CommandRunning {
     var calls: [[String]] = []
     var failingMount: String?
+    var staleInfoReads: [String: Int]
+    var reportedMountPaths: [String: String]
 
-    init(failingMount: String? = nil) { self.failingMount = failingMount }
+    init(failingMount: String? = nil, staleInfoReads: [String: Int] = [:], reportedMountPaths: [String: String] = [:]) {
+        self.failingMount = failingMount
+        self.staleInfoReads = staleInfoReads
+        self.reportedMountPaths = reportedMountPaths
+    }
 
     func run(_ executable: String, arguments: [String]) async throws -> CommandResult {
         calls.append(arguments)
@@ -389,7 +396,14 @@ actor MockRunner: CommandRunning {
         }
         if arguments.first == "info" {
             let identifier = arguments.last ?? ""
-            let path = calls.last(where: { $0.contains("-mountPoint") && $0.last?.contains(identifier) == true })?.dropFirst(2).first ?? "/Volumes/Test"
+            if let remaining = staleInfoReads[identifier], remaining > 0 {
+                staleInfoReads[identifier] = remaining - 1
+                let data = try PropertyListSerialization.data(fromPropertyList: ["MountPoint": "/Volumes/Stale"], format: .xml, options: 0)
+                return CommandResult(exitCode: 0, standardOutput: data, standardError: Data())
+            }
+            let path = reportedMountPaths[identifier]
+                ?? calls.last(where: { $0.contains("-mountPoint") && $0.last?.contains(identifier) == true })?.dropFirst(2).first
+                ?? "/Volumes/Test"
             let data = try PropertyListSerialization.data(fromPropertyList: ["MountPoint": path], format: .xml, options: 0)
             return CommandResult(exitCode: 0, standardOutput: data, standardError: Data())
         }
@@ -403,17 +417,37 @@ actor MockRunner: CommandRunning {
     _ = await service.mountBatch([("disk4s1", "/tmp/one"), ("disk5s1", "/tmp/two")])
     let calls = await runner.calls
     #expect(calls.contains(["mount", "disk4s1"]))
+    #expect(calls.filter { $0 == ["unmount", "disk5s1"] }.count == 2)
 }
 
-@Test func batchMountProcessesFourthVolumeAndCapsAt999() async {
+@Test func mountWaitsForDiskutilInfoToReflectTheRequestedPath() async throws {
+    let runner = MockRunner(staleInfoReads: ["disk4s1": 2])
+    let service = DiskService(runner: runner)
+
+    try await service.mount("disk4s1", at: "/tmp/delayed")
+
+    let calls = await runner.calls
+    #expect(calls.filter { $0 == ["info", "-plist", "disk4s1"] }.count == 3)
+}
+
+@Test func mountAcceptsEquivalentCanonicalMountPaths() async throws {
+    let mountPath = "/tmp/mac-game-toolbox-canonical-\(UUID().uuidString)"
+    try FileManager.default.createDirectory(atPath: mountPath, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(atPath: mountPath) }
+    let runner = MockRunner(reportedMountPaths: ["disk4s1": "/private\(mountPath)"])
+    let service = DiskService(runner: runner)
+
+    try await service.mount("disk4s1", at: mountPath)
+}
+
+@Test func batchMountProcessesAllVolumesWithoutANumericalCap() async {
     let runner = MockRunner()
     let service = DiskService(runner: runner)
     let assignments = (1...1_000).map { ("disk\($0)s1", "/tmp/volume-\($0)") }
 
     let results = await service.mountBatch(assignments)
 
-    #expect(results.count == DiskService.maximumBatchMounts)
+    #expect(results.count == assignments.count)
     #expect(results["disk4s1"] != nil)
-    #expect(results["disk999s1"] != nil)
-    #expect(results["disk1000s1"] == nil)
+    #expect(results["disk1000s1"] != nil)
 }

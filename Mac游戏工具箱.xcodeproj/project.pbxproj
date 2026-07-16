@@ -15,7 +15,6 @@
 		A10000000000000000000006 /* CacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000006 /* CacheService.swift */; };
 		A10000000000000000000007 /* HostsFileEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000007 /* HostsFileEditor.swift */; };
 		A10000000000000000000008 /* PrivilegedXPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* PrivilegedXPC.swift */; };
-		A1000000000000000000001C /* WallpaperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* WallpaperService.swift */; };
 		A10000000000000000000009 /* MacGameToolboxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* MacGameToolboxApp.swift */; };
 		A1000000000000000000000A /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000002 /* AppModel.swift */; };
 		A1000000000000000000000B /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000003 /* DashboardView.swift */; };
@@ -35,6 +34,7 @@
 		A10000000000000000000019 /* com.iven.macgametoolbox.helper.v6.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000007 /* com.iven.macgametoolbox.helper.v6.plist */; };
 		A1000000000000000000001A /* com.iven.macgametoolbox.helper.v7.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000008 /* com.iven.macgametoolbox.helper.v7.plist */; };
 		A1000000000000000000001B /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F50000000000000000000002 /* Security.framework */; };
+		A1000000000000000000001C /* WallpaperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* WallpaperService.swift */; };
 		B10000000000000000000001 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000001 /* Models.swift */; };
 		B10000000000000000000002 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000002 /* CommandRunner.swift */; };
 		B10000000000000000000003 /* ConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000003 /* ConfigurationStore.swift */; };
@@ -43,9 +43,9 @@
 		B10000000000000000000006 /* CacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000006 /* CacheService.swift */; };
 		B10000000000000000000007 /* HostsFileEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000007 /* HostsFileEditor.swift */; };
 		B10000000000000000000008 /* PrivilegedXPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* PrivilegedXPC.swift */; };
-		B1000000000000000000000B /* WallpaperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* WallpaperService.swift */; };
 		B10000000000000000000009 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000001 /* main.swift */; };
 		B1000000000000000000000A /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F50000000000000000000002 /* Security.framework */; };
+		B1000000000000000000000B /* WallpaperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* WallpaperService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -401,12 +401,13 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3.0.4;
-				DEVELOPMENT_TEAM = "";
+				CURRENT_PROJECT_VERSION = 3.0.5;
+				DEVELOPMENT_TEAM = HP5WBFL9G3;
+				ENABLE_DEBUG_DYLIB = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/App-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 3.0.4;
+				MARKETING_VERSION = 3.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox;
 				PRODUCT_NAME = "Mac 游戏工具箱";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -423,12 +424,12 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3.0.4;
-				DEVELOPMENT_TEAM = "";
+				CURRENT_PROJECT_VERSION = 3.0.5;
+				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/App-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 3.0.4;
+				MARKETING_VERSION = 3.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox;
 				PRODUCT_NAME = "Mac 游戏工具箱";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -444,7 +445,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox.helper;
@@ -462,7 +463,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox.helper;

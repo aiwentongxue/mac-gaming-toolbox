@@ -50,7 +50,7 @@ final class AppModel: ObservableObject {
     func launch() {
         guard !didLaunch else { return }
         didLaunch = true
-        DiagnosticFileLogger.write("App launched, version 3.0.4")
+        DiagnosticFileLogger.write("App launched, version 3.0.5")
         Task {
             do { configuration = try await configurationStore.load() }
             catch { report(error) }
@@ -466,17 +466,21 @@ final class AppModel: ObservableObject {
     }
 
     private func monitorDisksAndRestoreMounts() async {
-        var elapsedSeconds = 0
+        let clock = ContinuousClock()
+        let startedAt = clock.now
+        var nextLogSecond = 0
         while !Task.isCancelled, configuration.automaticallyRestoreMountsOnLaunch {
             do {
                 let availableVolumes = try await diskService.listEligibleVolumes()
                 disks = availableVolumes
                 enrichRestorableMountUUIDs(from: availableVolumes)
-                if elapsedSeconds == 0 || elapsedSeconds % 10 == 0 {
+                let elapsedSeconds = Int(startedAt.duration(to: clock.now).components.seconds)
+                if elapsedSeconds >= nextLogSecond {
                     let identifiers = availableVolumes.map {
                         "\($0.id)[\($0.volumeUUID ?? "no-uuid")]=\($0.mountPoint ?? "unmounted")"
                     }.joined(separator: ", ")
                     DiagnosticFileLogger.write("Automatic disk scan \(elapsedSeconds)s: \(identifiers.isEmpty ? "no eligible volumes" : identifiers)")
+                    nextLogSecond = max(10, ((elapsedSeconds / 10) + 1) * 10)
                 }
                 if elapsedSeconds >= 10 { await restoreMounts(from: availableVolumes) }
             } catch {
@@ -484,7 +488,6 @@ final class AppModel: ObservableObject {
             }
             do { try await Task.sleep(for: .seconds(1)) }
             catch { return }
-            elapsedSeconds += 1
         }
     }
 
@@ -533,7 +536,6 @@ final class AppModel: ObservableObject {
             identifiers.contains($0.diskIdentifier) || ($0.volumeUUID.map(volumeUUIDs.contains) ?? false)
         }
         configuration.restorableDiskMounts.insert(contentsOf: presets, at: 0)
-        configuration.restorableDiskMounts = Array(configuration.restorableDiskMounts.prefix(DiskService.maximumBatchMounts))
         saveConfiguration()
     }
 
