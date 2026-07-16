@@ -35,6 +35,7 @@
 		A10000000000000000000019 /* com.iven.macgametoolbox.helper.v6.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000007 /* com.iven.macgametoolbox.helper.v6.plist */; };
 		A1000000000000000000001A /* com.iven.macgametoolbox.helper.v7.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000008 /* com.iven.macgametoolbox.helper.v7.plist */; };
 		A1000000000000000000001B /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F50000000000000000000002 /* Security.framework */; };
+		A1000000000000000000001D /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F50000000000000000000003 /* Carbon.framework */; };
 		B10000000000000000000001 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000001 /* Models.swift */; };
 		B10000000000000000000002 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000002 /* CommandRunner.swift */; };
 		B10000000000000000000003 /* ConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000003 /* ConfigurationStore.swift */; };
@@ -120,6 +121,7 @@
 		F40000000000000000000002 /* MacGameToolboxPrivilegedHelper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MacGameToolboxPrivilegedHelper; sourceTree = BUILT_PRODUCTS_DIR; };
 		F50000000000000000000001 /* ServiceManagement.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ServiceManagement.framework; path = System/Library/Frameworks/ServiceManagement.framework; sourceTree = SDKROOT; };
 		F50000000000000000000002 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		F50000000000000000000003 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -129,6 +131,7 @@
 			files = (
 				A10000000000000000000011 /* ServiceManagement.framework in Frameworks */,
 				A1000000000000000000001B /* Security.framework in Frameworks */,
+				A1000000000000000000001D /* Carbon.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -148,6 +151,7 @@
 			children = (
 				F50000000000000000000001 /* ServiceManagement.framework */,
 				F50000000000000000000002 /* Security.framework */,
+				F50000000000000000000003 /* Carbon.framework */,
 			);
 			name = "Recovered References";
 			sourceTree = "<group>";

@@ -9,6 +9,7 @@ Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming u
 - Enable or disable MetalHUD globally, or use the Recent Apps launcher to enable MetalHUD only for the selected app's next launch.
 - Assist with launching HoYo games after a configurable 10-, 15-, or 20-second delay, then restore the hosts entries managed by the app when the task finishes or is canceled.
 - Automatically detect CrossOver/Wine processes, or select a process manually and raise its priority.
+- Disable the built-in trackpad while a mouse or wireless trackpad is connected, with the global `Control-Option-T` shortcut for quick toggling.
 - Mount an external disk at a specified path, save presets, and automatically or manually restore the previous mount.
 - Clear caches and logs in one click. By default, only user caches and user logs are removed; sensitive-file exclusions can be disabled for a complete, high-risk cleanup.
 - Switch to or restore a Steam Deck hostname mode for compatibility testing.

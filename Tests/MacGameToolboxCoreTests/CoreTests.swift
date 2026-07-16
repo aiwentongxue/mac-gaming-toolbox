@@ -212,6 +212,44 @@ actor RecordingCommandRunner: CommandRunning {
     #expect(calls.first?.1 == ["MTL_HUD_ENABLED=1", "/usr/bin/open", "-a", application.path])
 }
 
+actor TrackpadPreferenceRunner: CommandRunning {
+    private(set) var calls: [(String, [String])] = []
+    private let storedValue: String
+
+    init(storedValue: String = "0") {
+        self.storedValue = storedValue
+    }
+
+    func run(_ executable: String, arguments: [String]) async throws -> CommandResult {
+        calls.append((executable, arguments))
+        let output = arguments.first == "read" ? Data(storedValue.utf8) : Data()
+        return CommandResult(exitCode: 0, standardOutput: output, standardError: Data())
+    }
+}
+
+@Test func trackpadServiceReadsSystemPreferenceDomain() async throws {
+    let runner = TrackpadPreferenceRunner(storedValue: "1")
+    let service = TrackpadService(runner: runner)
+    #expect(await service.disabledWhenMouseConnected())
+
+    let calls = await runner.calls
+    #expect(calls.count == 1)
+    #expect(calls.first?.0 == "/usr/bin/defaults")
+    #expect(calls.first?.1 == ["read", TrackpadService.preferenceDomains[0], TrackpadService.preferenceKey])
+}
+
+@Test func trackpadPreferenceParserHandlesDefaultsBooleanFormats() {
+    #expect(TrackpadService.parsePreferenceValue("1") == true)
+    #expect(TrackpadService.parsePreferenceValue("false") == false)
+    #expect(TrackpadService.parsePreferenceValue("unexpected") == nil)
+}
+
+@Test func trackpadRuntimePreferenceParserReadsIORegistryValues() {
+    #expect(TrackpadService.parseRuntimePreference("\"USBMouseStopsTrackpad\"=1") == true)
+    #expect(TrackpadService.parseRuntimePreference("\"USBMouseStopsTrackpad\" = No") == false)
+    #expect(TrackpadService.parseRuntimePreference("unrelated") == nil)
+}
+
 actor HostnameRunner: CommandRunning {
     func run(_ executable: String, arguments: [String]) async throws -> CommandResult {
         switch arguments.last {
