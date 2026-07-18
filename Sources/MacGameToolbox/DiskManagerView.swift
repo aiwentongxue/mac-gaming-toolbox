@@ -45,7 +45,7 @@ struct DiskManagerView: View {
                                 Button(tr("删除", "Delete"), role: .destructive) { model.deleteDefaultPath(path) }
                             }
                         }
-                        if model.configuration.defaultPaths.count < 3 {
+                        if model.configuration.defaultPaths.count < ConfigurationStore.maxDefaultPaths {
                             Button(tr("添加默认路径", "Add Default Path")) { model.addDefaultPath() }
                         }
                     }

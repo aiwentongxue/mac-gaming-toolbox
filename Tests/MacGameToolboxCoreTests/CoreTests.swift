@@ -9,7 +9,7 @@ import Testing
     #expect(!InputValidation.diskIdentifier("disk0"))
 }
 
-@Test func legacyConfigurationImportsAndLimitsValues() async throws {
+@Test func legacyConfigurationImportsValues() async throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     let configURL = root.appendingPathComponent("new/configuration.json")
     let defaultDirectory = root.appendingPathComponent("Library/Disk Setup")
@@ -23,7 +23,7 @@ import Testing
     let store = ConfigurationStore(configurationURL: configURL)
     let configuration = try await store.load(homeURL: root)
     #expect(configuration.didImportLegacyConfiguration)
-    #expect(configuration.defaultPaths == ["/tmp/a", "/tmp/b", "/tmp/c"])
+    #expect(configuration.defaultPaths == ["/tmp/a", "/tmp/b", "/tmp/c", "/tmp/d"])
     #expect(configuration.diskPresets.count == 2)
     #expect(configuration.diskPresets.first?.mountPath == "/tmp/game:bottle")
 }
@@ -94,6 +94,21 @@ import Testing
     #expect(loaded.restorableDiskMounts.count == configuration.restorableDiskMounts.count)
     #expect(loaded.restorableDiskMounts.first?.diskIdentifier == "disk1s1")
     #expect(loaded.restorableDiskMounts.last?.diskIdentifier == "disk1000s1")
+}
+
+@Test func configurationPreservesAllDefaultPaths() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let store = ConfigurationStore(configurationURL: root.appendingPathComponent("configuration.json"))
+    var configuration = AppConfiguration()
+    configuration.defaultPaths = (1...1_000).map { "/tmp/Games-\($0)" }
+
+    try await store.save(configuration)
+    let loaded = try await store.load(importLegacy: false)
+
+    #expect(ConfigurationStore.maxDefaultPaths == Int.max)
+    #expect(loaded.defaultPaths.count == configuration.defaultPaths.count)
+    #expect(loaded.defaultPaths.first == "/tmp/Games-1")
+    #expect(loaded.defaultPaths.last == "/tmp/Games-1000")
 }
 
 @Test func wallpaperServiceImportsAndRemovesManagedWallpapersOnly() throws {

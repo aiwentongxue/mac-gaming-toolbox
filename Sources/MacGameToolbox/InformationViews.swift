@@ -6,6 +6,10 @@ struct ChangelogView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("3.0.6") {
+                    Text(tr("移除默认挂载路径数量限制，支持添加任意数量的默认路径", "Removed the default mount-path limit, allowing any number of default paths to be added"))
+                    Text(tr("默认路径保存、重新加载和旧配置导入不再截断为三项", "Default paths are no longer truncated to three entries when saved, reloaded, or imported from legacy configuration"))
+                }
                 Section("3.0.5") {
                     Text(tr("更新应用图标，采用铺满画布的蓝紫色背景", "Updated the app icon with a blue-purple background that fills the canvas"))
                     Text(tr("移除磁盘挂载数量限制，支持选择、批量挂载和自动恢复任意数量的磁盘", "Removed the disk mount limit and added support for selecting, batch-mounting, and automatically restoring any number of volumes"))

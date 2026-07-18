@@ -1,7 +1,7 @@
 import Foundation
 
 public actor ConfigurationStore {
-    public static let maxDefaultPaths = 3
+    public static let maxDefaultPaths = Int.max
     public static let maxPresets = 5
     public static let maxRecentMetalHUDApps = 12
 
