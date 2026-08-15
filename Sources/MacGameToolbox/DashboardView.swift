@@ -253,7 +253,7 @@ struct DashboardView: View {
 
     @ViewBuilder private var background: some View {
         GeometryReader { proxy in
-            if let image = customWallpaperImage {
+            if let image = model.wallpaperImage {
                 ZStack {
                     Image(nsImage: image)
                         .resizable()
@@ -269,11 +269,6 @@ struct DashboardView: View {
             }
         }
         .ignoresSafeArea()
-    }
-
-    private var customWallpaperImage: NSImage? {
-        guard let path = model.configuration.customWallpaperPath else { return nil }
-        return NSImage(contentsOfFile: path)
     }
 
     private var wallpaperOverlayColors: [Color] {
