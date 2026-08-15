@@ -122,18 +122,6 @@ final class ListenerDelegate: NSObject, NSXPCListenerDelegate {
     }
 }
 
-func containingAppURL() -> URL? {
-    var selfCode: SecCode?
-    var staticCode: SecStaticCode?
-    var executableURL: CFURL?
-    guard SecCodeCopySelf([], &selfCode) == errSecSuccess, let selfCode,
-          SecCodeCopyStaticCode(selfCode, [], &staticCode) == errSecSuccess, let staticCode,
-          SecCodeCopyPath(staticCode, [], &executableURL) == errSecSuccess,
-          var url = executableURL as URL? else { return nil }
-    for _ in 0..<4 { url.deleteLastPathComponent() }
-    return url.standardizedFileURL
-}
-
 func installPersistentHelper(for appPath: String) throws {
     guard URL(fileURLWithPath: appPath).standardizedFileURL.path == expectedAppPath else { throw HelperError.invalidPath }
     let appURL = URL(fileURLWithPath: expectedAppPath)

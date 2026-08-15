@@ -25,14 +25,9 @@
 		A10000000000000000000010 /* com.iven.macgametoolbox.helper.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000002 /* com.iven.macgametoolbox.helper.plist */; };
 		A10000000000000000000011 /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F50000000000000000000001 /* ServiceManagement.framework */; };
 		A10000000000000000000012 /* DiagnosticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000007 /* DiagnosticsService.swift */; };
-		A10000000000000000000013 /* com.iven.macgametoolbox.helper.v3.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000004 /* com.iven.macgametoolbox.helper.v3.plist */; };
 		A10000000000000000000014 /* DiagnosticFileLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000008 /* DiagnosticFileLogger.swift */; };
-		A10000000000000000000015 /* com.iven.macgametoolbox.helper.v4.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000005 /* com.iven.macgametoolbox.helper.v4.plist */; };
 		A10000000000000000000016 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000009 /* Localization.swift */; };
 		A10000000000000000000017 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000A /* Assets.xcassets */; };
-		A10000000000000000000018 /* com.iven.macgametoolbox.helper.v5.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000006 /* com.iven.macgametoolbox.helper.v5.plist */; };
-		A10000000000000000000019 /* com.iven.macgametoolbox.helper.v6.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000007 /* com.iven.macgametoolbox.helper.v6.plist */; };
-		A1000000000000000000001A /* com.iven.macgametoolbox.helper.v7.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000008 /* com.iven.macgametoolbox.helper.v7.plist */; };
 		A1000000000000000000001B /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F50000000000000000000002 /* Security.framework */; };
 		A1000000000000000000001C /* WallpaperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* WallpaperService.swift */; };
 		B10000000000000000000001 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000001 /* Models.swift */; };
@@ -77,11 +72,6 @@
 			dstSubfolderSpec = 1;
 			files = (
 				A10000000000000000000010 /* com.iven.macgametoolbox.helper.plist in Embed LaunchDaemon Plist */,
-				A10000000000000000000013 /* com.iven.macgametoolbox.helper.v3.plist in Embed LaunchDaemon Plist */,
-				A10000000000000000000015 /* com.iven.macgametoolbox.helper.v4.plist in Embed LaunchDaemon Plist */,
-				A10000000000000000000018 /* com.iven.macgametoolbox.helper.v5.plist in Embed LaunchDaemon Plist */,
-				A10000000000000000000019 /* com.iven.macgametoolbox.helper.v6.plist in Embed LaunchDaemon Plist */,
-				A1000000000000000000001A /* com.iven.macgametoolbox.helper.v7.plist in Embed LaunchDaemon Plist */,
 			);
 			name = "Embed LaunchDaemon Plist";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -111,11 +101,6 @@
 		F30000000000000000000001 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		F30000000000000000000002 /* com.iven.macgametoolbox.helper.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.iven.macgametoolbox.helper.plist; sourceTree = "<group>"; };
 		F30000000000000000000003 /* App-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "App-Info.plist"; sourceTree = "<group>"; };
-		F30000000000000000000004 /* com.iven.macgametoolbox.helper.v3.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.iven.macgametoolbox.helper.v3.plist; sourceTree = "<group>"; };
-		F30000000000000000000005 /* com.iven.macgametoolbox.helper.v4.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.iven.macgametoolbox.helper.v4.plist; sourceTree = "<group>"; };
-		F30000000000000000000006 /* com.iven.macgametoolbox.helper.v5.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.iven.macgametoolbox.helper.v5.plist; sourceTree = "<group>"; };
-		F30000000000000000000007 /* com.iven.macgametoolbox.helper.v6.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.iven.macgametoolbox.helper.v6.plist; sourceTree = "<group>"; };
-		F30000000000000000000008 /* com.iven.macgametoolbox.helper.v7.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.iven.macgametoolbox.helper.v7.plist; sourceTree = "<group>"; };
 		F40000000000000000000001 /* Mac 游戏工具箱.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Mac 游戏工具箱.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F40000000000000000000002 /* MacGameToolboxPrivilegedHelper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MacGameToolboxPrivilegedHelper; sourceTree = BUILT_PRODUCTS_DIR; };
 		F50000000000000000000001 /* ServiceManagement.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ServiceManagement.framework; path = System/Library/Frameworks/ServiceManagement.framework; sourceTree = SDKROOT; };
@@ -213,11 +198,6 @@
 			children = (
 				F30000000000000000000003 /* App-Info.plist */,
 				F30000000000000000000002 /* com.iven.macgametoolbox.helper.plist */,
-				F30000000000000000000004 /* com.iven.macgametoolbox.helper.v3.plist */,
-				F30000000000000000000005 /* com.iven.macgametoolbox.helper.v4.plist */,
-				F30000000000000000000006 /* com.iven.macgametoolbox.helper.v5.plist */,
-				F30000000000000000000007 /* com.iven.macgametoolbox.helper.v6.plist */,
-				F30000000000000000000008 /* com.iven.macgametoolbox.helper.v7.plist */,
 			);
 			path = Config;
 			sourceTree = "<group>";

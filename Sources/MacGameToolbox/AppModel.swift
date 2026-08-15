@@ -24,6 +24,7 @@ final class AppModel: ObservableObject {
     @Published var showingProcessSelection = false
     @Published var runningProcesses: [SystemProcess] = []
     @Published var selectedProcessIDs = Set<Int32>()
+    @Published var wallpaperImage: NSImage?
 
     private let privileged = PrivilegedHelperClient()
     private let configurationStore: ConfigurationStore
@@ -52,8 +53,10 @@ final class AppModel: ObservableObject {
         didLaunch = true
         DiagnosticFileLogger.write("App launched, version 3.0.7")
         Task {
-            do { configuration = try await configurationStore.load() }
-            catch { report(error) }
+            do {
+                configuration = try await configurationStore.load()
+                reloadWallpaper()
+            } catch { report(error) }
             metalHUDEnabled = await gamingService.metalHUDEnabled()
             if (try? String(contentsOfFile: "/etc/hosts", encoding: .utf8))?.contains("# BEGIN MAC GAME TOOLBOX HOYO") == true {
                 await gamingService.cleanStaleHoYoEntries()
@@ -305,6 +308,7 @@ final class AppModel: ObservableObject {
             let oldPath = configuration.customWallpaperPath
             let destination = try wallpaperService.importWallpaper(from: source, replacing: oldPath)
             configuration.customWallpaperPath = destination.path
+            reloadWallpaper()
             saveConfiguration()
             status = TaskStatus(phase: .succeeded, message: tr("已导入自定义背景", "Custom wallpaper imported"), progress: 1)
             DiagnosticFileLogger.write("Custom wallpaper imported: \(destination.path)")
@@ -316,6 +320,7 @@ final class AppModel: ObservableObject {
     func resetWallpaper() {
         let oldPath = configuration.customWallpaperPath
         configuration.customWallpaperPath = nil
+        reloadWallpaper()
         saveConfiguration()
         do {
             let removed = try wallpaperService.removeManagedWallpaper(at: oldPath)
@@ -422,7 +427,9 @@ final class AppModel: ObservableObject {
 
     private static func runCoreFeatureRepairScript() async throws {
         let shellScript = """
-        /bin/launchctl bootout system /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v8.plist 2>/dev/null || true
+        for plist in /Library/LaunchDaemons/com.iven.macgametoolbox.helper.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v3.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v4.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v5.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v6.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v7.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v8.plist; do
+            /bin/launchctl bootout system "$plist" 2>/dev/null || true
+        done
         /bin/launchctl enable system/com.iven.macgametoolbox.helper.v8
         /bin/launchctl bootstrap system /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v8.plist
         """
@@ -551,9 +558,25 @@ final class AppModel: ObservableObject {
         if changed { saveConfiguration() }
     }
 
+    private func reloadWallpaper() {
+        guard let path = configuration.customWallpaperPath, !path.isEmpty else {
+            wallpaperImage = nil
+            return
+        }
+        wallpaperImage = NSImage(contentsOfFile: path)
+    }
+
     private func saveConfiguration() {
         let value = configuration
-        Task { try? await configurationStore.save(value) }
+        Task {
+            do {
+                try await configurationStore.save(value)
+            } catch {
+                report(ToolboxError.commandFailed(
+                    tr("配置保存失败：\(error.localizedDescription)", "Failed to save configuration: \(error.localizedDescription)")
+                ))
+            }
+        }
     }
 
     private func rememberMetalHUDApp(_ applicationURL: URL) {

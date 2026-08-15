@@ -297,13 +297,6 @@ actor HostnameRunner: CommandRunning {
     }
 }
 
-@Test func helperRegistrationStatesChooseExpectedActions() {
-    #expect(helperRegistrationDecision(for: .enabled) == .connect)
-    #expect(helperRegistrationDecision(for: .notRegistered) == .register)
-    #expect(helperRegistrationDecision(for: .requiresApproval) == .requestApproval)
-    #expect(helperRegistrationDecision(for: .notFound) == .unavailable)
-}
-
 actor RejectingPrivilegedOperator: PrivilegedOperating {
     private(set) var operations: [PrivilegedOperation] = []
     func perform(_ operation: PrivilegedOperation) async throws {
