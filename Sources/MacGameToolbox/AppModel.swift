@@ -148,7 +148,7 @@ final class AppModel: ObservableObject {
             do {
                 try await gamingService.beginHoYoLaunch()
                 status.phase = .running
-                status.log.append(tr("已写入临时 hosts，等待 \(waitSeconds) 秒", "Temporary hosts applied; waiting \(waitSeconds) seconds"))
+                status.log.append(tr("已写入临时 hosts，并绕过系统代理", "Temporary hosts applied; system proxy bypassed for launch domains"))
                 for remaining in stride(from: waitSeconds, through: 1, by: -1) {
                     try Task.checkCancellation()
                     status.message = tr("请启动游戏，剩余 \(remaining) 秒", "Launch the game; \(remaining) seconds remaining")
@@ -170,13 +170,13 @@ final class AppModel: ObservableObject {
                 try await gamingService.finishHoYoLaunch()
                 status = TaskStatus(
                     phase: .succeeded,
-                    message: tr("已优化 \(processes.count) 个进程并恢复 hosts", "Updated \(processes.count) processes and restored hosts"),
+                    message: tr("已优化 \(processes.count) 个进程并恢复 hosts 与代理绕过", "Updated \(processes.count) processes and restored hosts and proxy bypass"),
                     progress: 1,
                     log: status.log
                 )
             } catch is CancellationError {
                 try? await gamingService.finishHoYoLaunch()
-                status = TaskStatus(phase: .cancelled, message: tr("已取消并恢复 hosts", "Cancelled and restored hosts"))
+                status = TaskStatus(phase: .cancelled, message: tr("已取消并恢复 hosts 与代理绕过", "Cancelled and restored hosts and proxy bypass"))
             } catch {
                 try? await gamingService.finishHoYoLaunch()
                 report(error)

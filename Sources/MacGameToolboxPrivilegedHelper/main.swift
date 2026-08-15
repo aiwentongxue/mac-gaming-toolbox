@@ -45,8 +45,17 @@ final class HelperService: NSObject, PrivilegedHelperXPCProtocol {
     private func performValidated(_ request: PrivilegedRequest) throws {
         switch request {
         case .healthCheck: break
-        case .addHoYoHosts: try rewriteHosts(addBlock: true)
-        case .removeHoYoHosts: try rewriteHosts(addBlock: false)
+        case .addHoYoHosts:
+            try applyManagedProxyBypass()
+            do {
+                try rewriteHosts(addBlock: true)
+            } catch {
+                try restoreManagedProxyBypass()
+                throw error
+            }
+        case .removeHoYoHosts:
+            try rewriteHosts(addBlock: false)
+            try restoreManagedProxyBypass()
         case .renice(let pids):
             guard !pids.isEmpty, pids.count <= 64 else { throw HelperError.invalidArguments }
             var updatedCount = 0
@@ -54,12 +63,7 @@ final class HelperService: NSObject, PrivilegedHelperXPCProtocol {
                 guard pid > 1 else { throw HelperError.invalidArguments }
                 // Process scans are inherently racy; a short-lived Wine child may
                 // disappear before the helper handles the complete PID batch.
-                guard kill(pid, 0) == 0 else { continue }
-                if setpriority(PRIO_PROCESS, UInt32(pid), -10) == 0 {
-                    updatedCount += 1
-                } else if errno != ESRCH {
-                    throw HelperError.commandFailed("setpriority failed for \(pid): errno \(errno)")
-                }
+                if try boostProcess(pid) { updatedCount += 1 }
             }
             guard updatedCount > 0 else { throw HelperError.invalidProcess }
         case .clearSystemCaches:
@@ -195,16 +199,143 @@ func validatedPath(_ value: String) throws -> String {
 }
 
 func run(_ executable: String, _ arguments: [String]) throws {
+    _ = try runCapturing(executable, arguments)
+}
+
+@discardableResult
+func runCapturing(_ executable: String, _ arguments: [String]) throws -> String {
     let process = Process()
+    let output = Pipe()
     let error = Pipe()
     process.executableURL = URL(fileURLWithPath: executable)
     process.arguments = arguments
+    process.standardOutput = output
     process.standardError = error
     try process.run()
     process.waitUntilExit()
+    let stdout = String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    let stderr = String(decoding: error.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        .trimmingCharacters(in: .whitespacesAndNewlines)
     guard process.terminationStatus == 0 else {
-        throw HelperError.commandFailed(String(decoding: error.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self))
+        throw HelperError.commandFailed(stderr.isEmpty ? "Command failed (\(process.terminationStatus))" : stderr)
     }
+    return stdout
+}
+
+private let proxyBypassSnapshotURL = URL(fileURLWithPath: "/var/db/com.iven.macgametoolbox.proxy-bypass.json")
+
+func boostProcess(_ pid: Int32) throws -> Bool {
+    guard kill(pid, 0) == 0 else { return false }
+
+    do {
+        _ = try runCapturing(ProcessPriorityBoost.taskpolicyExecutable, ProcessPriorityBoost.taskpolicyArguments(pid: pid))
+    } catch {
+        guard !ProcessPriorityBoost.isMissingProcess(error.localizedDescription) else { return false }
+        guard kill(pid, 0) == 0 else { return false }
+        do {
+            _ = try runCapturing(ProcessPriorityBoost.taskpolicyExecutable, ProcessPriorityBoost.taskpolicyFallbackArguments(pid: pid))
+        } catch {
+            guard !ProcessPriorityBoost.isMissingProcess(error.localizedDescription) else { return false }
+            throw error
+        }
+    }
+
+    guard kill(pid, 0) == 0 else { return true }
+    errno = 0
+    if setpriority(PRIO_PROCESS, UInt32(pid), ProcessPriorityBoost.niceValue) != 0, errno != ESRCH {
+        logger.error("setpriority(-20) failed for \(pid): errno \(errno)")
+    }
+    return true
+}
+
+func applyManagedProxyBypass() throws {
+    let currentByService = proxyBypassDomainsByService()
+    let plan = NetworkProxyBypass.planApply(
+        currentByService: currentByService,
+        existingSnapshot: loadProxyBypassSnapshot(),
+        extra: hoyoDomains
+    )
+    try persistProxyBypassSnapshot(plan.snapshot)
+    var applied = 0
+    var lastError: Error?
+    for assignment in plan.assignments {
+        do {
+            try run("/usr/sbin/networksetup", NetworkProxyBypass.setArguments(service: assignment.service, domains: assignment.domains))
+            applied += 1
+        } catch {
+            lastError = error
+            logger.error("Failed to set proxy bypass on \(assignment.service, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        }
+    }
+    if applied == 0, !plan.assignments.isEmpty, let lastError {
+        throw lastError
+    }
+}
+
+func restoreManagedProxyBypass() throws {
+    let snapshot = loadProxyBypassSnapshot()
+    let assignments = NetworkProxyBypass.planRestore(
+        snapshot: snapshot,
+        currentByService: proxyBypassDomainsByService(),
+        managed: hoyoDomains
+    )
+    var lastError: Error?
+    for assignment in assignments {
+        do {
+            try run("/usr/sbin/networksetup", NetworkProxyBypass.setArguments(service: assignment.service, domains: assignment.domains))
+        } catch {
+            lastError = error
+            logger.error("Failed to restore proxy bypass on \(assignment.service, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        }
+    }
+    if let lastError { throw lastError }
+    try removeProxyBypassSnapshot()
+}
+
+func proxyBypassDomainsByService() -> [String: [String]] {
+    let list: String
+    do {
+        list = try runCapturing("/usr/sbin/networksetup", ["-listallnetworkservices"])
+    } catch {
+        logger.error("Unable to list network services: \(error.localizedDescription, privacy: .public)")
+        return [:]
+    }
+    var current: [String: [String]] = [:]
+    for service in NetworkProxyBypass.enabledServices(from: list) {
+        do {
+            let output = try runCapturing("/usr/sbin/networksetup", ["-getproxybypassdomains", service])
+            current[service] = NetworkProxyBypass.parseBypassDomains(output)
+        } catch {
+            logger.error("Skipping proxy bypass for \(service, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        }
+    }
+    return current
+}
+
+func loadProxyBypassSnapshot() -> ProxyBypassSnapshot? {
+    guard FileManager.default.fileExists(atPath: proxyBypassSnapshotURL.path) else { return nil }
+    do {
+        return try JSONDecoder().decode(ProxyBypassSnapshot.self, from: Data(contentsOf: proxyBypassSnapshotURL))
+    } catch {
+        logger.error("Unable to read proxy bypass snapshot: \(error.localizedDescription, privacy: .public)")
+        return nil
+    }
+}
+
+func persistProxyBypassSnapshot(_ snapshot: ProxyBypassSnapshot) throws {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys]
+    try encoder.encode(snapshot).write(to: proxyBypassSnapshotURL, options: .atomic)
+    try FileManager.default.setAttributes(
+        [.posixPermissions: 0o600, .ownerAccountID: 0, .groupOwnerAccountID: 0],
+        ofItemAtPath: proxyBypassSnapshotURL.path
+    )
+}
+
+func removeProxyBypassSnapshot() throws {
+    guard FileManager.default.fileExists(atPath: proxyBypassSnapshotURL.path) else { return }
+    try FileManager.default.removeItem(at: proxyBypassSnapshotURL)
 }
 
 func rewriteHosts(addBlock: Bool) throws {

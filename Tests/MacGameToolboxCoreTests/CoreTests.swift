@@ -476,3 +476,125 @@ actor MockRunner: CommandRunning {
     #expect(results["disk4s1"] != nil)
     #expect(results["disk1000s1"] != nil)
 }
+
+@Test func proxyBypassParserSkipsDisabledServicesAndEmptySentinel() {
+    let list = """
+    An asterisk (*) denotes that a network service is disabled.
+    Wi-Fi
+    *iPhone USB
+    Tailscale
+    """
+    #expect(NetworkProxyBypass.enabledServices(from: list) == ["Wi-Fi", "Tailscale"])
+    #expect(NetworkProxyBypass.parseBypassDomains("There aren't any bypass domains set on Shadowrocket.") == [])
+    #expect(NetworkProxyBypass.parseBypassDomains("** Error: Unable to find item in network database.") == [])
+}
+
+@Test func proxyBypassParserKeepsWildcardCIDRAndSpaceSeparatedLines() {
+    let wifi = """
+    127.0.0.1
+    192.168.0.0/16
+    localhost
+    *.local
+    *.crashlytics.com
+    <local>
+    """
+    #expect(NetworkProxyBypass.parseBypassDomains(wifi) == [
+        "127.0.0.1", "192.168.0.0/16", "localhost", "*.local", "*.crashlytics.com", "<local>"
+    ])
+    let tailscale = "10.* 172.16.* 192.168.* api.steampp.net"
+    #expect(NetworkProxyBypass.parseBypassDomains(tailscale) == ["10.*", "172.16.*", "192.168.*", "api.steampp.net"])
+}
+
+@Test func proxyBypassPlanKeepsOriginalSnapshotAndRestoresExactly() {
+    let extra = ["dispatchcnglobal.yuanshen.com", "dispatchosglobal.yuanshen.com"]
+    let current = [
+        "Wi-Fi": ["127.0.0.1", "*.local", "<local>"],
+        "Shadowrocket": [String]()
+    ]
+    let first = NetworkProxyBypass.planApply(currentByService: current, existingSnapshot: nil, extra: extra)
+    #expect(first.snapshot.services["Wi-Fi"] == current["Wi-Fi"])
+    #expect(first.snapshot.services["Shadowrocket"] == [])
+    #expect(first.assignments.contains(where: { $0.service == "Wi-Fi" && $0.domains.contains("dispatchcnglobal.yuanshen.com") }))
+    #expect(first.assignments.contains(where: { $0.service == "Shadowrocket" && $0.domains == extra }))
+    #expect(NetworkProxyBypass.setArguments(service: "Shadowrocket", domains: extra).first == "-setproxybypassdomains")
+    #expect(NetworkProxyBypass.setArguments(service: "Shadowrocket", domains: []) == ["-setproxybypassdomains", "Shadowrocket", "Empty"])
+
+    let alreadyMerged = [
+        "Wi-Fi": NetworkProxyBypass.merging(existing: current["Wi-Fi"] ?? [], extra: extra)
+    ]
+    let second = NetworkProxyBypass.planApply(
+        currentByService: alreadyMerged,
+        existingSnapshot: first.snapshot,
+        extra: extra
+    )
+    #expect(second.snapshot.services["Wi-Fi"] == current["Wi-Fi"])
+    #expect(second.assignments.isEmpty)
+
+    let restore = NetworkProxyBypass.planRestore(snapshot: first.snapshot, currentByService: alreadyMerged, managed: extra)
+    #expect(restore.first { $0.service == "Wi-Fi" }?.domains == current["Wi-Fi"])
+    #expect(restore.first { $0.service == "Shadowrocket" }?.domains == [])
+}
+
+@Test func proxyBypassRestoreWithoutSnapshotRemovesManagedDomainsOnly() {
+    let managed = ["dispatchcnglobal.yuanshen.com"]
+    let current = ["Wi-Fi": ["127.0.0.1", "dispatchcnglobal.yuanshen.com", "*.local"]]
+    let restore = NetworkProxyBypass.planRestore(snapshot: nil, currentByService: current, managed: managed)
+    #expect(restore == [ProxyBypassAssignment(service: "Wi-Fi", domains: ["127.0.0.1", "*.local"])])
+}
+
+@Test func processPriorityBoostUsesHighestQoSTiers() {
+    #expect(ProcessPriorityBoost.niceValue == -20)
+    #expect(ProcessPriorityBoost.taskpolicyArguments(pid: 42) == ["-B", "-t", "0", "-l", "0", "-p", "42"])
+    #expect(ProcessPriorityBoost.isMissingProcess("taskpolicy: setpriority(): No such process"))
+}
+
+@Test func liveNetworksetupBypassRoundTripOnWiFi() async throws {
+    let runner = ProcessCommandRunner()
+    let list = try await runner.run("/usr/sbin/networksetup", arguments: ["-listallnetworkservices"])
+    let services = NetworkProxyBypass.enabledServices(from: list.outputString)
+    #expect(services.contains("Wi-Fi"))
+    #expect(!services.contains(where: { $0.hasPrefix("*") }))
+
+    let originalOutput = try await runner.run("/usr/sbin/networksetup", arguments: ["-getproxybypassdomains", "Wi-Fi"])
+    let original = NetworkProxyBypass.parseBypassDomains(originalOutput.outputString)
+    #expect(!original.contains("There"))
+    #expect(original.contains("<local>") || original.contains("*.local") || !original.isEmpty)
+
+    let canary = "mac-game-toolbox-hoyo-test.invalid"
+    let merged = NetworkProxyBypass.merging(existing: original, extra: [canary])
+    func restoreOriginal() async throws {
+        _ = try await runner.run("/usr/sbin/networksetup", arguments: NetworkProxyBypass.setArguments(service: "Wi-Fi", domains: original))
+    }
+
+    do {
+        _ = try await runner.run("/usr/sbin/networksetup", arguments: NetworkProxyBypass.setArguments(service: "Wi-Fi", domains: merged))
+        let after = NetworkProxyBypass.parseBypassDomains(
+            try await runner.run("/usr/sbin/networksetup", arguments: ["-getproxybypassdomains", "Wi-Fi"]).outputString
+        )
+        #expect(after.contains(canary))
+        #expect(Set(original).isSubset(of: Set(after)))
+        try await restoreOriginal()
+        let restored = NetworkProxyBypass.parseBypassDomains(
+            try await runner.run("/usr/sbin/networksetup", arguments: ["-getproxybypassdomains", "Wi-Fi"]).outputString
+        )
+        #expect(restored == original)
+    } catch {
+        try await restoreOriginal()
+        throw error
+    }
+}
+
+@Test func liveTaskpolicyBoostsSpawnedProcess() async throws {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/bin/sleep")
+    process.arguments = ["20"]
+    try process.run()
+    defer { process.terminate() }
+
+    let pid = process.processIdentifier
+    _ = try await ProcessCommandRunner().run(
+        ProcessPriorityBoost.taskpolicyExecutable,
+        arguments: ProcessPriorityBoost.taskpolicyArguments(pid: pid)
+    )
+    #expect(process.isRunning)
+}
