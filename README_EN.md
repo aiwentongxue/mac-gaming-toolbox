@@ -49,11 +49,18 @@ swift build
 
 ## Usage
 
-1. Launch Mac Gaming Toolbox.
-2. Select the feature you need from the main interface and read its instructions.
-3. When a feature changes system settings, follow the macOS prompts to grant administrator authorization.
-4. After enabling the HoYoGames launch helper, start the game before the countdown ends. Canceling the task will attempt to restore the hosts entries added by this project.
-5. Before using custom disk mounting, select the external disk and destination directory. To restore the mount at login, save a preset, enable automatic restoration, and add the app to Login Items.
+1. If macOS blocks the app from opening, enable “Anywhere” in System Settings > Privacy & Security (if the option is available), then click “Open Anyway” on that same page. Alternatively, run the following complete command in Terminal to remove the download quarantine attribute:
+
+   ```bash
+   sudo xattr -dr com.apple.quarantine "/Applications/Mac 游戏工具箱.app"
+   ```
+
+   If the app is not in the Applications folder, replace the path in the command with the full path to the `.app`.
+2. Launch Mac Gaming Toolbox.
+3. Select the feature you need from the main interface and read its instructions.
+4. When a feature changes system settings, follow the macOS prompts to grant administrator authorization.
+5. After enabling the HoYoGames launch helper, start the game before the countdown ends. Canceling the task will attempt to restore the hosts entries added by this project.
+6. Before using custom disk mounting, select the external disk and destination directory. To restore the mount at login, save a preset, enable automatic restoration, and add the app to Login Items.
 
 Video tutorial: [Mac Gaming Toolbox major release—MetalHUD, HoYo game launching, disk mounting, and more](https://b23.tv/qnJBcbk) · [YouTube](https://youtu.be/Y9g4F0_6ipI?si=i3G9dxiXMbk2NSzY)
 
