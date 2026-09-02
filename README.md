@@ -2,17 +2,19 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 3.0.7，支持中文与英文界面，并兼容 Intel Mac 和 Apple Silicon Mac。
+Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 3.1.0，适配多国语言，并兼容 Intel Mac 和 Apple Silicon Mac。
 
 ## 功能
 
-- 全局开启或关闭 MetalHUD，或通过最近 App 启动台仅为选定 App 的本次启动启用 MetalHUD。
+- 可在设置中选择应用语言；也可以编辑首页选项框，隐藏暂不需要的功能。
+- 全局开启或关闭 MetalHUD，或通过最近 App 启动台仅为选定 App 的本次启动启用 MetalHUD；可保存参数预设，并在下次开启游戏时应用。
+- 可为 CrossOver 容器写入 MetalHUD 参数预设，也可为已连接的 iOS 设备上的游戏开启 MetalHUD。
 - 按 10、15 或 20 秒的可选等待时间辅助启动 HoYoGames，并在任务结束或取消时恢复应用管理的 hosts 配置。
-- 自动检测 CrossOver/Wine 进程，或手动选择进程并提高其运行优先级。
+- 自动检测 CrossOver/Wine 进程，支持优化后的手动搜索与选择、常用进程，以及提高或降低进程优先级。
 - 将外接磁盘挂载到指定路径，保存预设，并自动或手动恢复上次挂载。
 - 一键清理缓存日志，默认仅清理用户缓存和用户日志，也可关闭敏感文件排除执行完整高风险清理。
 - 切换或恢复用于兼容性测试的 Steam Deck 主机名模式。
-- 导入自定义界面壁纸、导出诊断信息，并提供 Mac 游戏与 CrossOver 教程入口。
+- 导入自定义界面壁纸、导出诊断信息，并提供 Mac 游戏与 CrossOver 教程入口；可自动检查 GitHub 更新。
 
 ## 系统要求
 

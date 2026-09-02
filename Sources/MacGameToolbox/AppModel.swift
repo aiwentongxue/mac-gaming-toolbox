@@ -24,6 +24,19 @@ final class AppModel: ObservableObject {
     @Published var showingProcessSelection = false
     @Published var runningProcesses: [SystemProcess] = []
     @Published var selectedProcessIDs = Set<Int32>()
+    @Published var showingCrossOverBottleSelection = false
+    @Published var crossOverBottles: [CrossOverBottle] = []
+    @Published var showingDashboardFeatureEditor = false
+    @Published var showingIOSMetalHUDLauncher = false
+    @Published var iosDevices: [IOSDevice] = []
+    @Published var iosApps: [IOSInstalledApp] = []
+    @Published var selectedIOSDeviceID: String?
+    @Published var selectedIOSBundleIdentifier: String?
+    @Published var isRefreshingIOSDevices = false
+    @Published var isRefreshingIOSApps = false
+    @Published var showingIOSLaunchArgumentsEditor = false
+    @Published var iosLaunchArgumentsApp: IOSInstalledApp?
+    @Published var iosLaunchArgumentsText = ""
 
     private let privileged = PrivilegedHelperClient()
     private let configurationStore: ConfigurationStore
@@ -32,6 +45,8 @@ final class AppModel: ObservableObject {
     private let hostnameService: HostnameService
     private let cacheService: CacheService
     private let wallpaperService: WallpaperService
+    private let metalHUDPresetStore: MetalHUDPresetStore
+    private let crossOverBottleService: CrossOverBottleService
     private let diagnosticsService = DiagnosticsService()
     private var hoyoTask: Task<Void, Never>?
     private var automaticMountTask: Task<Void, Never>?
@@ -44,6 +59,8 @@ final class AppModel: ObservableObject {
         hostnameService = HostnameService(privileged: privileged)
         cacheService = CacheService(privileged: privileged)
         wallpaperService = WallpaperService()
+        metalHUDPresetStore = MetalHUDPresetStore()
+        crossOverBottleService = CrossOverBottleService()
         launch()
     }
 
@@ -70,6 +87,25 @@ final class AppModel: ObservableObject {
         }
     }
 
+    var visibleDashboardFeatures: [DashboardFeature] {
+        configuration.dashboardFeatureOrder
+    }
+
+    func setDashboardFeature(_ feature: DashboardFeature, isVisible: Bool) {
+        if isVisible {
+            guard !configuration.dashboardFeatureOrder.contains(feature) else { return }
+            configuration.dashboardFeatureOrder.append(feature)
+        } else {
+            configuration.dashboardFeatureOrder.removeAll { $0 == feature }
+        }
+        saveConfiguration()
+    }
+
+    func moveDashboardFeatures(from source: IndexSet, to destination: Int) {
+        configuration.dashboardFeatureOrder.move(fromOffsets: source, toOffset: destination)
+        saveConfiguration()
+    }
+
     func launchAppWithMetalHUD() {
         let panel = NSOpenPanel()
         panel.title = tr("选择要启用 MetalHUD 的 App", "Choose an app for MetalHUD")
@@ -85,18 +121,185 @@ final class AppModel: ObservableObject {
         launchRecordedAppWithMetalHUD(applicationURL.path)
     }
 
+    func openIOSMetalHUDLauncher() {
+        showingIOSMetalHUDLauncher = true
+        refreshIOSDevices()
+    }
+
+    func refreshIOSDevices() {
+        isRefreshingIOSDevices = true
+        Task {
+            defer { isRefreshingIOSDevices = false }
+            do {
+                iosDevices = try await gamingService.iosDevices()
+                if let selectedIOSDeviceID, iosDevices.contains(where: { $0.id == selectedIOSDeviceID }) {
+                    refreshIOSApps()
+                } else {
+                    selectedIOSDeviceID = iosDevices.first?.id
+                    iosApps = []
+                    selectedIOSBundleIdentifier = nil
+                    if selectedIOSDeviceID != nil { refreshIOSApps() }
+                }
+            } catch { report(error) }
+        }
+    }
+
+    func selectIOSDevice(_ deviceID: String?) {
+        guard selectedIOSDeviceID != deviceID else { return }
+        selectedIOSDeviceID = deviceID
+        iosApps = []
+        selectedIOSBundleIdentifier = nil
+        refreshIOSApps()
+    }
+
+    func refreshIOSApps() {
+        guard let deviceID = selectedIOSDeviceID else { return }
+        isRefreshingIOSApps = true
+        Task {
+            defer { isRefreshingIOSApps = false }
+            do {
+                iosApps = sortedIOSApps(try await gamingService.iosApps(on: deviceID))
+                if let selectedIOSBundleIdentifier, !iosApps.contains(where: { $0.bundleIdentifier == selectedIOSBundleIdentifier }) {
+                    self.selectedIOSBundleIdentifier = nil
+                }
+            } catch { report(error) }
+        }
+    }
+
+    func launchSelectedIOSAppWithMetalHUD() {
+        guard let deviceID = selectedIOSDeviceID,
+              let bundleIdentifier = selectedIOSBundleIdentifier,
+              let app = iosApps.first(where: { $0.bundleIdentifier == bundleIdentifier }) else { return }
+        runTask(tr("正在带 MetalHUD 启动 iOS App", "Launching iOS app with MetalHUD")) {
+            try await self.gamingService.launchIOSAppWithMetalHUD(
+                deviceID: deviceID,
+                bundleIdentifier: bundleIdentifier,
+                launchArguments: self.configuration.iOSLaunchArguments[bundleIdentifier] ?? []
+            )
+            return tr("已带 MetalHUD 启动 \(app.displayName)", "Launched \(app.displayName) with MetalHUD")
+        }
+    }
+
+    func togglePinnedIOSApp(_ app: IOSInstalledApp) {
+        if let index = configuration.pinnedIOSAppBundleIdentifiers.firstIndex(of: app.bundleIdentifier) {
+            configuration.pinnedIOSAppBundleIdentifiers.remove(at: index)
+        } else {
+            configuration.pinnedIOSAppBundleIdentifiers.append(app.bundleIdentifier)
+        }
+        iosApps = sortedIOSApps(iosApps)
+        saveConfiguration()
+    }
+
+    func isPinnedIOSApp(_ app: IOSInstalledApp) -> Bool {
+        configuration.pinnedIOSAppBundleIdentifiers.contains(app.bundleIdentifier)
+    }
+
+    func editIOSLaunchArguments(for app: IOSInstalledApp) {
+        iosLaunchArgumentsApp = app
+        iosLaunchArgumentsText = (configuration.iOSLaunchArguments[app.bundleIdentifier] ?? []).joined(separator: "\n")
+        showingIOSLaunchArgumentsEditor = true
+    }
+
+    func saveIOSLaunchArguments() {
+        guard let app = iosLaunchArgumentsApp else { return }
+        let arguments = iosLaunchArgumentsText
+            .split(whereSeparator: \.isNewline)
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        if arguments.isEmpty {
+            configuration.iOSLaunchArguments.removeValue(forKey: app.bundleIdentifier)
+        } else {
+            configuration.iOSLaunchArguments[app.bundleIdentifier] = arguments
+        }
+        saveConfiguration()
+        showingIOSLaunchArgumentsEditor = false
+    }
+
+    func iOSLaunchArguments(for app: IOSInstalledApp) -> [String] {
+        configuration.iOSLaunchArguments[app.bundleIdentifier] ?? []
+    }
+
+    private func sortedIOSApps(_ apps: [IOSInstalledApp]) -> [IOSInstalledApp] {
+        let pinned = configuration.pinnedIOSAppBundleIdentifiers
+        return apps.sorted { lhs, rhs in
+            let lhsIndex = pinned.firstIndex(of: lhs.bundleIdentifier)
+            let rhsIndex = pinned.firstIndex(of: rhs.bundleIdentifier)
+            switch (lhsIndex, rhsIndex) {
+            case let (.some(left), .some(right)): return left < right
+            case (.some, .none): return true
+            case (.none, .some): return false
+            case (.none, .none): return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+            }
+        }
+    }
+
     func launchRecordedAppWithMetalHUD(_ path: String) {
         let applicationURL = URL(fileURLWithPath: path)
         runTask(tr("正在使用 MetalHUD 启动 App", "Launching app with MetalHUD")) {
-            try await self.gamingService.launchWithMetalHUD(applicationPath: applicationURL.path)
+            let presetPath = self.configuration.recentMetalHUDApps.first(where: { $0.path == applicationURL.path })?.preset?.path
+            try await self.gamingService.launchWithMetalHUD(applicationPath: applicationURL.path, presetPath: presetPath)
             self.rememberMetalHUDApp(applicationURL)
             return tr("已使用 MetalHUD 打开 \(applicationURL.deletingPathExtension().lastPathComponent)", "Opened \(applicationURL.deletingPathExtension().lastPathComponent) with MetalHUD")
         }
     }
 
+    func chooseMetalHUDPreset(for app: RecentMetalHUDApp) {
+        let panel = NSOpenPanel()
+        panel.title = tr("选择已导出的 MetalHUD 预设", "Choose an exported MetalHUD preset")
+        panel.prompt = tr("保存预设", "Save Preset")
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let presetURL = panel.url else { return }
+
+        runTask(tr("正在保存 MetalHUD 预设", "Saving MetalHUD preset")) {
+            let preset = try await self.metalHUDPresetStore.importPreset(from: presetURL, forApplicationPath: app.path)
+            guard let index = self.configuration.recentMetalHUDApps.firstIndex(where: { $0.path == app.path }) else {
+                throw ToolboxError.invalidPath(app.path)
+            }
+            self.configuration.recentMetalHUDApps[index].preset = preset
+            self.saveConfiguration()
+            return tr("已为 \(app.displayName) 保存 MetalHUD 预设", "Saved a MetalHUD preset for \(app.displayName)")
+        }
+    }
+
+    func removeMetalHUDPreset(for app: RecentMetalHUDApp) {
+        guard let index = configuration.recentMetalHUDApps.firstIndex(where: { $0.path == app.path }) else { return }
+        configuration.recentMetalHUDApps[index].preset = nil
+        saveConfiguration()
+    }
+
     func removeRecentMetalHUDApp(_ app: RecentMetalHUDApp) {
         configuration.recentMetalHUDApps.removeAll { $0.path == app.path }
         saveConfiguration()
+    }
+
+    func chooseCrossOverBottleMetalHUDPreset() {
+        Task {
+            do {
+                crossOverBottles = try await crossOverBottleService.bottles()
+                guard !crossOverBottles.isEmpty else {
+                    throw ToolboxError.commandFailed(tr("未找到有效的 CrossOver 容器", "No valid CrossOver bottles found"))
+                }
+                showingCrossOverBottleSelection = true
+            } catch { report(error) }
+        }
+    }
+
+    func chooseMetalHUDPreset(forCrossOverBottle bottle: CrossOverBottle) {
+        let panel = NSOpenPanel()
+        panel.title = tr("选择已导出的 MetalHUD 预设", "Choose an exported MetalHUD preset")
+        panel.prompt = tr("应用到容器", "Apply to Bottle")
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let presetURL = panel.url else { return }
+
+        runTask(tr("正在保存 MetalHUD 预设并更新 CrossOver 容器", "Saving MetalHUD preset and updating CrossOver bottle")) {
+            let preset = try await self.metalHUDPresetStore.importPreset(from: presetURL, forApplicationPath: bottle.path)
+            try await self.crossOverBottleService.applyMetalHUDPreset(URL(fileURLWithPath: preset.path), to: bottle)
+            return tr("已为 CrossOver 容器 \(bottle.displayName) 应用 MetalHUD 预设", "Applied the MetalHUD preset to CrossOver bottle \(bottle.displayName)")
+        }
     }
 
     func increaseCrossOverPriority() {
@@ -107,7 +310,7 @@ final class AppModel: ObservableObject {
                 throw ToolboxError.commandFailed(tr("未检测到 CrossOver 或 Wine 进程", "No CrossOver or Wine process found"))
             }
             self.status.phase = .awaitingAuthorization
-            try await self.privileged.perform(.renice(processes.map(\.pid)))
+            try await self.privileged.perform(.renice(processes.map(\.pid), -20))
             return tr("已提高 \(processes.count) 个进程的优先级", "Updated \(processes.count) processes")
         }
     }
@@ -117,19 +320,81 @@ final class AppModel: ObservableObject {
         runningProcesses = []
         selectedProcessIDs.removeAll()
         Task {
-            do { runningProcesses = try await gamingService.runningProcesses() }
+            do {
+                let processes = try await gamingService.runningProcesses()
+                runningProcesses = processes.map { process in
+                    SystemProcess(
+                        pid: process.pid,
+                        parentPID: process.parentPID,
+                        command: process.command,
+                        cpuUsage: process.cpuUsage,
+                        applicationPath: NSRunningApplication(processIdentifier: process.pid)?.bundleURL?.path
+                    )
+                }
+            }
             catch { report(error) }
         }
     }
 
-    func increaseSelectedProcessPriority() {
+    func increaseSelectedProcessPriority(lowerPriority: Bool = false) {
         let identifiers = Array(selectedProcessIDs)
         guard !identifiers.isEmpty else { return }
         showingProcessSelection = false
-        runTask(tr("正在提高所选进程优先级", "Increasing selected process priority")) {
+        let priority = lowerPriority ? Int32(20) : Int32(-20)
+        runTask(lowerPriority ? tr("正在降低所选进程优先级", "Lowering selected process priority") : tr("正在提高所选进程优先级", "Increasing selected process priority")) {
             self.status.phase = .awaitingAuthorization
-            try await self.privileged.perform(.renice(identifiers))
-            return tr("已提高 \(identifiers.count) 个进程的优先级", "Updated \(identifiers.count) selected process(es)")
+            try await self.privileged.perform(.renice(identifiers, priority))
+            return lowerPriority
+                ? tr("已将 \(identifiers.count) 个进程的优先级降至最低", "Lowered \(identifiers.count) selected process(es) to the lowest priority")
+                : tr("已提高 \(identifiers.count) 个进程的优先级", "Updated \(identifiers.count) selected process(es)")
+        }
+    }
+
+    func isFavoriteProcess(_ process: SystemProcess) -> Bool {
+        configuration.favoriteProcessNames.contains(process.displayName)
+    }
+
+    func toggleFavoriteProcess(_ process: SystemProcess) {
+        if isFavoriteProcess(process) {
+            removeFavoriteProcess(process.displayName)
+        } else {
+            addFavoriteProcess(process.displayName)
+        }
+    }
+
+    func addFavoriteProcess(_ name: String) {
+        let normalized = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty,
+              !configuration.favoriteProcessNames.contains(normalized),
+              configuration.favoriteProcessNames.count < ConfigurationStore.maxFavoriteProcesses else { return }
+        configuration.favoriteProcessNames.append(normalized)
+        saveConfiguration()
+    }
+
+    func removeFavoriteProcess(_ name: String) {
+        configuration.favoriteProcessNames.removeAll { $0 == name }
+        saveConfiguration()
+    }
+
+    func increaseFavoriteProcessPriority(lowerPriority: Bool = false) {
+        let favoriteNames = configuration.favoriteProcessNames
+        guard !favoriteNames.isEmpty else { return }
+        showingProcessSelection = false
+        let priority = lowerPriority ? Int32(20) : Int32(-20)
+        runTask(lowerPriority ? tr("正在降低常用进程优先级", "Lowering favorite process priority") : tr("正在优化常用进程", "Optimizing favorite processes")) {
+            let processes = try await self.gamingService.runningProcesses()
+            let matches = GamingService.matchingFavoriteProcesses(processes, favoriteNames: favoriteNames)
+            guard !matches.isEmpty else {
+                throw ToolboxError.commandFailed(tr("未检测到收藏的常用进程", "No saved favorite process is running"))
+            }
+            guard matches.count <= ConfigurationStore.maxFavoriteProcesses else {
+                throw ToolboxError.commandFailed(tr("匹配的常用进程超过 64 个，请编辑常用进程后重试", "More than 64 favorite processes matched; edit favorites and try again"))
+            }
+            self.status.phase = .awaitingAuthorization
+            try await self.privileged.perform(.renice(matches.map(\.pid), priority))
+            return lowerPriority
+                ? tr("已将 \(matches.count) 个常用进程的优先级降至最低", "Lowered \(matches.count) favorite process(es) to the lowest priority")
+                : tr("已提高 \(matches.count) 个常用进程的优先级", "Updated \(matches.count) favorite process(es)")
         }
     }
 
@@ -139,9 +404,15 @@ final class AppModel: ObservableObject {
         saveConfiguration()
     }
 
+    func setDoesNotRaiseHoYoPriority(_ enabled: Bool) {
+        configuration.doesNotRaiseHoYoPriority = enabled
+        saveConfiguration()
+    }
+
     func startHoYoAssistant() {
         guard hoyoTask == nil else { return }
         let waitSeconds = configuration.hoYoWaitSeconds
+        let doesNotRaisePriority = configuration.doesNotRaiseHoYoPriority
         isHoYoAssistantRunning = true
         status = TaskStatus(phase: .awaitingAuthorization, message: tr("正在启用系统辅助服务", "Enabling system helper"), progress: 0, log: [])
         hoyoTask = Task {
@@ -157,6 +428,17 @@ final class AppModel: ObservableObject {
                 }
 
                 try Task.checkCancellation()
+                guard !doesNotRaisePriority else {
+                    try await gamingService.finishHoYoLaunch()
+                    status = TaskStatus(
+                        phase: .succeeded,
+                        message: tr("倒计时结束，未提升 Wine 进程优先级并已恢复 hosts", "Countdown complete; Wine process priority was unchanged and hosts were restored"),
+                        progress: 1,
+                        log: status.log
+                    )
+                    return
+                }
+
                 status.message = tr("正在检测 Wine 进程", "Detecting Wine processes")
                 status.log.append(tr("等待完成，开始检测 Wine 进程", "Wait complete; detecting Wine processes"))
                 let processes = try await gamingService.wineProcesses()
@@ -166,7 +448,7 @@ final class AppModel: ObservableObject {
                 }
 
                 status.phase = .awaitingAuthorization
-                try await privileged.perform(.renice(processes.map(\.pid)))
+                try await privileged.perform(.renice(processes.map(\.pid), -20))
                 try await gamingService.finishHoYoLaunch()
                 status = TaskStatus(
                     phase: .succeeded,
@@ -560,8 +842,9 @@ final class AppModel: ObservableObject {
         let normalizedURL = applicationURL.standardizedFileURL
         let displayName = FileManager.default.displayName(atPath: normalizedURL.path)
         let name = (displayName as NSString).deletingPathExtension
+        let existingPreset = configuration.recentMetalHUDApps.first(where: { $0.path == normalizedURL.path })?.preset
         configuration.recentMetalHUDApps.removeAll { $0.path == normalizedURL.path }
-        configuration.recentMetalHUDApps.insert(RecentMetalHUDApp(path: normalizedURL.path, displayName: name), at: 0)
+        configuration.recentMetalHUDApps.insert(RecentMetalHUDApp(path: normalizedURL.path, displayName: name, preset: existingPreset), at: 0)
         configuration.recentMetalHUDApps = Array(configuration.recentMetalHUDApps.prefix(ConfigurationStore.maxRecentMetalHUDApps))
         saveConfiguration()
     }

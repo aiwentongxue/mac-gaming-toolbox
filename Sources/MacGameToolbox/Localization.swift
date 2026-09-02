@@ -1,16 +1,99 @@
+import AppKit
+import Combine
 import Foundation
+import SwiftUI
 #if SWIFT_PACKAGE
 import MacGameToolboxCore
 #endif
 
 enum AppLanguage {
+    enum Preference: String, CaseIterable, Identifiable {
+        case system
+        case simplifiedChinese
+        case traditionalChinese
+        case english
+        case japanese
+        case korean
+        case german
+        case french
+        case spanish
+        case portuguese
+
+        var id: Self { self }
+    }
+
+    static let preferenceKey = "appLanguagePreference"
+
+    static var preference: Preference {
+        Preference(rawValue: UserDefaults.standard.string(forKey: preferenceKey) ?? "") ?? .system
+    }
+
+    static var currentLanguage: Preference {
+        switch preference {
+        case .system:
+            return systemLanguage
+        default:
+            return preference
+        }
+    }
+
     static var isChinese: Bool {
-        guard let preferred = Locale.preferredLanguages.first else { return false }
-        return Locale(identifier: preferred).language.languageCode == .chinese
+        switch currentLanguage {
+        case .simplifiedChinese, .traditionalChinese:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static var systemLanguage: Preference {
+        guard let identifier = Locale.preferredLanguages.first else { return .english }
+        let locale = Locale(identifier: identifier)
+        let languageCode = locale.language.languageCode?.identifier.lowercased()
+        switch languageCode {
+        case "zh":
+            // macOS reports the script for entries such as zh-Hant-TW and zh-Hans-CN.
+            return locale.language.script?.identifier.caseInsensitiveCompare("Hant") == .orderedSame
+                ? .traditionalChinese
+                : .simplifiedChinese
+        case "ja": return .japanese
+        case "ko": return .korean
+        case "de": return .german
+        case "fr": return .french
+        case "es": return .spanish
+        case "pt": return .portuguese
+        default: return .english
+        }
+    }
+
+    static func preferenceName(_ preference: Preference) -> String {
+        switch preference {
+        case .system: return text("跟随系统", "Follow System")
+        case .simplifiedChinese: return "简体中文"
+        case .traditionalChinese: return "繁體中文"
+        case .english: return "English"
+        case .japanese: return "日本語"
+        case .korean: return "한국어"
+        case .german: return "Deutsch"
+        case .french: return "Français"
+        case .spanish: return "Español"
+        case .portuguese: return "Português"
+        }
     }
 
     static func text(_ chinese: String, _ english: String) -> String {
-        isChinese ? chinese : english
+        let language = currentLanguage
+        switch language {
+        case .simplifiedChinese:
+            return chinese
+        case .english:
+            return english
+        case .system:
+            // `currentLanguage` never returns .system, but keep this case future-safe.
+            return english
+        default:
+            return translations[chinese]?[language] ?? english
+        }
     }
 
     static func phase(_ phase: TaskPhase) -> String {
@@ -25,7 +108,155 @@ enum AppLanguage {
     }
 }
 
+private extension AppLanguage {
+    /// Common interface labels are kept here so language changes take effect immediately,
+    /// without requiring an app relaunch or a separate .strings bundle per language.
+    static let translations: [String: [Preference: String]] = [
+        "Mac游戏工具箱": [.traditionalChinese: "Mac 遊戲工具箱", .japanese: "Macゲームツールボックス", .korean: "Mac 게임 도구 상자", .german: "Mac-Spiele-Toolbox", .french: "Boîte à outils de jeux Mac", .spanish: "Caja de herramientas para juegos Mac", .portuguese: "Caixa de ferramentas de jogos para Mac"],
+        "设置": [.traditionalChinese: "設定", .japanese: "設定", .korean: "설정", .german: "Einstellungen", .french: "Réglages", .spanish: "Configuración", .portuguese: "Ajustes"],
+        "通用": [.traditionalChinese: "一般", .japanese: "一般", .korean: "일반", .german: "Allgemein", .french: "Général", .spanish: "General", .portuguese: "Geral"],
+        "语言": [.traditionalChinese: "語言", .japanese: "言語", .korean: "언어", .german: "Sprache", .french: "Langue", .spanish: "Idioma", .portuguese: "Idioma"],
+        "显示语言": [.traditionalChinese: "顯示語言", .japanese: "表示言語", .korean: "표시 언어", .german: "Anzeigesprache", .french: "Langue d’affichage", .spanish: "Idioma de visualización", .portuguese: "Idioma de exibição"],
+        "跟随系统": [.traditionalChinese: "跟隨系統", .japanese: "システムに従う", .korean: "시스템 설정 따르기", .german: "Systemeinstellung verwenden", .french: "Suivre le système", .spanish: "Seguir al sistema", .portuguese: "Seguir o sistema"],
+        "帮助": [.traditionalChinese: "輔助說明", .japanese: "ヘルプ", .korean: "도움말", .german: "Hilfe", .french: "Aide", .spanish: "Ayuda", .portuguese: "Ajuda"],
+        "关于 Mac游戏工具箱": [.traditionalChinese: "關於 Mac 遊戲工具箱", .japanese: "Macゲームツールボックスについて", .korean: "Mac 게임 도구 상자 정보", .german: "Über Mac-Spiele-Toolbox", .french: "À propos de Boîte à outils de jeux Mac", .spanish: "Acerca de Caja de herramientas para juegos Mac", .portuguese: "Sobre Caixa de ferramentas de jogos para Mac"],
+        "退出Mac游戏工具箱": [.traditionalChinese: "結束 Mac 遊戲工具箱", .japanese: "Macゲームツールボックスを終了", .korean: "Mac 게임 도구 상자 종료", .german: "Mac-Spiele-Toolbox beenden", .french: "Quitter Boîte à outils de jeux Mac", .spanish: "Salir de Caja de herramientas para juegos Mac", .portuguese: "Sair da Caixa de ferramentas de jogos para Mac"],
+        "导出诊断日志": [.traditionalChinese: "輸出診斷日誌", .japanese: "診断ログを書き出す", .korean: "진단 로그 내보내기", .german: "Diagnoseprotokoll exportieren", .french: "Exporter les diagnostics", .spanish: "Exportar diagnósticos", .portuguese: "Exportar diagnósticos"],
+        "修复核心功能": [.traditionalChinese: "修復核心功能", .japanese: "コア機能を修復", .korean: "핵심 기능 복구", .german: "Kernfunktionen reparieren", .french: "Réparer les fonctions principales", .spanish: "Reparar funciones principales", .portuguese: "Reparar funções principais"],
+        "教程总导航": [.traditionalChinese: "教學總導航", .japanese: "チュートリアル一覧", .korean: "튜토리얼 허브", .german: "Tutorial-Übersicht", .french: "Hub des tutoriels", .spanish: "Centro de tutoriales", .portuguese: "Central de tutoriais"],
+        "取消": [.traditionalChinese: "取消", .japanese: "キャンセル", .korean: "취소", .german: "Abbrechen", .french: "Annuler", .spanish: "Cancelar", .portuguese: "Cancelar"],
+        "完成": [.traditionalChinese: "完成", .japanese: "完了", .korean: "완료", .german: "Fertig", .french: "Terminé", .spanish: "Listo", .portuguese: "Concluído"],
+        "刷新": [.traditionalChinese: "重新整理", .japanese: "更新", .korean: "새로 고침", .german: "Aktualisieren", .french: "Actualiser", .spanish: "Actualizar", .portuguese: "Atualizar"],
+        "删除": [.traditionalChinese: "刪除", .japanese: "削除", .korean: "삭제", .german: "Löschen", .french: "Supprimer", .spanish: "Eliminar", .portuguese: "Excluir"],
+        "添加": [.traditionalChinese: "加入", .japanese: "追加", .korean: "추가", .german: "Hinzufügen", .french: "Ajouter", .spanish: "Añadir", .portuguese: "Adicionar"],
+        "导入": [.traditionalChinese: "輸入", .japanese: "読み込む", .korean: "가져오기", .german: "Importieren", .french: "Importer", .spanish: "Importar", .portuguese: "Importar"],
+        "选择": [.traditionalChinese: "選擇", .japanese: "選択", .korean: "선택", .german: "Auswählen", .french: "Choisir", .spanish: "Elegir", .portuguese: "Escolher"],
+        "查看": [.traditionalChinese: "檢視", .japanese: "表示", .korean: "보기", .german: "Anzeigen", .french: "Afficher", .spanish: "Ver", .portuguese: "Ver"],
+        "更新日志": [.traditionalChinese: "更新日誌", .japanese: "変更履歴", .korean: "변경 로그", .german: "Änderungsprotokoll", .french: "Journal des modifications", .spanish: "Registro de cambios", .portuguese: "Registro de alterações"],
+        "导入壁纸": [.traditionalChinese: "輸入桌布", .japanese: "壁紙を読み込む", .korean: "배경화면 가져오기", .german: "Hintergrundbild importieren", .french: "Importer le fond d’écran", .spanish: "Importar fondo de pantalla", .portuguese: "Importar papel de parede"],
+        "恢复默认": [.traditionalChinese: "回復預設", .japanese: "初期設定に戻す", .korean: "기본값 복원", .german: "Standard wiederherstellen", .french: "Rétablir les valeurs par défaut", .spanish: "Restablecer", .portuguese: "Restaurar padrão"],
+        "一键清理": [.traditionalChinese: "一鍵清理", .japanese: "今すぐクリーンアップ", .korean: "지금 정리", .german: "Jetzt bereinigen", .french: "Nettoyer maintenant", .spanish: "Limpiar ahora", .portuguese: "Limpar agora"],
+        "管理磁盘": [.traditionalChinese: "管理磁碟", .japanese: "ボリュームを管理", .korean: "볼륨 관리", .german: "Volumes verwalten", .french: "Gérer les volumes", .spanish: "Administrar volúmenes", .portuguese: "Gerenciar volumes"],
+        "开始运行": [.traditionalChinese: "開始執行", .japanese: "開始", .korean: "시작", .german: "Starten", .french: "Démarrer", .spanish: "Iniciar", .portuguese: "Iniciar"],
+        "目录": [.traditionalChinese: "目錄", .japanese: "場所", .korean: "위치", .german: "Speicherort", .french: "Emplacement", .spanish: "Ubicación", .portuguese: "Localização"],
+        "常用进程优化": [.traditionalChinese: "常用程序最佳化", .japanese: "お気に入りプロセスを最適化", .korean: "즐겨찾는 프로세스 최적화", .german: "Favorisierte Prozesse optimieren", .french: "Optimiser les processus favoris", .spanish: "Optimizar procesos favoritos", .portuguese: "Otimizar processos favoritos"],
+        "编辑常用进程": [.traditionalChinese: "編輯常用程序", .japanese: "お気に入りプロセスを編集", .korean: "즐겨찾는 프로세스 편집", .german: "Favorisierte Prozesse bearbeiten", .french: "Modifier les processus favoris", .spanish: "Editar procesos favoritos", .portuguese: "Editar processos favoritos"],
+        "添加常用进程": [.traditionalChinese: "加入常用程序", .japanese: "お気に入りプロセスを追加", .korean: "즐겨찾는 프로세스 추가", .german: "Favorisierten Prozess hinzufügen", .french: "Ajouter un processus favori", .spanish: "Añadir proceso favorito", .portuguese: "Adicionar processo favorito"],
+        "输入精确进程名": [.traditionalChinese: "輸入精確程序名稱", .japanese: "正確なプロセス名を入力", .korean: "정확한 프로세스 이름 입력", .german: "Exakten Prozessnamen eingeben", .french: "Saisir le nom exact du processus", .spanish: "Introducir nombre exacto del proceso", .portuguese: "Inserir nome exato do processo"],
+        "尚未收藏常用进程": [.traditionalChinese: "尚未收藏常用程序", .japanese: "お気に入りプロセスはありません", .korean: "저장된 즐겨찾는 프로세스가 없습니다", .german: "Keine favorisierten Prozesse gespeichert", .french: "Aucun processus favori enregistré", .spanish: "No hay procesos favoritos guardados", .portuguese: "Nenhum processo favorito salvo"],
+        "收藏进程": [.traditionalChinese: "收藏程序", .japanese: "プロセスをお気に入りに追加", .korean: "프로세스 즐겨찾기", .german: "Prozess favorisieren", .french: "Ajouter le processus aux favoris", .spanish: "Agregar proceso a favoritos", .portuguese: "Favoritar processo"],
+        "取消收藏": [.traditionalChinese: "取消收藏", .japanese: "お気に入りから削除", .korean: "즐겨찾기 해제", .german: "Favorit entfernen", .french: "Retirer des favoris", .spanish: "Quitar de favoritos", .portuguese: "Remover dos favoritos"],
+        "常用进程优化只会按完整且区分大小写的进程名进行搜索": [.traditionalChinese: "常用程序最佳化只會按完整且區分大小寫的程序名稱進行搜尋", .japanese: "お気に入りプロセスの最適化は、完全一致かつ大文字と小文字を区別したプロセス名のみを検索します", .korean: "즐겨찾는 프로세스 최적화는 완전 일치하고 대소문자를 구분하는 프로세스 이름만 검색합니다", .german: "Die Optimierung favorisierter Prozesse sucht nur nach vollständigen, groß- und kleinschreibungssensitiven Prozessnamen", .french: "L’optimisation des processus favoris recherche uniquement des noms de processus complets sensibles à la casse", .spanish: "La optimización de procesos favoritos solo busca nombres completos de proceso que distinguen mayúsculas", .portuguese: "A otimização de processos favoritos pesquisa apenas nomes completos de processo com distinção entre maiúsculas e minúsculas"],
+        "正在优化常用进程": [.traditionalChinese: "正在最佳化常用程序", .japanese: "お気に入りプロセスを最適化中", .korean: "즐겨찾는 프로세스 최적화 중", .german: "Favorisierte Prozesse werden optimiert", .french: "Optimisation des processus favoris", .spanish: "Optimizando procesos favoritos", .portuguese: "Otimizando processos favoritos"],
+        "未检测到收藏的常用进程": [.traditionalChinese: "未偵測到收藏的常用程序", .japanese: "保存したお気に入りプロセスは実行されていません", .korean: "저장된 즐겨찾는 프로세스가 실행 중이 아닙니다", .german: "Kein gespeicherter favorisierter Prozess wird ausgeführt", .french: "Aucun processus favori enregistré n’est en cours d’exécution", .spanish: "No se está ejecutando ningún proceso favorito guardado", .portuguese: "Nenhum processo favorito salvo está em execução"],
+        "匹配的常用进程超过 64 个，请编辑常用进程后重试": [.traditionalChinese: "相符的常用程序超過 64 個，請編輯常用程序後重試", .japanese: "一致するお気に入りプロセスが64件を超えています。編集してから再試行してください", .korean: "일치하는 즐겨찾는 프로세스가 64개를 초과합니다. 편집 후 다시 시도하세요", .german: "Mehr als 64 favorisierte Prozesse stimmen überein. Bearbeiten Sie die Favoriten und versuchen Sie es erneut", .french: "Plus de 64 processus favoris correspondent. Modifiez les favoris puis réessayez", .spanish: "Coinciden más de 64 procesos favoritos. Edite los favoritos e inténtelo de nuevo", .portuguese: "Mais de 64 processos favoritos correspondem. Edite os favoritos e tente novamente"],
+        "CrossOver进程": [.traditionalChinese: "CrossOver 程序", .japanese: "CrossOver プロセス", .korean: "CrossOver 프로세스", .german: "CrossOver-Prozesse", .french: "Processus CrossOver", .spanish: "Procesos de CrossOver", .portuguese: "Processos do CrossOver"],
+        "手动选择进程": [.traditionalChinese: "手動選擇程序", .japanese: "プロセスを選択", .korean: "프로세스 선택", .german: "Prozesse auswählen", .french: "Sélectionner des processus", .spanish: "Seleccionar procesos", .portuguese: "Selecionar processos"],
+        "恢复上次挂载": [.traditionalChinese: "回復上次掛載", .japanese: "前回のマウントを復元", .korean: "이전 마운트 복원", .german: "Letzte Einbindung wiederherstellen", .french: "Restaurer le dernier montage", .spanish: "Restaurar último montaje", .portuguese: "Restaurar última montagem"],
+        "挂载到指定路径": [.traditionalChinese: "掛載到指定路徑", .japanese: "指定パスにマウント", .korean: "지정 경로에 마운트", .german: "Am angegebenen Pfad einbinden", .french: "Monter à l’emplacement indiqué", .spanish: "Montar en la ruta indicada", .portuguese: "Montar no caminho especificado"],
+        "磁盘挂载": [.traditionalChinese: "磁碟掛載", .japanese: "ボリュームのマウント", .korean: "볼륨 마운트", .german: "Volume einbinden", .french: "Montage de volumes", .spanish: "Montaje de volúmenes", .portuguese: "Montagem de volumes"],
+        "默认路径": [.traditionalChinese: "預設路徑", .japanese: "デフォルトのパス", .korean: "기본 경로", .german: "Standardpfade", .french: "Chemins par défaut", .spanish: "Rutas predeterminadas", .portuguese: "Caminhos padrão"],
+        "可用磁盘": [.traditionalChinese: "可用磁碟", .japanese: "利用可能なボリューム", .korean: "사용 가능한 볼륨", .german: "Verfügbare Volumes", .french: "Volumes disponibles", .spanish: "Volúmenes disponibles", .portuguese: "Volumes disponíveis"],
+        "恢复默认挂载": [.traditionalChinese: "回復預設掛載", .japanese: "標準のマウントに戻す", .korean: "기본 마운트 복원", .german: "Standard-Mount wiederherstellen", .french: "Montage par défaut", .spanish: "Restaurar montaje predeterminado", .portuguese: "Restaurar montagem padrão"],
+        "全局启用": [.traditionalChinese: "全域啟用", .japanese: "全体で有効化", .korean: "전체 활성화", .german: "Global aktivieren", .french: "Activer globalement", .spanish: "Activar globalmente", .portuguese: "Ativar globalmente"],
+        "切换模式": [.traditionalChinese: "切換模式", .japanese: "モードを切り替える", .korean: "모드 전환", .german: "Modus wechseln", .french: "Changer de mode", .spanish: "Cambiar modo", .portuguese: "Alternar modo"],
+        "打开导航": [.traditionalChinese: "開啟導航", .japanese: "ハブを開く", .korean: "허브 열기", .german: "Übersicht öffnen", .french: "Ouvrir le hub", .spanish: "Abrir centro", .portuguese: "Abrir central"]
+        ,"MetalHUD性能监视器": [.traditionalChinese: "MetalHUD 效能監視器", .japanese: "MetalHUD パフォーマンスモニター", .korean: "MetalHUD 성능 모니터", .german: "MetalHUD-Leistungsmonitor", .french: "Moniteur de performances MetalHUD", .spanish: "Monitor de rendimiento MetalHUD", .portuguese: "Monitor de desempenho MetalHUD"]
+        ,"HoYoGames 启动帮助": [.traditionalChinese: "HoYoGames 啟動輔助", .japanese: "HoYoGames 起動アシスタント", .korean: "HoYoGames 실행 도우미", .german: "HoYoGames-Startassistent", .french: "Assistant de lancement HoYoGames", .spanish: "Asistente de inicio de HoYoGames", .portuguese: "Assistente de inicialização HoYoGames"]
+        ,"提高进程优先级": [.traditionalChinese: "提高程序優先權", .japanese: "プロセスの優先度を上げる", .korean: "프로세스 우선순위 높이기", .german: "Prozesspriorität erhöhen", .french: "Augmenter la priorité du processus", .spanish: "Aumentar prioridad del proceso", .portuguese: "Aumentar a prioridade do processo"]
+        ,"检测并提高游戏进程优先级": [.traditionalChinese: "偵測並提高遊戲程序優先權", .japanese: "ゲームプロセスを検出して優先度を上げる", .korean: "게임 프로세스를 감지하고 우선순위 높이기", .german: "Spielprozesse erkennen und ihre Priorität erhöhen", .french: "Détecter les processus de jeu et augmenter leur priorité", .spanish: "Detectar procesos de juego y aumentar su prioridad", .portuguese: "Detectar processos de jogos e aumentar sua prioridade"]
+        ,"将磁盘挂载指定路径": [.traditionalChinese: "將磁碟掛載到指定路徑", .japanese: "ディスクを指定パスにマウント", .korean: "디스크를 지정 경로에 마운트", .german: "Datenträger am angegebenen Pfad einbinden", .french: "Monter un disque à un emplacement donné", .spanish: "Montar un disco en una ruta específica", .portuguese: "Montar um disco em um caminho especificado"]
+        ,"缓存日志一键清理": [.traditionalChinese: "快取與日誌一鍵清理", .japanese: "キャッシュとログを一括クリーンアップ", .korean: "캐시 및 로그 원클릭 정리", .german: "Cache und Protokolle bereinigen", .french: "Nettoyage des caches et journaux", .spanish: "Limpieza de caché y registros", .portuguese: "Limpeza de cache e registros"]
+        ,"切换到SteamDeck模式": [.traditionalChinese: "切換至 SteamDeck 模式", .japanese: "SteamDeck モードに切り替える", .korean: "SteamDeck 모드로 전환", .german: "In den SteamDeck-Modus wechseln", .french: "Passer en mode SteamDeck", .spanish: "Cambiar al modo SteamDeck", .portuguese: "Alternar para o modo SteamDeck"]
+        ,"对单个 App 启用": [.traditionalChinese: "為單一 App 啟用", .japanese: "個別のアプリで有効化", .korean: "앱 하나에 활성화", .german: "Für eine App aktivieren", .french: "Activer pour une app", .spanish: "Activar para una app", .portuguese: "Ativar para um app"]
+        ,"等待时间": [.traditionalChinese: "等待時間", .japanese: "待機時間", .korean: "대기 시간", .german: "Wartezeit", .french: "Temps d’attente", .spanish: "Tiempo de espera", .portuguese: "Tempo de espera"]
+        ,"排除敏感文件": [.traditionalChinese: "排除敏感檔案", .japanese: "機密ファイルを除外", .korean: "민감한 파일 제외", .german: "Sensible Dateien ausschließen", .french: "Exclure les fichiers sensibles", .spanish: "Excluir archivos sensibles", .portuguese: "Excluir arquivos confidenciais"]
+        ,"最近使用 MetalHUD 打开的 App": [.traditionalChinese: "最近使用 MetalHUD 開啟的 App", .japanese: "MetalHUD で最近開いたアプリ", .korean: "MetalHUD로 최근 연 앱", .german: "Kürzlich mit MetalHUD geöffnete Apps", .french: "Apps récemment ouvertes avec MetalHUD", .spanish: "Apps abiertas recientemente con MetalHUD", .portuguese: "Apps abertas recentemente com MetalHUD"]
+        ,"其他 App": [.traditionalChinese: "其他 App", .japanese: "ほかのアプリ", .korean: "다른 앱", .german: "Andere App", .french: "Autre app", .spanish: "Otra app", .portuguese: "Outro app"]
+        ,"搜索进程名称、目录或 PID": [.traditionalChinese: "搜尋程序名稱、目錄或 PID", .japanese: "プロセス名、場所、または PID を検索", .korean: "프로세스 이름, 위치 또는 PID 검색", .german: "Prozessname, Speicherort oder PID suchen", .french: "Rechercher un nom, emplacement ou PID de processus", .spanish: "Buscar nombre, ubicación o PID de proceso", .portuguese: "Pesquisar nome, localização ou PID do processo"]
+        ,"提高优先级": [.traditionalChinese: "提高優先權", .japanese: "優先度を上げる", .korean: "우선순위 높이기", .german: "Priorität erhöhen", .french: "Augmenter la priorité", .spanish: "Aumentar prioridad", .portuguese: "Aumentar prioridade"]
+        ,"保存预设": [.traditionalChinese: "儲存預設", .japanese: "プリセットを保存", .korean: "프리셋 저장", .german: "Voreinstellung speichern", .french: "Préréglage enregistrer", .spanish: "Guardar preajuste", .portuguese: "Salvar predefinição"]
+        ,"浏览": [.traditionalChinese: "瀏覽", .japanese: "参照", .korean: "찾아보기", .german: "Durchsuchen", .french: "Parcourir", .spanish: "Examinar", .portuguese: "Procurar"]
+    ]
+}
+
 @inline(__always)
 func tr(_ chinese: String, _ english: String) -> String {
     AppLanguage.text(chinese, english)
+}
+
+@MainActor
+final class LocalizationController: ObservableObject {
+    @Published private(set) var preference = AppLanguage.preference
+    @Published private(set) var refreshToken = UUID()
+
+    func setPreference(_ preference: AppLanguage.Preference) {
+        guard self.preference != preference else { return }
+        self.preference = preference
+        UserDefaults.standard.set(preference.rawValue, forKey: AppLanguage.preferenceKey)
+        refreshToken = UUID()
+    }
+}
+
+struct SettingsView: View {
+    @EnvironmentObject private var localization: LocalizationController
+    @AppStorage(UpdateCheckPreference.key) private var automaticallyCheckForUpdates = true
+
+    var body: some View {
+        TabView {
+            generalSettings
+                .tabItem { Label(tr("通用", "General"), systemImage: "gearshape") }
+        }
+        .frame(width: 760, height: 520)
+        .background(WindowTitleConfigurator(title: tr("设置", "Settings")))
+    }
+
+    private var generalSettings: some View {
+        VStack {
+            Form {
+                Section {
+                    Picker(tr("显示语言", "Display language"), selection: Binding(
+                        get: { localization.preference },
+                        set: { localization.setPreference($0) }
+                    )) {
+                        ForEach(AppLanguage.Preference.allCases) { preference in
+                            Text(AppLanguage.preferenceName(preference)).tag(preference)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(minWidth: 320)
+                } header: {
+                    Text(tr("语言", "Language"))
+                } footer: {
+                    Text(tr("默认跟随 macOS 系统语言；选择语言后会立即应用，并在下次启动时保留。", "By default, the app follows the macOS language. Your selected language applies immediately and is remembered for future launches."))
+                }
+
+                Section {
+                    Toggle(tr("启动时检查更新", "Check for updates at launch"), isOn: $automaticallyCheckForUpdates)
+                } header: {
+                    Text(tr("更新", "Updates"))
+                } footer: {
+                    Text(tr("默认开启。每次打开 Mac游戏工具箱时静默检查 GitHub Releases；仅发现新版本时才会提示。", "Enabled by default. Mac Game Toolbox silently checks GitHub Releases every time it opens and only notifies you when a newer version is available."))
+                }
+            }
+            .formStyle(.grouped)
+            .padding(.horizontal, 76)
+            .padding(.vertical, 32)
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+private struct WindowTitleConfigurator: NSViewRepresentable {
+    let title: String
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { view.window?.title = title }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async { nsView.window?.title = title }
+    }
 }

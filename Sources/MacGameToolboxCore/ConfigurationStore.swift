@@ -4,6 +4,7 @@ public actor ConfigurationStore {
     public static let maxDefaultPaths = Int.max
     public static let maxPresets = 5
     public static let maxRecentMetalHUDApps = 12
+    public static let maxFavoriteProcesses = 64
 
     private let configurationURL: URL
     private let fileManager: FileManager
@@ -34,12 +35,14 @@ public actor ConfigurationStore {
 
     public func save(_ configuration: AppConfiguration) throws {
         var normalized = configuration
-        normalized.schemaVersion = 3
+        normalized.schemaVersion = 7
         normalized.defaultPaths = Array(unique(configuration.defaultPaths).prefix(Self.maxDefaultPaths))
         normalized.diskPresets = Array(uniquePresets(configuration.diskPresets).prefix(Self.maxPresets))
         normalized.restorableDiskMounts = uniquePresets(configuration.restorableDiskMounts)
         normalized.recentMetalHUDApps = Array(uniqueRecentApps(configuration.recentMetalHUDApps).prefix(Self.maxRecentMetalHUDApps))
         if ![10, 15, 20].contains(normalized.hoYoWaitSeconds) { normalized.hoYoWaitSeconds = 15 }
+        normalized.dashboardFeatureOrder = uniqueDashboardFeatures(configuration.dashboardFeatureOrder)
+        normalized.favoriteProcessNames = Array(uniqueFavoriteProcessNames(configuration.favoriteProcessNames).prefix(Self.maxFavoriteProcesses))
         try fileManager.createDirectory(at: configurationURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -85,5 +88,17 @@ public actor ConfigurationStore {
     private func uniqueRecentApps(_ values: [RecentMetalHUDApp]) -> [RecentMetalHUDApp] {
         var seen = Set<String>()
         return values.filter { seen.insert($0.path).inserted }
+    }
+
+    private func uniqueDashboardFeatures(_ values: [DashboardFeature]) -> [DashboardFeature] {
+        var seen = Set<DashboardFeature>()
+        return values.filter { seen.insert($0).inserted }
+    }
+
+    private func uniqueFavoriteProcessNames(_ values: [String]) -> [String] {
+        var seen = Set<String>()
+        return values
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && seen.insert($0).inserted }
     }
 }

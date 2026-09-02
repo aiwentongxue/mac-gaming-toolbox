@@ -22,19 +22,15 @@
 		A1000000000000000000000D /* InformationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000005 /* InformationViews.swift */; };
 		A1000000000000000000000E /* PrivilegedHelperClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000006 /* PrivilegedHelperClient.swift */; };
 		A1000000000000000000000F /* MacGameToolboxPrivilegedHelper in Embed Privileged Helper */ = {isa = PBXBuildFile; fileRef = F40000000000000000000002 /* MacGameToolboxPrivilegedHelper */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		A10000000000000000000010 /* com.iven.macgametoolbox.helper.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000002 /* com.iven.macgametoolbox.helper.plist */; };
 		A10000000000000000000011 /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F50000000000000000000001 /* ServiceManagement.framework */; };
 		A10000000000000000000012 /* DiagnosticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000007 /* DiagnosticsService.swift */; };
-		A10000000000000000000013 /* com.iven.macgametoolbox.helper.v3.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000004 /* com.iven.macgametoolbox.helper.v3.plist */; };
 		A10000000000000000000014 /* DiagnosticFileLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000008 /* DiagnosticFileLogger.swift */; };
-		A10000000000000000000015 /* com.iven.macgametoolbox.helper.v4.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000005 /* com.iven.macgametoolbox.helper.v4.plist */; };
 		A10000000000000000000016 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000009 /* Localization.swift */; };
 		A10000000000000000000017 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000A /* Assets.xcassets */; };
-		A10000000000000000000018 /* com.iven.macgametoolbox.helper.v5.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000006 /* com.iven.macgametoolbox.helper.v5.plist */; };
-		A10000000000000000000019 /* com.iven.macgametoolbox.helper.v6.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000007 /* com.iven.macgametoolbox.helper.v6.plist */; };
-		A1000000000000000000001A /* com.iven.macgametoolbox.helper.v7.plist in Embed LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = F30000000000000000000008 /* com.iven.macgametoolbox.helper.v7.plist */; };
 		A1000000000000000000001B /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F50000000000000000000002 /* Security.framework */; };
 		A1000000000000000000001C /* WallpaperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* WallpaperService.swift */; };
+		A1000000000000000000001D /* MetalHUDPresetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000A /* MetalHUDPresetStore.swift */; };
+		A1000000000000000000001E /* CrossOverBottleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000B /* CrossOverBottleService.swift */; };
 		B10000000000000000000001 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000001 /* Models.swift */; };
 		B10000000000000000000002 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000002 /* CommandRunner.swift */; };
 		B10000000000000000000003 /* ConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000003 /* ConfigurationStore.swift */; };
@@ -70,22 +66,6 @@
 			name = "Embed Privileged Helper";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		C20000000000000000000002 /* Embed LaunchDaemon Plist */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = Contents/Library/LaunchDaemons;
-			dstSubfolderSpec = 1;
-			files = (
-				A10000000000000000000010 /* com.iven.macgametoolbox.helper.plist in Embed LaunchDaemon Plist */,
-				A10000000000000000000013 /* com.iven.macgametoolbox.helper.v3.plist in Embed LaunchDaemon Plist */,
-				A10000000000000000000015 /* com.iven.macgametoolbox.helper.v4.plist in Embed LaunchDaemon Plist */,
-				A10000000000000000000018 /* com.iven.macgametoolbox.helper.v5.plist in Embed LaunchDaemon Plist */,
-				A10000000000000000000019 /* com.iven.macgametoolbox.helper.v6.plist in Embed LaunchDaemon Plist */,
-				A1000000000000000000001A /* com.iven.macgametoolbox.helper.v7.plist in Embed LaunchDaemon Plist */,
-			);
-			name = "Embed LaunchDaemon Plist";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -98,6 +78,8 @@
 		F10000000000000000000007 /* HostsFileEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostsFileEditor.swift; sourceTree = "<group>"; };
 		F10000000000000000000008 /* PrivilegedXPC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivilegedXPC.swift; sourceTree = "<group>"; };
 		F10000000000000000000009 /* WallpaperService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperService.swift; sourceTree = "<group>"; };
+		F1000000000000000000000A /* MetalHUDPresetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalHUDPresetStore.swift; sourceTree = "<group>"; };
+		F1000000000000000000000B /* CrossOverBottleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossOverBottleService.swift; sourceTree = "<group>"; };
 		F20000000000000000000001 /* MacGameToolboxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacGameToolboxApp.swift; sourceTree = "<group>"; };
 		F20000000000000000000002 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		F20000000000000000000003 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -109,13 +91,7 @@
 		F20000000000000000000009 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		F2000000000000000000000A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F30000000000000000000001 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
-		F30000000000000000000002 /* com.iven.macgametoolbox.helper.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.iven.macgametoolbox.helper.plist; sourceTree = "<group>"; };
 		F30000000000000000000003 /* App-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "App-Info.plist"; sourceTree = "<group>"; };
-		F30000000000000000000004 /* com.iven.macgametoolbox.helper.v3.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.iven.macgametoolbox.helper.v3.plist; sourceTree = "<group>"; };
-		F30000000000000000000005 /* com.iven.macgametoolbox.helper.v4.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.iven.macgametoolbox.helper.v4.plist; sourceTree = "<group>"; };
-		F30000000000000000000006 /* com.iven.macgametoolbox.helper.v5.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.iven.macgametoolbox.helper.v5.plist; sourceTree = "<group>"; };
-		F30000000000000000000007 /* com.iven.macgametoolbox.helper.v6.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.iven.macgametoolbox.helper.v6.plist; sourceTree = "<group>"; };
-		F30000000000000000000008 /* com.iven.macgametoolbox.helper.v7.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.iven.macgametoolbox.helper.v7.plist; sourceTree = "<group>"; };
 		F40000000000000000000001 /* Mac 游戏工具箱.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Mac 游戏工具箱.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F40000000000000000000002 /* MacGameToolboxPrivilegedHelper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MacGameToolboxPrivilegedHelper; sourceTree = BUILT_PRODUCTS_DIR; };
 		F50000000000000000000001 /* ServiceManagement.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ServiceManagement.framework; path = System/Library/Frameworks/ServiceManagement.framework; sourceTree = SDKROOT; };
@@ -176,6 +152,8 @@
 				F10000000000000000000007 /* HostsFileEditor.swift */,
 				F10000000000000000000008 /* PrivilegedXPC.swift */,
 				F10000000000000000000009 /* WallpaperService.swift */,
+				F1000000000000000000000A /* MetalHUDPresetStore.swift */,
+				F1000000000000000000000B /* CrossOverBottleService.swift */,
 			);
 			name = MacGameToolboxCore;
 			path = Sources/MacGameToolboxCore;
@@ -212,12 +190,6 @@
 			isa = PBXGroup;
 			children = (
 				F30000000000000000000003 /* App-Info.plist */,
-				F30000000000000000000002 /* com.iven.macgametoolbox.helper.plist */,
-				F30000000000000000000004 /* com.iven.macgametoolbox.helper.v3.plist */,
-				F30000000000000000000005 /* com.iven.macgametoolbox.helper.v4.plist */,
-				F30000000000000000000006 /* com.iven.macgametoolbox.helper.v5.plist */,
-				F30000000000000000000007 /* com.iven.macgametoolbox.helper.v6.plist */,
-				F30000000000000000000008 /* com.iven.macgametoolbox.helper.v7.plist */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -242,7 +214,6 @@
 				D10000000000000000000001 /* Frameworks */,
 				R10000000000000000000001 /* Resources */,
 				C20000000000000000000001 /* Embed Privileged Helper */,
-				C20000000000000000000002 /* Embed LaunchDaemon Plist */,
 			);
 			buildRules = (
 			);
@@ -333,6 +304,8 @@
 				A10000000000000000000007 /* HostsFileEditor.swift in Sources */,
 				A10000000000000000000008 /* PrivilegedXPC.swift in Sources */,
 				A1000000000000000000001C /* WallpaperService.swift in Sources */,
+				A1000000000000000000001D /* MetalHUDPresetStore.swift in Sources */,
+				A1000000000000000000001E /* CrossOverBottleService.swift in Sources */,
 				A10000000000000000000009 /* MacGameToolboxApp.swift in Sources */,
 				A1000000000000000000000A /* AppModel.swift in Sources */,
 				A1000000000000000000000B /* DashboardView.swift in Sources */,
@@ -401,13 +374,13 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3.0.7;
+				CURRENT_PROJECT_VERSION = 3.1.0;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				ENABLE_DEBUG_DYLIB = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/App-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 3.0.7;
+				MARKETING_VERSION = 3.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox;
 				PRODUCT_NAME = "Mac 游戏工具箱";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -424,12 +397,12 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3.0.7;
+				CURRENT_PROJECT_VERSION = 3.1.0;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/App-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 3.0.7;
+				MARKETING_VERSION = 3.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox;
 				PRODUCT_NAME = "Mac 游戏工具箱";
 				PROVISIONING_PROFILE_SPECIFIER = "";

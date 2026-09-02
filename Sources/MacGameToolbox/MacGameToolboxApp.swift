@@ -5,11 +5,14 @@ import SwiftUI
 struct MacGameToolboxApp: App {
     @NSApplicationDelegateAdaptor(MacGameToolboxApplicationDelegate.self) private var applicationDelegate
     @StateObject private var model = AppModel()
+    @StateObject private var localization = LocalizationController()
 
     var body: some Scene {
         Window(tr("Mac游戏工具箱", "Mac Game Toolbox"), id: "main") {
             DashboardView()
                 .environmentObject(model)
+                .environmentObject(localization)
+                .id(localization.refreshToken)
                 .frame(minWidth: 900, minHeight: 650)
         }
         .defaultSize(width: 1040, height: 760)
@@ -34,10 +37,29 @@ struct MacGameToolboxApp: App {
                 Button(tr("教程总导航", "Tutorials")) { MenuCommandCoordinator.shared.showTutorials() }
             }
         }
+        Settings {
+            SettingsView()
+                .environmentObject(localization)
+        }
     }
 }
 
 final class MacGameToolboxApplicationDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        guard UpdateCheckPreference.isEnabled else { return }
+
+        Task {
+            guard let release = await GitHubReleaseChecker.latestStableRelease(),
+                  GitHubReleaseChecker.isNewer(release.version, than: GitHubReleaseChecker.currentVersion) else {
+                return
+            }
+
+            await MainActor.run { [weak self] in
+                self?.showUpdateAlert(for: release)
+            }
+        }
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }
@@ -60,6 +82,83 @@ final class MacGameToolboxApplicationDelegate: NSObject, NSApplicationDelegate {
             MenuCommandCoordinator.shared.reopenMainWindow()
         }
         return true
+    }
+
+    @MainActor
+    private func showUpdateAlert(for release: GitHubRelease) {
+        let alert = NSAlert()
+        alert.messageText = tr("发现新版本", "New Version Available")
+        alert.informativeText = tr(
+            "Mac游戏工具箱 \(release.version) 已发布，当前版本为 \(GitHubReleaseChecker.currentVersion)。是否前往 Releases 页面下载更新？",
+            "Mac Game Toolbox \(release.version) is available. Your current version is \(GitHubReleaseChecker.currentVersion). Open the Releases page to download it?"
+        )
+        alert.addButton(withTitle: tr("前往更新", "Update"))
+        alert.addButton(withTitle: tr("暂不更新", "Not Now"))
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            NSWorkspace.shared.open(GitHubReleaseChecker.releasesPageURL)
+        }
+    }
+}
+
+enum UpdateCheckPreference {
+    static let key = "automaticallyCheckForUpdates"
+
+    static var isEnabled: Bool {
+        // A missing value represents the default-on preference for existing users too.
+        UserDefaults.standard.object(forKey: key) as? Bool ?? true
+    }
+}
+
+struct GitHubRelease: Sendable {
+    let version: String
+}
+
+enum GitHubReleaseChecker {
+    static let releasesPageURL = URL(string: "https://github.com/aiwentongxue/mac-gaming-toolbox/releases/latest")!
+    private static let latestReleaseAPIURL = URL(string: "https://api.github.com/repos/aiwentongxue/mac-gaming-toolbox/releases/latest")!
+
+    static var currentVersion: String {
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "3.1.0"
+    }
+
+    static func latestStableRelease() async -> GitHubRelease? {
+        var request = URLRequest(url: latestReleaseAPIURL)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("MacGameToolbox", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 10
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else {
+                return nil
+            }
+
+            let payload = try JSONDecoder().decode(LatestReleasePayload.self, from: data)
+            let version = payload.tagName.trimmingCharacters(in: .whitespacesAndNewlines)
+            return version.isEmpty ? nil : GitHubRelease(version: version)
+        } catch {
+            // Update checks are intentionally silent when offline or GitHub is unavailable.
+            return nil
+        }
+    }
+
+    static func isNewer(_ candidate: String, than current: String) -> Bool {
+        normalizedVersion(candidate).compare(normalizedVersion(current), options: .numeric) == .orderedDescending
+    }
+
+    private static func normalizedVersion(_ version: String) -> String {
+        let trimmed = version.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.first?.lowercased() == "v" ? String(trimmed.dropFirst()) : trimmed
+    }
+
+    private struct LatestReleasePayload: Decodable {
+        let tagName: String
+
+        enum CodingKeys: String, CodingKey {
+            case tagName = "tag_name"
+        }
     }
 }
 

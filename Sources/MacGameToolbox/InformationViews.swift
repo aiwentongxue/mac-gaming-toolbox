@@ -6,6 +6,15 @@ struct ChangelogView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("3.1.0") {
+                    Text(tr("适配多国语言，新增语言设置选项，用户可以自行选择应用程序语言", "Added multilingual support and a language setting so users can choose the app language"))
+                    Text(tr("新增选项框编辑功能，用户可以隐藏不需要的功能", "Added dashboard-card editing so users can hide features they do not need"))
+                    Text(tr("新增 MetalHUD 预设功能，用户可以将 MetalHUD 参数保存在下次开启游戏时应用", "Added MetalHUD presets that save parameters for the next game launch"))
+                    Text(tr("新增为 CrossOver 容器设定 MetalHUD 参数预设功能", "Added MetalHUD parameter presets for CrossOver bottles"))
+                    Text(tr("优化进程优先级提升功能，优化手动选择搜索机制，新增常用进程优化等多个功能", "Improved process-priority raising and manual search, and added favorite-process optimization and more"))
+                    Text(tr("新增为 iOS 游戏开启 MetalHUD 功能，用户可以使用工具箱为 iOS 设备开启 MetalHUD", "Added MetalHUD launching for iOS games on connected devices"))
+                    Text(tr("新增自动检查更新功能，提升用户体验", "Added automatic update checks for a better experience"))
+                }
                 Section("3.0.7") {
                     Text(tr("HoYoGames 启动帮助部分功能修复", "Fixed parts of the HoYoGames Launch Assistant"))
                 }
@@ -137,9 +146,13 @@ struct TutorialsView: View {
         if AppLanguage.isChinese {
             return [
                 ("Mac 玩游戏从入门到精通", "https://b23.tv/pEOGX4P"),
-                ("CrossOver 零基础入门指南", "https://b23.tv/SlpOQoA"),
+                ("CrossOver 零基础入门指南", "https://b23.tv/RiWoTPB"),
                 ("CrossOver 全部教程合集", "https://b23.tv/V5xIKy4"),
                 ("CrossOver 疑难解答合集", "https://b23.tv/8l2dLbN"),
+                ("Mac玩PC原神详细教程", "https://b23.tv/aVH2i2K"),
+                ("Mac玩PC崩坏：星穹铁道详细教程", "https://b23.tv/OZ5wkvd"),
+                ("Mac玩PC绝区零详细教程", "https://b23.tv/B8Fb50K"),
+                ("Mac玩PC鸣潮详细教程", "https://b23.tv/HTFJ478"),
                 ("问题反馈与日志教程", "https://b23.tv/1UfRohG"),
                 ("艾文的哔哩哔哩主页", "https://b23.tv/dV7YBJQ"),
                 ("艾文的 YouTube 频道", "https://youtube.com/channel/UC0TgypOLHt2fXboVw34SKVQ")
@@ -147,9 +160,13 @@ struct TutorialsView: View {
         }
         return [
             ("Mac Gaming: Beginner to Advanced", "https://b23.tv/pEOGX4P"),
-            ("CrossOver Beginner's Guide", "https://b23.tv/SlpOQoA"),
+            ("CrossOver Beginner's Guide", "https://b23.tv/RiWoTPB"),
             ("Complete CrossOver Tutorial Collection", "https://b23.tv/V5xIKy4"),
             ("CrossOver Troubleshooting Collection", "https://b23.tv/8l2dLbN"),
+            ("Mac PC Genshin Impact Detailed Guide", "https://b23.tv/aVH2i2K"),
+            ("Mac PC Honkai: Star Rail Detailed Guide", "https://b23.tv/OZ5wkvd"),
+            ("Mac PC Zenless Zone Zero Detailed Guide", "https://b23.tv/B8Fb50K"),
+            ("Mac PC Wuthering Waves Detailed Guide", "https://b23.tv/HTFJ478"),
             ("Feedback and Log Tutorial", "https://b23.tv/1UfRohG"),
             ("Iven's Bilibili Channel", "https://b23.tv/dV7YBJQ"),
             ("Iven's YouTube Channel", "https://youtube.com/channel/UC0TgypOLHt2fXboVw34SKVQ")

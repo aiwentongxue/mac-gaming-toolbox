@@ -60,8 +60,10 @@ import Testing
     #expect(!configuration.automaticallyRestoreMountsOnLaunch)
     #expect(configuration.restorableDiskMounts.isEmpty)
     #expect(configuration.customWallpaperPath == nil)
+    #expect(configuration.favoriteProcessNames.isEmpty)
     #expect(configuration.recentMetalHUDApps.isEmpty)
     #expect(configuration.hoYoWaitSeconds == 15)
+    #expect(!configuration.doesNotRaiseHoYoPriority)
     #expect(configuration.excludesSensitiveCacheFiles)
     #expect(configuration.diskPresets.first?.diskIdentifier == "disk4s1")
 }
@@ -76,7 +78,7 @@ import Testing
     let loaded = try await store.load(importLegacy: false)
     #expect(loaded.automaticallyRestoreMountsOnLaunch)
     #expect(loaded.restorableDiskMounts == configuration.restorableDiskMounts)
-    #expect(loaded.schemaVersion == 3)
+    #expect(loaded.schemaVersion == 7)
 }
 
 @Test func configurationPreservesAllRestorableMounts() async throws {
@@ -190,6 +192,62 @@ import Testing
     #expect(GamingService.matchingProcesses(processes, crossOverOnly: true).map(\.pid) == [3949, 3950])
 }
 
+@Test func processParserReadsCPUUsageAndSortsDescending() {
+    let text = "  100 1 18.7 /Applications/Game.app/Contents/MacOS/Game\n  101 1 75.2 /Applications/Launcher.app/Contents/MacOS/Launcher\n  102 1 18.7 /Applications/Another.app/Contents/MacOS/Another"
+    let processes = GamingService.parseProcessTable(text)
+
+    #expect(processes.map(\.cpuUsage) == [18.7, 75.2, 18.7])
+    #expect(GamingService.sortedRunningProcesses(processes).map(\.pid) == [101, 102, 100])
+}
+
+@Test func processParserFallsBackToZeroForMissingOrInvalidCPUUsage() {
+    let text = "  100 1 invalid /Applications/Game.app/Contents/MacOS/Game\n  101 1 /Applications/Legacy.app/Contents/MacOS/Legacy"
+    let processes = GamingService.parseProcessTable(text)
+
+    #expect(processes.map(\.cpuUsage) == [0, 0])
+    #expect(processes.map(\.command) == [
+        "/Applications/Game.app/Contents/MacOS/Game",
+        "/Applications/Legacy.app/Contents/MacOS/Legacy"
+    ])
+}
+
+@Test func processSearchMatchesApplicationDirectoryAndShowsExecutableName() {
+    let process = SystemProcess(
+        pid: 9527,
+        parentPID: 1,
+        command: "X6Game",
+        applicationPath: "/Applications/无限暖暖.app"
+    )
+
+    #expect(process.matches(searchText: "无限暖暖"))
+    #expect(process.matches(searchText: "X6Game"))
+    #expect(process.locationPath == "/Applications/无限暖暖.app")
+    #expect(process.displayName == "X6Game")
+}
+
+@Test func processSearchUsesAppBundlePathEmbeddedInCommand() {
+    let process = SystemProcess(
+        pid: 9528,
+        parentPID: 1,
+        command: "/Applications/无限暖暖.app/Contents/MacOS/X6Game -fullscreen"
+    )
+
+    #expect(process.matches(searchText: "无限暖暖"))
+    #expect(process.locationPath == "/Applications/无限暖暖.app")
+    #expect(process.displayName == "X6Game")
+}
+
+@Test func favoriteProcessMatchingRequiresExactCaseSensitiveDisplayName() {
+    let processes = [
+        SystemProcess(pid: 10, parentPID: 1, command: "X6Game"),
+        SystemProcess(pid: 11, parentPID: 1, command: "x6game"),
+        SystemProcess(pid: 12, parentPID: 1, command: "/Applications/无限暖暖.app/Contents/MacOS/X6Game -fullscreen"),
+        SystemProcess(pid: 13, parentPID: 1, command: "X6GameHelper")
+    ]
+
+    #expect(GamingService.matchingFavoriteProcesses(processes, favoriteNames: ["X6Game"]).map(\.pid) == [10, 12])
+}
+
 @Test func volumeInfoFilteringUsesPhysicalBootStoresAndKeepsUnmountedExternalVolumes() {
     let boot: [String: Any] = [
         "ParentWholeDisk": "disk3",
@@ -254,6 +312,117 @@ actor RecordingCommandRunner: CommandRunning {
     #expect(calls.first?.1 == ["MTL_HUD_ENABLED=1", "/usr/bin/open", "-a", application.path])
 }
 
+@Test func perAppMetalHUDLaunchPassesPresetOnlyToThatLaunch() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let application = root.appendingPathComponent("Example Game.app", isDirectory: true)
+    let preset = root.appendingPathComponent("my-hud.json")
+    try FileManager.default.createDirectory(at: application, withIntermediateDirectories: true)
+    let properties: [String: Any] = [
+        "MTL_HUD_ALIGNMENT": 18,
+        "MTL_HUD_ELEMENTS": "fps,gputime",
+        "MTL_HUD_ENABLED": true
+    ]
+    try PropertyListSerialization.data(fromPropertyList: properties, format: .xml, options: 0).write(to: preset)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let runner = RecordingCommandRunner()
+    let service = GamingService(runner: runner, privileged: RecordingPrivilegedOperator())
+    try await service.launchWithMetalHUD(applicationPath: application.path, presetPath: preset.path)
+
+    let calls = await runner.calls
+    #expect(calls.first?.1 == ["MTL_HUD_ALIGNMENT=bottomleft", "MTL_HUD_ELEMENTS=fps,gputime", "MTL_HUD_ENABLED=1", "/usr/bin/open", "-a", application.path])
+}
+
+@Test func metalHUDEnvironmentConvertsLegacyNumericAlignments() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let preset = root.appendingPathComponent("hud.plist")
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let properties: [String: Any] = ["MTL_HUD_ALIGNMENT": 18, "MTL_HUD_ENABLED": true]
+    try PropertyListSerialization.data(fromPropertyList: properties, format: .xml, options: 0).write(to: preset)
+
+    #expect(try GamingService.metalHUDEnvironment(from: preset) == ["MTL_HUD_ALIGNMENT=bottomleft", "MTL_HUD_ENABLED=1"])
+}
+
+@Test func iOSDeviceAndAppParsersReadDevicectlJSON() throws {
+    let devices = """
+    {"result":{"devices":[{"identifier":"00008110-001234567890801E","name":"Iven's iPhone","deviceProperties":{"modelName":"iPhone 17 Pro","connectionState":"connected"}}]}}
+    """
+    let apps = """
+    {"result":{"apps":[{"bundleIdentifier":"com.example.game","displayName":"Example Game","version":"1.2.3"}]}}
+    """
+
+    #expect(try GamingService.parseIOSDevices(devices) == [IOSDevice(id: "00008110-001234567890801E", name: "Iven's iPhone", model: "iPhone 17 Pro", state: "connected")])
+    #expect(try GamingService.parseIOSApps(apps) == [IOSInstalledApp(bundleIdentifier: "com.example.game", displayName: "Example Game", version: "1.2.3")])
+}
+
+@Test func iOSMetalHUDLaunchUsesDeviceScopedEnvironment() async throws {
+    let runner = RecordingCommandRunner()
+    let service = GamingService(runner: runner, privileged: RecordingPrivilegedOperator())
+
+    try await service.launchIOSAppWithMetalHUD(deviceID: "00008110-001234567890801E", bundleIdentifier: "com.example.game")
+
+    let calls = await runner.calls
+    #expect(calls.count == 1)
+    #expect(calls.first?.0 == "/usr/bin/xcrun")
+    #expect(calls.first?.1 == ["devicectl", "device", "process", "launch", "--device", "00008110-001234567890801E", "--environment-variables", "{\"MTL_HUD_ENABLED\":\"1\"}", "--terminate-existing", "com.example.game"])
+}
+
+@Test func iOSMetalHUDLaunchPassesArgumentsAfterBundleIdentifier() async throws {
+    let runner = RecordingCommandRunner()
+    let service = GamingService(runner: runner, privileged: RecordingPrivilegedOperator())
+    try await service.launchIOSAppWithMetalHUD(
+        deviceID: "00008110-001234567890801E",
+        bundleIdentifier: "com.example.game",
+        launchArguments: ["-SkipSplash", "-OpenFileLog"]
+    )
+
+    let calls = await runner.calls
+    #expect(calls.first.map { Array($0.1.suffix(4)) } == ["com.example.game", "--", "-SkipSplash", "-OpenFileLog"])
+}
+
+@Test func crossOverBottleServiceFindsValidBottlesAndPreservesExistingSettings() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let valid = root.appendingPathComponent("Valid", isDirectory: true)
+    let invalid = root.appendingPathComponent("Invalid", isDirectory: true)
+    let config = valid.appendingPathComponent("cxbottle.conf")
+    let preset = root.appendingPathComponent("hud.plist")
+    try FileManager.default.createDirectory(at: valid.appendingPathComponent("drive_c"), withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: invalid, withIntermediateDirectories: true)
+    try "[EnvironmentVariables]\n\"CX_GRAPHICS_BACKEND\" = \"d3dmetal\"\n\"MTL_HUD_CONFIG_FILE\" = \"/old.plist\"\n".write(to: config, atomically: true, encoding: .utf8)
+    let properties: [String: Any] = ["MTL_HUD_ALIGNMENT": 18, "MTL_HUD_ENABLED": true]
+    try PropertyListSerialization.data(fromPropertyList: properties, format: .xml, options: 0).write(to: preset)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let service = CrossOverBottleService(bottlesDirectory: root)
+    let bottles = try await service.bottles()
+    #expect(bottles.count == 1)
+    #expect(bottles.first?.displayName == "Valid")
+    try await service.applyMetalHUDPreset(preset, to: bottles[0])
+
+    let updated = try String(contentsOf: config, encoding: .utf8)
+    #expect(updated.contains("\"CX_GRAPHICS_BACKEND\" = \"d3dmetal\""))
+    #expect(updated.contains("\"MTL_HUD_ALIGNMENT\" = \"bottomleft\""))
+    #expect(updated.contains("\"MTL_HUD_CONFIG_FILE\" = \"\(preset.path)\""))
+    #expect(!updated.contains("\"MTL_HUD_ENABLED\""))
+}
+
+@Test func metalHUDPresetStoreCopiesAnExportIntoItsManagedDirectory() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let source = root.appendingPathComponent("exported-hud.json")
+    let managed = root.appendingPathComponent("managed", isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    try Data("preset".utf8).write(to: source)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let store = MetalHUDPresetStore(directoryURL: managed)
+    let preset = try await store.importPreset(from: source, forApplicationPath: "/Applications/Test Game.app")
+    try FileManager.default.removeItem(at: source)
+
+    #expect(preset.path.hasPrefix(managed.path))
+    #expect(FileManager.default.contents(atPath: preset.path) == Data("preset".utf8))
+}
+
 actor HostnameRunner: CommandRunning {
     func run(_ executable: String, arguments: [String]) async throws -> CommandResult {
         switch arguments.last {
@@ -286,7 +455,8 @@ actor HostnameRunner: CommandRunning {
         .healthCheck,
         .addHoYoHosts,
         .removeHoYoHosts,
-        .renice([42, 84]),
+        .renice([42, 84], -20),
+        .renice([42, 84], 20),
         .clearSystemCaches,
         .setHostnames(HostnameBackup(computerName: "steamdeck", hostName: "steamdeck", localHostName: "steamdeck")),
         .createDirectory("/Users/test/Games")
@@ -382,17 +552,21 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
     let store = ConfigurationStore(configurationURL: root.appendingPathComponent("configuration.json"))
     var configuration = AppConfiguration()
     configuration.hoYoWaitSeconds = 99
+    configuration.doesNotRaiseHoYoPriority = true
     configuration.excludesSensitiveCacheFiles = false
     configuration.recentMetalHUDApps = [
-        RecentMetalHUDApp(path: "/Applications/A.app", displayName: "A"),
+        RecentMetalHUDApp(path: "/Applications/A.app", displayName: "A", preset: MetalHUDPreset(path: "/managed/a.json", displayName: "A HUD")),
         RecentMetalHUDApp(path: "/Applications/A.app", displayName: "Duplicate")
     ]
+    configuration.favoriteProcessNames = [" X6Game ", "", "X6Game", "x6game"]
     try await store.save(configuration)
     let loaded = try await store.load(importLegacy: false)
-    #expect(loaded.schemaVersion == 3)
+    #expect(loaded.schemaVersion == 7)
     #expect(loaded.hoYoWaitSeconds == 15)
+    #expect(loaded.doesNotRaiseHoYoPriority)
     #expect(!loaded.excludesSensitiveCacheFiles)
-    #expect(loaded.recentMetalHUDApps == [RecentMetalHUDApp(path: "/Applications/A.app", displayName: "A")])
+    #expect(loaded.recentMetalHUDApps == [RecentMetalHUDApp(path: "/Applications/A.app", displayName: "A", preset: MetalHUDPreset(path: "/managed/a.json", displayName: "A HUD"))])
+    #expect(loaded.favoriteProcessNames == ["X6Game", "x6game"])
 }
 
 @Test func processRunnerDrainsOutputLargerThanPipeBuffer() async throws {

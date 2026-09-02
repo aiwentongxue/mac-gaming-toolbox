@@ -2,17 +2,19 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 3.0.7 supports both Chinese and English interfaces and is compatible with Intel and Apple Silicon Macs.
+Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 3.1.0 adds multilingual support and remains compatible with Intel and Apple Silicon Macs.
 
 ## Features
 
-- Enable or disable MetalHUD globally, or use the Recent Apps launcher to enable MetalHUD only for the selected app's next launch.
+- Select the application language in Settings, and edit dashboard cards to hide features you do not need.
+- Enable or disable MetalHUD globally, or use the Recent Apps launcher to enable MetalHUD only for the selected app's next launch. Save parameter presets and apply them when you next launch a game.
+- Apply MetalHUD parameter presets to CrossOver bottles, or enable MetalHUD for games on a connected iOS device.
 - Assist with launching HoYo games after a configurable 10-, 15-, or 20-second delay, then restore the hosts entries managed by the app when the task finishes or is canceled.
-- Automatically detect CrossOver/Wine processes, or select a process manually and raise its priority.
+- Automatically detect CrossOver/Wine processes, with improved manual search and selection, favorite processes, and priority raising or lowering.
 - Mount an external disk at a specified path, save presets, and automatically or manually restore the previous mount.
 - Clear caches and logs in one click. By default, only user caches and user logs are removed; sensitive-file exclusions can be disabled for a complete, high-risk cleanup.
 - Switch to or restore a Steam Deck hostname mode for compatibility testing.
-- Import a custom interface wallpaper, export diagnostic information, and access Mac gaming and CrossOver tutorials.
+- Import a custom interface wallpaper, export diagnostic information, and access Mac gaming and CrossOver tutorials. GitHub update checks can run automatically.
 
 ## System Requirements
 

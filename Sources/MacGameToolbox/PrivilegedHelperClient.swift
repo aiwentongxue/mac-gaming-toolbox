@@ -28,11 +28,14 @@ public final class PrivilegedHelperClient: PrivilegedOperating, @unchecked Senda
         case .addHoYoHosts: return .addHoYoHosts
         case .removeHoYoHosts: return .removeHoYoHosts
         case .clearSystemCaches: return .clearSystemCaches
-        case .renice(let pids):
+        case .renice(let pids, let priority):
             if pids.isEmpty || pids.count > 64 || pids.contains(where: { $0 <= 1 }) {
                 throw ToolboxError.commandFailed("Invalid process list")
             }
-            return .renice(pids)
+            guard [-20, 20].contains(priority) else {
+                throw ToolboxError.commandFailed("Invalid process priority")
+            }
+            return .renice(pids, priority)
         case .setHostnames(let names):
             guard InputValidation.computerName(names.computerName),
                   InputValidation.hostname(names.hostName),

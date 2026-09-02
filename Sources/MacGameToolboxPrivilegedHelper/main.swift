@@ -47,15 +47,17 @@ final class HelperService: NSObject, PrivilegedHelperXPCProtocol {
         case .healthCheck: break
         case .addHoYoHosts: try rewriteHosts(addBlock: true)
         case .removeHoYoHosts: try rewriteHosts(addBlock: false)
-        case .renice(let pids):
-            guard !pids.isEmpty, pids.count <= 64 else { throw HelperError.invalidArguments }
+        case .renice(let pids, let priority):
+            // These are the only priority levels exposed by the app: its existing
+            // elevated level and macOS's lowest process priority.
+            guard !pids.isEmpty, pids.count <= 64, [-20, 20].contains(priority) else { throw HelperError.invalidArguments }
             var updatedCount = 0
             for pid in pids {
                 guard pid > 1 else { throw HelperError.invalidArguments }
                 // Process scans are inherently racy; a short-lived Wine child may
                 // disappear before the helper handles the complete PID batch.
                 guard kill(pid, 0) == 0 else { continue }
-                if setpriority(PRIO_PROCESS, UInt32(pid), -10) == 0 {
+                if setpriority(PRIO_PROCESS, UInt32(pid), priority) == 0 {
                     updatedCount += 1
                 } else if errno != ESRCH {
                     throw HelperError.commandFailed("setpriority failed for \(pid): errno \(errno)")
@@ -120,18 +122,6 @@ final class ListenerDelegate: NSObject, NSXPCListenerDelegate {
               let requirement else { return false }
         return SecCodeCheckValidity(code, SecCSFlags(rawValue: kSecCSStrictValidate), requirement) == errSecSuccess
     }
-}
-
-func containingAppURL() -> URL? {
-    var selfCode: SecCode?
-    var staticCode: SecStaticCode?
-    var executableURL: CFURL?
-    guard SecCodeCopySelf([], &selfCode) == errSecSuccess, let selfCode,
-          SecCodeCopyStaticCode(selfCode, [], &staticCode) == errSecSuccess, let staticCode,
-          SecCodeCopyPath(staticCode, [], &executableURL) == errSecSuccess,
-          var url = executableURL as URL? else { return nil }
-    for _ in 0..<4 { url.deleteLastPathComponent() }
-    return url.standardizedFileURL
 }
 
 func installPersistentHelper(for appPath: String) throws {
