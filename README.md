@@ -39,7 +39,7 @@ cd mac-gaming-toolbox
 build/DerivedData/Build/Products/Release/Mac 游戏工具箱.app
 ```
 
-你可以直接运行该应用，或将其复制到“应用程序”目录。首次使用需要系统权限的功能时，macOS 会注册随应用提供的特权辅助服务。如果系统要求批准，请前往“系统设置 > 通用 > 登录项与扩展”允许相应后台项目。
+请将应用复制到“应用程序”目录；Mac 游戏工具箱必须从 `/Applications/Mac 游戏工具箱.app` 运行。首次使用需要系统权限的功能时，macOS 会注册随应用提供的特权辅助服务。如果系统要求批准，请前往“系统设置 > 通用 > 登录项与扩展”允许相应后台项目。
 
 也可以使用 Swift Package Manager 进行调试构建：
 
@@ -55,7 +55,6 @@ swift build
    sudo xattr -dr com.apple.quarantine "/Applications/Mac 游戏工具箱.app"
    ```
 
-   如果应用未放在“应用程序”目录，请将命令中的路径替换为该 `.app` 的实际完整路径。
 2. 启动“Mac 游戏工具箱”。
 3. 在主界面选择需要的功能，并阅读对应说明。
 4. 涉及系统修改时，按 macOS 提示完成管理员授权。

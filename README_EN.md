@@ -39,7 +39,7 @@ After the build finishes, the app is located at:
 build/DerivedData/Build/Products/Release/Mac 游戏工具箱.app
 ```
 
-You can run the app directly or copy it to the Applications folder. The first time you use a feature that requires system privileges, macOS registers the privileged helper bundled with the app. If macOS asks for approval, go to System Settings > General > Login Items & Extensions and allow the corresponding background item.
+Copy the app to the Applications folder; Mac Gaming Toolbox must run from `/Applications/Mac 游戏工具箱.app`. The first time you use a feature that requires system privileges, macOS registers the privileged helper bundled with the app. If macOS asks for approval, go to System Settings > General > Login Items & Extensions and allow the corresponding background item.
 
 You can also create a debug build with Swift Package Manager:
 
@@ -55,7 +55,6 @@ swift build
    sudo xattr -dr com.apple.quarantine "/Applications/Mac 游戏工具箱.app"
    ```
 
-   If the app is not in the Applications folder, replace the path in the command with the full path to the `.app`.
 2. Launch Mac Gaming Toolbox.
 3. Select the feature you need from the main interface and read its instructions.
 4. When a feature changes system settings, follow the macOS prompts to grant administrator authorization.
