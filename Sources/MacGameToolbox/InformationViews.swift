@@ -6,6 +6,9 @@ struct ChangelogView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("3.1.1") {
+                    Text(tr("修复日语等多国语言的适配问题", "Fixed multilingual localization issues, including Japanese"))
+                }
                 Section("3.1.0") {
                     Text(tr("适配多国语言，新增语言设置选项，用户可以自行选择应用程序语言", "Added multilingual support and a language setting so users can choose the app language"))
                     Text(tr("新增选项框编辑功能，用户可以隐藏不需要的功能", "Added dashboard-card editing so users can hide features they do not need"))
