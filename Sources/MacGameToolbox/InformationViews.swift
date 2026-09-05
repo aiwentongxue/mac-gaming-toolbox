@@ -6,6 +6,11 @@ struct ChangelogView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("3.1.2") {
+                    Text(tr("修复缓存扫描无法识别 CloudKit 等受权限保护目录的问题", "Fixed cache scanning for permission-protected directories such as CloudKit"))
+                    Text(tr("缓存清理现在会显示权限错误、失败项目和实际清理数量", "Cache cleanup now reports permission errors, failed items, and the actual removal count"))
+                    Text(tr("新增完全磁盘访问权限引导，授权后可重新扫描并继续清理", "Added Full Disk Access guidance so users can rescan and continue cleanup after authorization"))
+                }
                 Section("3.1.1") {
                     Text(tr("修复日语等多国语言的适配问题", "Fixed multilingual localization issues, including Japanese"))
                 }

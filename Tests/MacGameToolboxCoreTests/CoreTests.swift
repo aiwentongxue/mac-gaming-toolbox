@@ -492,7 +492,7 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
     let privileged = RejectingPrivilegedOperator()
     let service = CacheService(privileged: privileged)
     do {
-        try await service.clear(CacheScan(userTargets: [root], systemTargets: [URL(fileURLWithPath: "/Library/Caches")], estimatedBytes: 9))
+        _ = try await service.clear(CacheScan(userTargets: [root], systemTargets: [URL(fileURLWithPath: "/Library/Caches")], estimatedBytes: 9))
         Issue.record("Expected authorization failure")
     } catch {
         #expect(error as? ToolboxError == .authorizationCancelled)
@@ -519,7 +519,7 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
     let scan = await service.scan(excludingSensitiveFiles: true, homeURL: root)
     #expect(scan.userTargets.map(\.standardizedFileURL.path) == [caches, logs].map(\.standardizedFileURL.path))
     #expect(scan.systemTargets.isEmpty)
-    try await service.clear(scan)
+    _ = try await service.clear(scan)
 
     #expect(!FileManager.default.fileExists(atPath: caches.appendingPathComponent("user.cache").path))
     #expect(!FileManager.default.fileExists(atPath: logs.appendingPathComponent("user.log").path))
@@ -541,10 +541,36 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
         }
         try FileManager.default.removeItem(at: url)
     }
-    try await service.clear(CacheScan(userTargets: [root], systemTargets: [], estimatedBytes: 6))
+    _ = try await service.clear(CacheScan(userTargets: [root], systemTargets: [], estimatedBytes: 6))
 
     #expect(FileManager.default.fileExists(atPath: blocked.path))
     #expect(!FileManager.default.fileExists(atPath: removable.path))
+}
+
+@Test func cacheCleanupIncludesHiddenEntriesAndReportsFailures() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let caches = root.appendingPathComponent("Library/Caches", isDirectory: true)
+    let hidden = caches.appendingPathComponent(".hidden.cache")
+    let visible = caches.appendingPathComponent("visible.cache")
+    try FileManager.default.createDirectory(at: caches, withIntermediateDirectories: true)
+    try Data(repeating: 1, count: 11).write(to: hidden)
+    try Data(repeating: 2, count: 7).write(to: visible)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let service = CacheService(privileged: RecordingPrivilegedOperator()) { url in
+        if url.lastPathComponent == hidden.lastPathComponent {
+            throw CocoaError(.fileWriteNoPermission)
+        }
+        try FileManager.default.removeItem(at: url)
+    }
+    let scan = await service.scan(homeURL: root)
+    #expect(scan.estimatedBytes >= 18)
+
+    let result = try await service.clear(scan)
+    #expect(result.removedCount == 1)
+    #expect(result.failedItems.map(\.path.lastPathComponent) == [hidden.lastPathComponent])
+    #expect(FileManager.default.fileExists(atPath: hidden.path))
+    #expect(!FileManager.default.fileExists(atPath: visible.path))
 }
 
 @Test func configurationNormalizesNewVersionThreePreferences() async throws {

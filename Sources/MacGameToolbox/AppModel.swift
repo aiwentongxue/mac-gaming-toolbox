@@ -619,17 +619,31 @@ final class AppModel: ObservableObject {
     }
 
     func confirmCacheCleaning() {
+        guard let scan = cacheScan, scan.inaccessibleTargets.isEmpty else { return }
         if cacheConfirmationStage == 1, !configuration.excludesSensitiveCacheFiles {
             cacheConfirmationStage = 2
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { self.showingCacheConfirmation = true }
             return
         }
-        guard let scan = cacheScan else { return }
         runTask(tr("正在清理缓存", "Cleaning caches")) {
             if !scan.systemTargets.isEmpty { self.status.phase = .awaitingAuthorization }
-            try await self.cacheService.clear(scan)
-            return tr("缓存清理完成", "Cache cleaning completed")
+            let result = try await self.cacheService.clear(scan)
+            for failure in result.failedItems {
+                DiagnosticFileLogger.write("Cache cleanup failed: \(failure.path.path) - \(failure.reason)")
+            }
+            if result.failedItems.isEmpty {
+                return tr("缓存清理完成，已清理 \(result.removedCount) 项", "Cache cleaning completed; removed \(result.removedCount) item(s)")
+            }
+            return tr(
+                "缓存清理完成，已清理 \(result.removedCount) 项，\(result.failedItems.count) 项无法清理",
+                "Cache cleaning completed; removed \(result.removedCount) item(s), \(result.failedItems.count) item(s) could not be removed"
+            )
         }
+    }
+
+    func openFullDiskAccessSettings() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!
+        NSWorkspace.shared.open(url)
     }
 
     func setExcludesSensitiveCacheFiles(_ enabled: Bool) {

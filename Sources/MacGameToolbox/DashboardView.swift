@@ -43,7 +43,12 @@ struct DashboardView: View {
         .sheet(isPresented: $model.showingIOSMetalHUDLauncher) { IOSMetalHUDLauncherView().environmentObject(model) }
         .alert(cacheAlertTitle, isPresented: $model.showingCacheConfirmation) {
             Button(tr("取消", "Cancel"), role: .cancel) {}
-            Button(model.cacheConfirmationStage == 1 ? tr("继续", "Continue") : tr("确认删除", "Delete"), role: model.configuration.excludesSensitiveCacheFiles ? nil : .destructive) { model.confirmCacheCleaning() }
+            if let scan = model.cacheScan, !scan.inaccessibleTargets.isEmpty {
+                Button(tr("打开系统设置", "Open System Settings")) { model.openFullDiskAccessSettings() }
+                Button(tr("重新扫描", "Scan Again")) { model.prepareCacheScan() }
+            } else {
+                Button(model.cacheConfirmationStage == 1 ? tr("继续", "Continue") : tr("确认删除", "Delete"), role: model.configuration.excludesSensitiveCacheFiles ? nil : .destructive) { model.confirmCacheCleaning() }
+            }
         } message: { Text(cacheAlertMessage) }
         .environment(\.colorScheme, effectiveColorScheme)
         .environment(\.dashboardColorScheme, effectiveColorScheme)
@@ -278,12 +283,25 @@ struct DashboardView: View {
     }
 
     private var cacheAlertTitle: String {
+        if let scan = model.cacheScan, !scan.inaccessibleTargets.isEmpty {
+            return tr("需要完全磁盘访问权限", "Full Disk Access Required")
+        }
         if model.configuration.excludesSensitiveCacheFiles { return tr("准备清理", "Ready to Clean") }
         return model.cacheConfirmationStage == 1 ? tr("高风险操作", "High Risk") : tr("最终确认", "Final Confirmation")
     }
     private var cacheAlertMessage: String {
         guard let scan = model.cacheScan else { return "" }
         let size = ByteCountFormatter.string(fromByteCount: Int64(scan.estimatedBytes), countStyle: .file)
+        if !scan.inaccessibleTargets.isEmpty {
+            let paths = scan.inaccessibleTargets.prefix(3)
+                .map { "\($0.path.path)：\($0.reason)" }
+                .joined(separator: "\n")
+            let suffix = scan.inaccessibleTargets.count > 3 ? tr("\n……以及其他项目", "\n…and other items") : ""
+            return tr(
+                "发现 \(scan.inaccessibleTargets.count) 个无法读取的缓存目录，已统计大小 \(size)。请在系统设置中授予完全磁盘访问权限后重新扫描：\n\(paths)\(suffix)",
+                "Found \(scan.inaccessibleTargets.count) unreadable cache item(s); readable size is \(size). Grant Full Disk Access in System Settings, then scan again:\n\(paths)\(suffix)"
+            )
+        }
         if model.configuration.excludesSensitiveCacheFiles {
             return tr("预计清理 \(size)，点击继续进行清理", "About \(size) will be cleaned. Click Continue to proceed.")
         }
