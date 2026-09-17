@@ -6,6 +6,14 @@ struct ChangelogView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("3.2.0") {
+                    Text(tr("新增内置 ClickFlow，集成连点器、鼠标宏、组合宏和设置", "Added built-in ClickFlow with an auto clicker, mouse macros, combined macros, and settings"))
+                    Text(tr("ClickFlow 获得授权后可在工具箱页面继续响应全局快捷键，并保持播放、暂停和紧急停止能力", "After authorization, ClickFlow global shortcuts remain available on the Toolbox page, including playback, pause, and emergency stop"))
+                    Text(tr("新增位于窗口标题栏中央的“工具箱 / ClickFlow”分段导航，并记住上次选择", "Added a centered Toolbox / ClickFlow segmented control in the window title bar that remembers the last selection"))
+                    Text(tr("集成版 ClickFlow 使用独立偏好和宏目录，不显示额外菜单栏图标，也不会读取或修改独立版数据", "The integrated ClickFlow uses separate preferences and macro storage, adds no menu bar icon, and does not read or modify standalone data"))
+                    Text(tr("ClickFlow 页面接入九种语言，并提供集成版权限和首次使用说明", "Localized ClickFlow in nine languages with integrated permission guidance and a first-use notice"))
+                    Text(tr("修复从 ClickFlow 返回工具箱时，标题栏按钮可见但鼠标点击无响应的问题", "Fixed the visible Toolbox title-bar button not responding to mouse clicks after opening ClickFlow"))
+                }
                 Section("3.1.2") {
                     Text(tr("修复缓存扫描无法识别 CloudKit 等受权限保护目录的问题", "Fixed cache scanning for permission-protected directories such as CloudKit"))
                     Text(tr("缓存清理现在会显示权限错误、失败项目和实际清理数量", "Cache cleanup now reports permission errors, failed items, and the actual removal count"))

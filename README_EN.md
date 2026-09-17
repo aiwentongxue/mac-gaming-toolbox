@@ -2,11 +2,12 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 3.1.2 improves cache scanning and cleanup diagnostics while remaining compatible with Intel and Apple Silicon Macs.
+Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 3.2.0 adds built-in ClickFlow integration while remaining compatible with Intel and Apple Silicon Macs.
 
 ## Features
 
 - Select the application language in Settings, and edit dashboard cards to hide features you do not need.
+- Use the built-in ClickFlow auto clicker, mouse macros, and combined macros. After accepting the first-use notice, global shortcuts remain available on the Toolbox page, while preferences and macro files stay completely isolated from the standalone ClickFlow app.
 - Enable or disable MetalHUD globally, or use the Recent Apps launcher to enable MetalHUD only for the selected app's next launch. Save parameter presets and apply them when you next launch a game.
 - Apply MetalHUD parameter presets to CrossOver bottles, or enable MetalHUD for games on a connected iOS device.
 - Assist with launching HoYo games after a configurable 10-, 15-, or 20-second delay, then restore the hosts entries managed by the app when the task finishes or is canceled.
@@ -22,6 +23,7 @@ Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming u
 - An Intel or Apple Silicon Mac.
 - Building from source requires Swift 6, Xcode 16 or a compatible version, and Xcode Command Line Tools.
 - Administrator authorization is required for disk mounting, cache cleanup, process priority, hosts, and hostname operations.
+- ClickFlow global input features require Accessibility and Input Monitoring permissions to be granted separately to Mac Gaming Toolbox.
 
 ## Installation
 
@@ -82,3 +84,5 @@ swift test --disable-sandbox
 Copyright (C) 2026 我是艾文喵
 
 This project is licensed under the [GNU General Public License v3.0](LICENSE). You may use, modify, and distribute it under the terms of GPL-3.0. Modified distributions must retain the same open-source license and make the corresponding source code available.
+
+The integrated ClickFlow feature is derived from the GPL-3.0 ClickFlow project maintained by the same author, with its copyright and license requirements preserved.

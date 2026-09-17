@@ -1,19 +1,26 @@
 import AppKit
 import SwiftUI
+#if SWIFT_PACKAGE
+import MacGameToolboxClickFlow
+#endif
 
 @main
 struct MacGameToolboxApp: App {
     @NSApplicationDelegateAdaptor(MacGameToolboxApplicationDelegate.self) private var applicationDelegate
     @StateObject private var model = AppModel()
     @StateObject private var localization = LocalizationController()
+    @StateObject private var clickFlowController = ClickFlowFeatureController()
 
     var body: some Scene {
         Window(tr("Mac游戏工具箱", "Mac Game Toolbox"), id: "main") {
-            DashboardView()
+            MainContentView(clickFlowController: clickFlowController)
                 .environmentObject(model)
                 .environmentObject(localization)
                 .id(localization.refreshToken)
                 .frame(minWidth: 900, minHeight: 650)
+                .onAppear {
+                    applicationDelegate.shutdownHandler = { clickFlowController.shutdown() }
+                }
         }
         .defaultSize(width: 1040, height: 760)
         .commandsReplaced {
@@ -45,6 +52,8 @@ struct MacGameToolboxApp: App {
 }
 
 final class MacGameToolboxApplicationDelegate: NSObject, NSApplicationDelegate {
+    var shutdownHandler: (() -> Void)?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard UpdateCheckPreference.isEnabled else { return }
 
@@ -62,6 +71,10 @@ final class MacGameToolboxApplicationDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        shutdownHandler?()
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -119,7 +132,7 @@ enum GitHubReleaseChecker {
     private static let latestReleaseAPIURL = URL(string: "https://api.github.com/repos/aiwentongxue/mac-gaming-toolbox/releases/latest")!
 
     static var currentVersion: String {
-        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "3.1.2"
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "3.2.0"
     }
 
     static func latestStableRelease() async -> GitHubRelease? {

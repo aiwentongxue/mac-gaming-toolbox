@@ -31,6 +31,7 @@
 		A1000000000000000000001C /* WallpaperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* WallpaperService.swift */; };
 		A1000000000000000000001D /* MetalHUDPresetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000A /* MetalHUDPresetStore.swift */; };
 		A1000000000000000000001E /* CrossOverBottleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000B /* CrossOverBottleService.swift */; };
+		A1000000000000000000001F /* MainContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000B /* MainContentView.swift */; };
 		B10000000000000000000001 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000001 /* Models.swift */; };
 		B10000000000000000000002 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000002 /* CommandRunner.swift */; };
 		B10000000000000000000003 /* ConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000003 /* ConfigurationStore.swift */; };
@@ -51,6 +52,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = T20000000000000000000001;
 			remoteInfo = MacGameToolboxPrivilegedHelper;
+		};
+		C10000000000000000000002 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = P10000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = T10000000000000000000001;
+			remoteInfo = "Mac游戏工具箱";
 		};
 /* End PBXContainerItemProxy section */
 
@@ -90,13 +98,28 @@
 		F20000000000000000000008 /* DiagnosticFileLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticFileLogger.swift; sourceTree = "<group>"; };
 		F20000000000000000000009 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		F2000000000000000000000A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F2000000000000000000000B /* MainContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainContentView.swift; sourceTree = "<group>"; };
 		F30000000000000000000001 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		F30000000000000000000003 /* App-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "App-Info.plist"; sourceTree = "<group>"; };
 		F40000000000000000000001 /* Mac 游戏工具箱.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Mac 游戏工具箱.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F40000000000000000000002 /* MacGameToolboxPrivilegedHelper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MacGameToolboxPrivilegedHelper; sourceTree = BUILT_PRODUCTS_DIR; };
+		F40000000000000000000003 /* MacGameToolboxClickFlowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacGameToolboxClickFlowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F50000000000000000000001 /* ServiceManagement.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ServiceManagement.framework; path = System/Library/Frameworks/ServiceManagement.framework; sourceTree = SDKROOT; };
 		F50000000000000000000002 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		CF0000000000000000000001 /* MacGameToolboxClickFlow */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Sources/MacGameToolboxClickFlow;
+			sourceTree = "<group>";
+		};
+		CF0000000000000000000002 /* MacGameToolboxClickFlowTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tests/MacGameToolboxClickFlowTests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		D10000000000000000000001 /* Frameworks */ = {
@@ -113,6 +136,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				B1000000000000000000000A /* Security.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D10000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -133,6 +163,8 @@
 			children = (
 				G10000000000000000000002 /* MacGameToolboxCore */,
 				G10000000000000000000003 /* MacGameToolbox */,
+				CF0000000000000000000001 /* MacGameToolboxClickFlow */,
+				CF0000000000000000000002 /* MacGameToolboxClickFlowTests */,
 				G10000000000000000000004 /* MacGameToolboxPrivilegedHelper */,
 				G10000000000000000000005 /* Config */,
 				G10000000000000000000006 /* Products */,
@@ -172,6 +204,7 @@
 				F20000000000000000000008 /* DiagnosticFileLogger.swift */,
 				F20000000000000000000009 /* Localization.swift */,
 				F2000000000000000000000A /* Assets.xcassets */,
+				F2000000000000000000000B /* MainContentView.swift */,
 			);
 			name = MacGameToolbox;
 			path = Sources/MacGameToolbox;
@@ -199,6 +232,7 @@
 			children = (
 				F40000000000000000000001 /* Mac 游戏工具箱.app */,
 				F40000000000000000000002 /* MacGameToolboxPrivilegedHelper */,
+				F40000000000000000000003 /* MacGameToolboxClickFlowTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -219,6 +253,9 @@
 			);
 			dependencies = (
 				T30000000000000000000001 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				CF0000000000000000000001 /* MacGameToolboxClickFlow */,
 			);
 			name = "Mac游戏工具箱";
 			productName = "Mac 游戏工具箱";
@@ -241,6 +278,27 @@
 			productReference = F40000000000000000000002 /* MacGameToolboxPrivilegedHelper */;
 			productType = "com.apple.product-type.tool";
 		};
+		T40000000000000000000001 /* MacGameToolboxClickFlowTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = L40000000000000000000001 /* Build configuration list for PBXNativeTarget "MacGameToolboxClickFlowTests" */;
+			buildPhases = (
+				S10000000000000000000003 /* Sources */,
+				D10000000000000000000003 /* Frameworks */,
+				R10000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				T30000000000000000000002 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				CF0000000000000000000002 /* MacGameToolboxClickFlowTests */,
+			);
+			name = MacGameToolboxClickFlowTests;
+			productName = MacGameToolboxClickFlowTests;
+			productReference = F40000000000000000000003 /* MacGameToolboxClickFlowTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -257,6 +315,10 @@
 					T20000000000000000000001 = {
 						CreatedOnToolsVersion = 26.5;
 					};
+					T40000000000000000000001 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = T10000000000000000000001;
+					};
 				};
 			};
 			buildConfigurationList = L10000000000000000000001 /* Build configuration list for PBXProject "Mac游戏工具箱" */;
@@ -265,16 +327,25 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				zh_CN,
+				zh-Hans,
+				zh-Hant,
 				en,
+				ja,
+				ko,
+				de,
+				fr,
+				es,
+				pt,
 				Base,
 			);
 			mainGroup = G10000000000000000000001;
 			productRefGroup = G10000000000000000000006 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			targets = (
-				T10000000000000000000001 /* Mac游戏工具箱 */,
-				T20000000000000000000001 /* MacGameToolboxPrivilegedHelper */,
+				targets = (
+					T10000000000000000000001 /* Mac游戏工具箱 */,
+					T20000000000000000000001 /* MacGameToolboxPrivilegedHelper */,
+					T40000000000000000000001 /* MacGameToolboxClickFlowTests */,
 			);
 		};
 /* End PBXProject section */
@@ -285,6 +356,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000017 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		R10000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -315,6 +393,7 @@
 				A10000000000000000000012 /* DiagnosticsService.swift in Sources */,
 				A10000000000000000000014 /* DiagnosticFileLogger.swift in Sources */,
 				A10000000000000000000016 /* Localization.swift in Sources */,
+				A1000000000000000000001F /* MainContentView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -335,6 +414,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		S10000000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -342,6 +428,11 @@
 			isa = PBXTargetDependency;
 			target = T20000000000000000000001 /* MacGameToolboxPrivilegedHelper */;
 			targetProxy = C10000000000000000000001 /* PBXContainerItemProxy */;
+		};
+		T30000000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = T10000000000000000000001 /* Mac游戏工具箱 */;
+			targetProxy = C10000000000000000000002 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -374,13 +465,14 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3.1.2;
+				CURRENT_PROJECT_VERSION = 3.2.0;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
+				ENABLE_TESTABILITY = YES;
 				ENABLE_DEBUG_DYLIB = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/App-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 3.1.2;
+				MARKETING_VERSION = 3.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox;
 				PRODUCT_NAME = "Mac 游戏工具箱";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -397,12 +489,12 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3.1.2;
+				CURRENT_PROJECT_VERSION = 3.2.0;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/App-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 3.1.2;
+				MARKETING_VERSION = 3.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox;
 				PRODUCT_NAME = "Mac 游戏工具箱";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -449,6 +541,37 @@
 			};
 			name = Release;
 		};
+		X40000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = HP5WBFL9G3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox.ClickFlowTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Mac 游戏工具箱.app/Contents/MacOS/Mac 游戏工具箱";
+			};
+			name = Debug;
+		};
+		X40000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = HP5WBFL9G3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox.ClickFlowTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Mac 游戏工具箱.app/Contents/MacOS/Mac 游戏工具箱";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -475,6 +598,15 @@
 			buildConfigurations = (
 				X30000000000000000000001 /* Debug */,
 				X30000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		L40000000000000000000001 /* Build configuration list for PBXNativeTarget "MacGameToolboxClickFlowTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				X40000000000000000000001 /* Debug */,
+				X40000000000000000000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

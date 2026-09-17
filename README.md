@@ -2,11 +2,12 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 3.1.2，适配多国语言，并兼容 Intel Mac 和 Apple Silicon Mac。
+Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 3.2.0，新增内置 ClickFlow，并兼容 Intel Mac 和 Apple Silicon Mac。
 
 ## 功能
 
 - 可在设置中选择应用语言；也可以编辑首页选项框，隐藏暂不需要的功能。
+- 内置 ClickFlow 连点器、鼠标宏和组合宏；接受首次使用声明后，即使停留在“工具箱”页面也能通过全局快捷键使用，并与独立版 ClickFlow 的偏好和宏文件完全隔离。
 - 全局开启或关闭 MetalHUD，或通过最近 App 启动台仅为选定 App 的本次启动启用 MetalHUD；可保存参数预设，并在下次开启游戏时应用。
 - 可为 CrossOver 容器写入 MetalHUD 参数预设，也可为已连接的 iOS 设备上的游戏开启 MetalHUD。
 - 按 10、15 或 20 秒的可选等待时间辅助启动 HoYoGames，并在任务结束或取消时恢复应用管理的 hosts 配置。
@@ -22,6 +23,7 @@ Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常�
 - Intel 或 Apple Silicon Mac。
 - 从源码构建需要 Swift 6、Xcode 16 或兼容版本，以及 Xcode Command Line Tools。
 - 使用磁盘挂载、缓存清理、进程优先级、hosts 或主机名相关功能时，需要管理员授权。
+- ClickFlow 的全局输入功能需要单独为 Mac 游戏工具箱授予“辅助功能”和“输入监控”权限。
 
 ## 安装
 
@@ -82,3 +84,5 @@ swift test --disable-sandbox
 Copyright (C) 2026 我是艾文喵
 
 本项目基于 [GNU General Public License v3.0](LICENSE) 开源。你可以在遵守 GPL-3.0 条款的前提下使用、修改和分发本项目；分发修改版本时必须保留相同的开源许可并提供相应源代码。
+
+内置 ClickFlow 功能来源于同一作者维护的 GPL-3.0 项目 ClickFlow，并保留其版权与许可要求。
