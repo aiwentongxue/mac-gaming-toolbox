@@ -2,12 +2,12 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 3.2.0 adds built-in ClickFlow integration while remaining compatible with Intel and Apple Silicon Macs.
+Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 3.2.1 updates the built-in ClickFlow integration to 1.0.1 while remaining compatible with Intel and Apple Silicon Macs.
 
 ## Features
 
 - Select the application language in Settings, and edit dashboard cards to hide features you do not need.
-- Use the built-in ClickFlow auto clicker, mouse macros, and combined macros. After accepting the first-use notice, global shortcuts remain available on the Toolbox page, while preferences and macro files stay completely isolated from the standalone ClickFlow app.
+- Use the built-in ClickFlow 1.0.1 auto clicker, mouse macros, and combined macros. Experimental XInput proxies can replay controller macros in CrossOver games with per-game installation, diagnostics, backup, and safe restore. After accepting the first-use notice, global shortcuts remain available on the Toolbox page, while preferences, macro files, and adapter records stay completely isolated from the standalone ClickFlow app.
 - Enable or disable MetalHUD globally, or use the Recent Apps launcher to enable MetalHUD only for the selected app's next launch. Save parameter presets and apply them when you next launch a game.
 - Apply MetalHUD parameter presets to CrossOver bottles, or enable MetalHUD for games on a connected iOS device.
 - Assist with launching HoYo games after a configurable 10-, 15-, or 20-second delay, then restore the hosts entries managed by the app when the task finishes or is canceled.
@@ -76,6 +76,7 @@ swift test --disable-sandbox
 - Cache and log cleanup is irreversible and may remove login state, game caches, and diagnostic logs. Quit games and other apps and back up important data before continuing.
 - Custom disk mounting, hosts changes, hostname switching, and process-priority adjustments modify system state. Verify the target disk and path, and avoid using these features during system updates, disk activity, or other important tasks.
 - Steam Deck mode is intended only for compatibility testing and is not guaranteed to bypass or work with any game's anti-cheat system. Follow the game's terms of service.
+- ClickFlow's CrossOver XInput proxy is not a system-wide virtual controller and applies only to selected CrossOver/Wine XInput games. Anti-cheat, DirectInput, raw HID, GameInput, or direct SDL games may reject or bypass the proxy; back up the game and confirm its rules before installation.
 - This project is not an official product of Apple, CodeWeavers, HoYoverse, or Valve. All related names and trademarks belong to their respective owners.
 - Author's public profiles: [Bilibili](https://b23.tv/dV7YBJQ) · [YouTube](https://youtube.com/channel/UC0TgypOLHt2fXboVw34SKVQ)
 
@@ -85,4 +86,4 @@ Copyright (C) 2026 我是艾文喵
 
 This project is licensed under the [GNU General Public License v3.0](LICENSE). You may use, modify, and distribute it under the terms of GPL-3.0. Modified distributions must retain the same open-source license and make the corresponding source code available.
 
-The integrated ClickFlow feature is derived from the GPL-3.0 ClickFlow project maintained by the same author, with its copyright and license requirements preserved.
+The integrated ClickFlow 1.0.1 feature is derived from the GPL-3.0 ClickFlow project maintained by the same author, with its copyright and license requirements preserved.

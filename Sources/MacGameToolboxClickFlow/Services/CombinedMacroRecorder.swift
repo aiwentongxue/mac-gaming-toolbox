@@ -61,7 +61,6 @@ actor CombinedMacroRecorder {
         controllerTask?.cancel()
         progressTask = nil
         controllerTask = nil
-        GCController.shouldMonitorBackgroundEvents = false
         flushPendingMove()
         progressHandler = nil
         startTimestampNanoseconds = nil

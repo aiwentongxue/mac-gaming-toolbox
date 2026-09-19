@@ -6,6 +6,12 @@ struct ChangelogView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("3.2.1") {
+                    Text(tr("内置 ClickFlow 更新至 1.0.1，改进组合宏手柄回放和设置", "Updated the built-in ClickFlow to 1.0.1 with improved combined-macro controller playback and settings"))
+                    Text(tr("新增 CrossOver Windows 游戏手柄集成，可将物理手柄与宏输入通过 XInput 代理传递给所选游戏", "Added CrossOver Windows game controller integration that passes physical-controller and macro input to the selected game through XInput proxies"))
+                    Text(tr("新增按游戏设置、诊断、安装、备份和安全恢复，并同时提供 x86 与 x64 代理资源", "Added per-game setup, diagnostics, installation, backup, and safe restore with both x86 and x64 proxy resources"))
+                    Text(tr("纯手柄组合宏无需辅助功能权限即可播放，退出应用时会停止手柄直通并释放状态", "Controller-only combined macros can play without Accessibility permission, and quitting the app stops controller passthrough and releases its state"))
+                }
                 Section("3.2.0") {
                     Text(tr("新增内置 ClickFlow，集成连点器、鼠标宏、组合宏和设置", "Added built-in ClickFlow with an auto clicker, mouse macros, combined macros, and settings"))
                     Text(tr("ClickFlow 获得授权后可在工具箱页面继续响应全局快捷键，并保持播放、暂停和紧急停止能力", "After authorization, ClickFlow global shortcuts remain available on the Toolbox page, including playback, pause, and emergency stop"))

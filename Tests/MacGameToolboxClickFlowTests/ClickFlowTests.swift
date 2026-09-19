@@ -96,6 +96,37 @@ final class ClickFlowTests: XCTestCase {
         XCTAssertEqual(SettingsStore(defaults: defaults).loadClickerConfiguration(), ClickerConfiguration())
     }
 
+    @MainActor
+    func testControllerPlaybackNoticeIsShownOnlyOnce() throws {
+        let suiteName = "ClickFlowTests.ControllerPlaybackNotice.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            return XCTFail("Could not create isolated defaults")
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        XCTAssertTrue(store.shouldShowControllerPlaybackNotice)
+        store.markControllerPlaybackNoticeShown()
+        XCTAssertFalse(store.shouldShowControllerPlaybackNotice)
+        XCTAssertFalse(SettingsStore(defaults: defaults).shouldShowControllerPlaybackNotice)
+    }
+
+    @MainActor
+    func testWindowsGamesSidebarSelectionMigratesIntoCombinedMacros() throws {
+        let suiteName = "ClickFlowTests.WindowsGamesNavigation.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            return XCTFail("Could not create isolated defaults")
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        defaults.set("windowsGames", forKey: "selectedPage")
+        XCTAssertEqual(SettingsStore(defaults: defaults).loadSelectedPage(), .combinedMacros)
+        XCTAssertEqual(
+            SidebarPage.allCases,
+            [.clicker, .macros, .combinedMacros, .settings]
+        )
+    }
+
     func testMacroStorageSavesReloadsAndDeletesEditedSteps() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -448,6 +479,23 @@ final class ClickFlowTests: XCTestCase {
         XCTAssertTrue(decoded.containsControllerEvents)
     }
 
+    func testControllerOnlyCombinedMacroDoesNotRequireAccessibilityPostingPermission() {
+        let controllerOnly = CombinedMacro(name: "Controller", events: [
+            .init(
+                timestampMilliseconds: 0,
+                kind: .controller,
+                controllerName: "DualSense #1",
+                controlName: "buttonA",
+                controlValue: 1
+            ),
+        ])
+        XCTAssertFalse(controllerOnly.requiresEventPostingPermission)
+
+        var mixed = controllerOnly
+        mixed.events.append(.init(timestampMilliseconds: 1, kind: .keyDown, keyCode: 0))
+        XCTAssertTrue(mixed.requiresEventPostingPermission)
+    }
+
     func testContinuationAppendsAfterExistingTimeline() {
         let existing = [MacroEvent(timestampMilliseconds: 100, kind: .mouseMove)]
         let newEvents = [
@@ -601,6 +649,7 @@ extension ClickFlowTests {
 
     @MainActor
     func testIntegratedFeatureRequiresConsentAndUsesIsolatedDefaults() async throws {
+        XCTAssertEqual(ClickFlowFeatureController.integratedVersion, "1.0.1")
         let integratedSuite = "MacGameToolboxClickFlowTests.integrated.\(UUID().uuidString)"
         let standaloneSuite = "MacGameToolboxClickFlowTests.standalone.\(UUID().uuidString)"
         guard let integratedDefaults = UserDefaults(suiteName: integratedSuite),
@@ -1043,6 +1092,316 @@ extension ClickFlowTests {
         XCTAssertEqual(posted.last?.isDown, false)
     }
 
+    func testCrossOverXInputPublisherMapsFiltersPausesAndDisconnects() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("ClickFlow.xinput")
+        let publisher = CrossOverXInputPublisher(url: url, heartbeatInterval: .seconds(60))
+
+        try publisher.begin(primaryControllerName: "DualSense #1")
+        try publisher.apply(controllerName: "Xbox #2", controlName: "buttonA", value: 1)
+        var data = try Data(contentsOf: url)
+        XCTAssertEqual(readUInt32LE(data, at: 12), 1)
+        XCTAssertEqual(readUInt16LE(data, at: 16), 0)
+
+        try publisher.apply(controllerName: "DualSense #1", controlName: "buttonA", value: 1)
+        try publisher.apply(controllerName: "DualSense #1", controlName: "dpad.x", value: 1)
+        try publisher.apply(controllerName: "DualSense #1", controlName: "dpad.y", value: 1)
+        try publisher.apply(controllerName: "DualSense #1", controlName: "leftTrigger", value: 0.25)
+        try publisher.apply(controllerName: "DualSense #1", controlName: "rightTrigger", value: 1)
+        try publisher.apply(controllerName: "DualSense #1", controlName: "leftThumbstick.x", value: -1)
+        try publisher.apply(controllerName: "DualSense #1", controlName: "leftThumbstick.y", value: 1)
+        data = try Data(contentsOf: url)
+        XCTAssertEqual(Array(data[0..<4]), [0x56, 0x47, 0x50, 0x31])
+        XCTAssertEqual(readUInt16LE(data, at: 16), 0x1009)
+        XCTAssertEqual(data[18], 64)
+        XCTAssertEqual(data[19], 255)
+        XCTAssertEqual(readInt16LE(data, at: 20), -32_768)
+        XCTAssertEqual(readInt16LE(data, at: 22), 32_767)
+
+        try publisher.pause()
+        data = try Data(contentsOf: url)
+        XCTAssertEqual(readUInt16LE(data, at: 16), 0)
+        XCTAssertEqual(data[18], 0)
+        XCTAssertEqual(readInt16LE(data, at: 20), 0)
+
+        try publisher.resume()
+        data = try Data(contentsOf: url)
+        XCTAssertEqual(readUInt16LE(data, at: 16), 0x1009)
+        XCTAssertEqual(data[18], 64)
+        XCTAssertEqual(readInt16LE(data, at: 20), -32_768)
+
+        try publisher.end()
+        data = try Data(contentsOf: url)
+        XCTAssertEqual(readUInt32LE(data, at: 12), 0)
+        XCTAssertEqual(readUInt16LE(data, at: 16), 0)
+    }
+
+    func testCrossOverXInputPublisherMixesPhysicalAndMacroState() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("ClickFlow.xinput")
+
+        var physicalState = CrossOverXInputState()
+        physicalState.apply(control: .buttonA, value: 1)
+        physicalState.apply(control: .leftStickX, value: 0.5)
+        physicalState.apply(control: .rightTrigger, value: 0.25)
+        let physicalController = MutablePhysicalControllerStateProvider(state: physicalState)
+        let publisher = CrossOverXInputPublisher(
+            url: url,
+            physicalController: physicalController,
+            pollInterval: .seconds(60),
+            heartbeatInterval: .seconds(60)
+        )
+
+        try publisher.startPhysicalPassthrough()
+        var data = try Data(contentsOf: url)
+        XCTAssertTrue(physicalController.isMonitoring)
+        XCTAssertEqual(readUInt32LE(data, at: 12), 1)
+        XCTAssertEqual(readUInt16LE(data, at: 16), 0x1000)
+        XCTAssertEqual(data[19], 64)
+        XCTAssertEqual(readInt16LE(data, at: 20), 16_384)
+
+        try publisher.begin(primaryControllerName: "DualSense #1")
+        try publisher.apply(controllerName: "DualSense #1", controlName: "buttonB", value: 1)
+        try publisher.apply(controllerName: "DualSense #1", controlName: "leftThumbstick.x", value: -1)
+        data = try Data(contentsOf: url)
+        XCTAssertEqual(readUInt16LE(data, at: 16), 0x3000)
+        XCTAssertEqual(data[19], 64)
+        XCTAssertEqual(readInt16LE(data, at: 20), -32_768)
+
+        try publisher.pause()
+        data = try Data(contentsOf: url)
+        XCTAssertEqual(readUInt16LE(data, at: 16), 0x1000)
+        XCTAssertEqual(readInt16LE(data, at: 20), 16_384)
+
+        try publisher.resume()
+        data = try Data(contentsOf: url)
+        XCTAssertEqual(readUInt16LE(data, at: 16), 0x3000)
+        XCTAssertEqual(readInt16LE(data, at: 20), -32_768)
+
+        try publisher.apply(controllerName: "DualSense #1", controlName: "buttonB", value: 0)
+        try publisher.apply(controllerName: "DualSense #1", controlName: "leftThumbstick.x", value: 0)
+        data = try Data(contentsOf: url)
+        XCTAssertEqual(readUInt16LE(data, at: 16), 0x1000)
+        XCTAssertEqual(readInt16LE(data, at: 20), 16_384)
+
+        var updatedPhysicalState = CrossOverXInputState()
+        updatedPhysicalState.apply(control: .buttonX, value: 1)
+        updatedPhysicalState.apply(control: .leftTrigger, value: 1)
+        physicalController.state = updatedPhysicalState
+        try publisher.refreshPhysicalState()
+        data = try Data(contentsOf: url)
+        XCTAssertEqual(readUInt16LE(data, at: 16), 0x4000)
+        XCTAssertEqual(data[18], 255)
+
+        try publisher.end()
+        data = try Data(contentsOf: url)
+        XCTAssertEqual(readUInt32LE(data, at: 12), 1)
+        XCTAssertEqual(readUInt16LE(data, at: 16), 0x4000)
+        XCTAssertEqual(data[18], 255)
+
+        publisher.stopPhysicalPassthrough()
+        data = try Data(contentsOf: url)
+        XCTAssertFalse(physicalController.isMonitoring)
+        XCTAssertEqual(readUInt32LE(data, at: 12), 0)
+        XCTAssertEqual(readUInt16LE(data, at: 16), 0)
+    }
+
+    func testCrossOverXInputStateMapsEveryRecordedControllerControl() {
+        var state = CrossOverXInputState()
+        for control in ["buttonA", "buttonB", "buttonX", "buttonY"] {
+            XCTAssertTrue(state.apply(controlName: control, value: 1))
+        }
+        for control in [
+            "leftShoulder", "rightShoulder", "leftThumbstickButton",
+            "rightThumbstickButton", "menu", "options", "home",
+        ] {
+            XCTAssertTrue(state.apply(controlName: control, value: 1))
+        }
+        XCTAssertTrue(state.apply(controlName: "dpad.x", value: 1))
+        XCTAssertTrue(state.apply(controlName: "dpad.y", value: 1))
+        XCTAssertTrue(state.apply(controlName: "leftTrigger", value: 0.25))
+        XCTAssertTrue(state.apply(controlName: "rightTrigger", value: 1))
+        XCTAssertTrue(state.apply(controlName: "leftThumbstick.x", value: -1))
+        XCTAssertTrue(state.apply(controlName: "leftThumbstick.y", value: 1))
+        XCTAssertTrue(state.apply(controlName: "rightThumbstick.x", value: 0.5))
+        XCTAssertTrue(state.apply(controlName: "rightThumbstick.y", value: -0.5))
+
+        XCTAssertEqual(state.buttons, 0xF7F9)
+        XCTAssertEqual(state.leftTrigger, 64)
+        XCTAssertEqual(state.rightTrigger, 255)
+        XCTAssertEqual(state.leftStickX, -32_768)
+        XCTAssertEqual(state.leftStickY, 32_767)
+        XCTAssertEqual(state.rightStickX, 16_384)
+        XCTAssertEqual(state.rightStickY, -16_384)
+
+        XCTAssertTrue(state.apply(controlName: "buttonA", value: 0))
+        XCTAssertEqual(state.buttons, 0xE7F9)
+        XCTAssertFalse(state.apply(controlName: "unsupportedControl", value: 1))
+    }
+
+    func testCombinedPlayerPublishesControllerTimelineAndSelectsPrimaryController() async throws {
+        let output = RecordedControllerOutput()
+        let player = CombinedMacroPlayer(
+            events: RecordedMouseEvents(),
+            controllerOutput: output
+        )
+        let macro = CombinedMacro(name: "Controller output", events: [
+            .init(
+                timestampMilliseconds: 0,
+                kind: .controller,
+                controllerName: "DualSense #1",
+                controlName: "buttonA",
+                controlValue: 1
+            ),
+            .init(
+                timestampMilliseconds: 1,
+                kind: .controller,
+                controllerName: "Xbox #2",
+                controlName: "buttonB",
+                controlValue: 1
+            ),
+            .init(
+                timestampMilliseconds: 2,
+                kind: .controller,
+                controllerName: "DualSense #1",
+                controlName: "buttonA",
+                controlValue: 0
+            ),
+        ])
+        await player.start(
+            macro: macro,
+            progress: { _ in },
+            completion: { error in XCTAssertNil(error) }
+        )
+        try await waitUntilStopped(player)
+
+        let operations = output.snapshot()
+        XCTAssertEqual(operations.first, .begin("DualSense #1"))
+        XCTAssertEqual(operations.filter { if case .apply = $0 { true } else { false } }.count, 3)
+        XCTAssertTrue(operations.contains(.reset))
+        XCTAssertEqual(operations.last, .end)
+    }
+
+    func testCombinedPlayerRepeatsControllerMacroAndNeutralizesEveryLoop() async throws {
+        let output = RecordedControllerOutput()
+        let player = CombinedMacroPlayer(
+            events: RecordedMouseEvents(),
+            controllerOutput: output
+        )
+        let macro = CombinedMacro(
+            name: "Repeated controller output",
+            events: [
+                .init(
+                    timestampMilliseconds: 0,
+                    kind: .controller,
+                    controllerName: "DualSense #1",
+                    controlName: "buttonA",
+                    controlValue: 1
+                ),
+                .init(
+                    timestampMilliseconds: 1,
+                    kind: .controller,
+                    controllerName: "DualSense #1",
+                    controlName: "buttonA",
+                    controlValue: 0
+                ),
+            ],
+            repeatMode: .count,
+            repeatCount: 3,
+            repeatDelayMilliseconds: 5
+        )
+        await player.start(
+            macro: macro,
+            progress: { _ in },
+            completion: { error in XCTAssertNil(error) }
+        )
+        try await waitUntilStopped(player)
+
+        let operations = output.snapshot()
+        XCTAssertEqual(operations.first, .begin("DualSense #1"))
+        XCTAssertEqual(operations.filter { if case .apply = $0 { true } else { false } }.count, 6)
+        XCTAssertEqual(operations.filter { $0 == .reset }.count, 3)
+        XCTAssertEqual(operations.last, .end)
+    }
+
+    func testCrossOverXInputLiveIntegrationWindow() async throws {
+        guard ProcessInfo.processInfo.environment["CLICKFLOW_LIVE_XINPUT_TEST"] == "1" else {
+            throw XCTSkip("Manual CrossOver integration test")
+        }
+
+        let player = CombinedMacroPlayer(events: RecordedMouseEvents())
+        let macro = CombinedMacro(name: "Live XInput integration", events: [
+            .init(
+                timestampMilliseconds: 0,
+                kind: .controller,
+                controllerName: "Integration Controller",
+                controlName: "buttonA",
+                controlValue: 1
+            ),
+            .init(
+                timestampMilliseconds: 3_000,
+                kind: .controller,
+                controllerName: "Integration Controller",
+                controlName: "buttonA",
+                controlValue: 0
+            ),
+            .init(
+                timestampMilliseconds: 3_500,
+                kind: .controller,
+                controllerName: "Integration Controller",
+                controlName: "buttonB",
+                controlValue: 1
+            ),
+            .init(
+                timestampMilliseconds: 3_500,
+                kind: .controller,
+                controllerName: "Integration Controller",
+                controlName: "leftTrigger",
+                controlValue: 0.25
+            ),
+            .init(
+                timestampMilliseconds: 3_500,
+                kind: .controller,
+                controllerName: "Integration Controller",
+                controlName: "rightTrigger",
+                controlValue: 1
+            ),
+            .init(
+                timestampMilliseconds: 3_500,
+                kind: .controller,
+                controllerName: "Integration Controller",
+                controlName: "leftThumbstick.x",
+                controlValue: -1
+            ),
+            .init(
+                timestampMilliseconds: 3_500,
+                kind: .controller,
+                controllerName: "Integration Controller",
+                controlName: "leftThumbstick.y",
+                controlValue: 1
+            ),
+            .init(
+                timestampMilliseconds: 7_000,
+                kind: .controller,
+                controllerName: "Integration Controller",
+                controlName: "buttonB",
+                controlValue: 0
+            ),
+        ])
+        await player.start(
+            macro: macro,
+            progress: { _ in },
+            completion: { error in XCTAssertNil(error) }
+        )
+        try await waitUntilStopped(player)
+    }
+
     func testOneMinuteCombinedTimelineDoesNotAccumulateSchedulerOrPostingDelay() async throws {
         let recorder = RecordedMouseEvents(postingDelayMilliseconds: 1)
         let player = CombinedMacroPlayer(events: recorder)
@@ -1074,5 +1433,86 @@ extension ClickFlowTests {
         XCTAssertGreaterThan(heldDuration, 59.85)
         XCTAssertLessThan(heldDuration, 60.20)
         XCTAssertEqual(posted.last?.isDown, false)
+    }
+}
+
+private func readUInt16LE(_ data: Data, at offset: Int) -> UInt16 {
+    UInt16(data[offset]) | (UInt16(data[offset + 1]) << 8)
+}
+
+private func readUInt32LE(_ data: Data, at offset: Int) -> UInt32 {
+    UInt32(data[offset])
+        | (UInt32(data[offset + 1]) << 8)
+        | (UInt32(data[offset + 2]) << 16)
+        | (UInt32(data[offset + 3]) << 24)
+}
+
+private func readInt16LE(_ data: Data, at offset: Int) -> Int16 {
+    Int16(bitPattern: readUInt16LE(data, at: offset))
+}
+
+private final class MutablePhysicalControllerStateProvider: PhysicalControllerStateProviding, @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedState: CrossOverXInputState?
+    private var monitoring = false
+
+    init(state: CrossOverXInputState?) {
+        storedState = state
+    }
+
+    var state: CrossOverXInputState? {
+        get { lock.withLock { storedState } }
+        set { lock.withLock { storedState = newValue } }
+    }
+
+    var isMonitoring: Bool {
+        lock.withLock { monitoring }
+    }
+
+    func startMonitoring() {
+        lock.withLock { monitoring = true }
+    }
+
+    func stopMonitoring() {
+        lock.withLock { monitoring = false }
+    }
+
+    func currentState(preferredControllerName: String?) -> CrossOverXInputState? {
+        lock.withLock { storedState }
+    }
+}
+
+private final class RecordedControllerOutput: ControllerOutputPublishing, @unchecked Sendable {
+    enum Operation: Equatable {
+        case begin(String?)
+        case apply(String?, String?, Float?)
+        case pause
+        case resume
+        case reset
+        case end
+    }
+
+    private let lock = NSLock()
+    private var operations: [Operation] = []
+
+    func begin(primaryControllerName: String?) throws {
+        append(.begin(primaryControllerName))
+    }
+
+    func apply(controllerName: String?, controlName: String?, value: Float?) throws {
+        append(.apply(controllerName, controlName, value))
+    }
+
+    func pause() throws { append(.pause) }
+    func resume() throws { append(.resume) }
+    func reset() throws { append(.reset) }
+    func end() throws { append(.end) }
+
+    func snapshot() -> [Operation] {
+        lock.withLock { operations }
+    }
+
+    private func append(_ operation: Operation) {
+        lock.withLock { operations.append(operation) }
     }
 }

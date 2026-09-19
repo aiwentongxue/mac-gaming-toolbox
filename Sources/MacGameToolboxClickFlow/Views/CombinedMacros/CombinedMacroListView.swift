@@ -1,12 +1,21 @@
 import SwiftUI
 
 struct CombinedMacroListView: View {
+    var body: some View {
+        NavigationStack {
+            CombinedMacroLibraryView()
+                .navigationTitle(cf("sidebar.combinedMacros"))
+        }
+    }
+}
+
+private struct CombinedMacroLibraryView: View {
     @EnvironmentObject private var appState: AppState
     @State private var showingDeleteConfirmation = false
 
     var body: some View {
         HStack(spacing: 0) {
-            Group {
+            VStack(spacing: 0) {
                 if appState.combinedMacros.isEmpty {
                     ContentUnavailableView(
                         cf("combined.empty.title"),
@@ -25,6 +34,30 @@ struct CombinedMacroListView: View {
                         }
                     }
                 }
+
+                Divider()
+
+                NavigationLink {
+                    CrossOverGameSetupView()
+                        .navigationTitle(cf("combined.windowsGames.navigationTitle"))
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "pc")
+                            .font(.title3)
+                            .foregroundStyle(.tint)
+                            .frame(width: 24)
+                        Text(cf("combined.windowsGames.entry"))
+                            .fontWeight(.medium)
+                        Spacer()
+                        Image(systemName: "chevron.forward")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 11)
+                }
+                .buttonStyle(.plain)
             }
             .frame(minWidth: 300, idealWidth: 360, maxWidth: 430, maxHeight: .infinity)
 

@@ -10,7 +10,10 @@ final class SettingsStore: ObservableObject {
         static let recentMacroID = "recentMacroID"
         static let recentCombinedMacroID = "recentCombinedMacroID"
         static let mouseRecordingMode = "mouseRecordingMode"
+        static let controllerPlaybackNoticeVersion = "controllerPlaybackNoticeVersion"
     }
+
+    private static let currentControllerPlaybackNoticeVersion = 1
 
     private let defaults: UserDefaults
     private let encoder = JSONEncoder()
@@ -49,10 +52,13 @@ final class SettingsStore: ObservableObject {
     }
 
     func loadSelectedPage() -> SidebarPage {
-        guard let rawValue = defaults.string(forKey: Key.selectedPage),
-              let page = SidebarPage(rawValue: rawValue) else {
+        guard let rawValue = defaults.string(forKey: Key.selectedPage) else {
             return .clicker
         }
+        // 1.0.0 exposed Windows Games as a top-level sidebar page. In 1.0.1
+        // it lives inside Combined Macros, so preserve the user's destination.
+        if rawValue == "windowsGames" { return .combinedMacros }
+        guard let page = SidebarPage(rawValue: rawValue) else { return .clicker }
         return page
     }
 
@@ -83,5 +89,17 @@ final class SettingsStore: ObservableObject {
     func setRecentCombinedMacroID(_ id: UUID?) {
         recentCombinedMacroID = id
         defaults.set(id?.uuidString, forKey: Key.recentCombinedMacroID)
+    }
+
+    var shouldShowControllerPlaybackNotice: Bool {
+        defaults.integer(forKey: Key.controllerPlaybackNoticeVersion)
+            < Self.currentControllerPlaybackNoticeVersion
+    }
+
+    func markControllerPlaybackNoticeShown() {
+        defaults.set(
+            Self.currentControllerPlaybackNoticeVersion,
+            forKey: Key.controllerPlaybackNoticeVersion
+        )
     }
 }

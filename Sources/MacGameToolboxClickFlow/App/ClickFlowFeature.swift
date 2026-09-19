@@ -3,6 +3,7 @@ import SwiftUI
 
 @MainActor
 public final class ClickFlowFeatureController: ObservableObject {
+    public static let integratedVersion = "1.0.1"
     public static let preferencesSuiteName = "com.iven.macgametoolbox.clickflow"
 
     @Published private(set) var appState: AppState?
@@ -56,7 +57,7 @@ public final class ClickFlowFeatureController: ObservableObject {
         )
     }
 
-    private static func defaultApplicationSupportRoot() -> URL {
+    nonisolated static func defaultApplicationSupportRoot() -> URL {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         return support

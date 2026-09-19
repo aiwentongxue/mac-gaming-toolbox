@@ -4,6 +4,7 @@ struct ScreenPoint: Codable, Hashable, Sendable {
     var x: Double
     var y: Double
 }
+
 enum MouseButton: String, Codable, CaseIterable, Identifiable, Sendable {
     case left
     case right
@@ -393,6 +394,10 @@ struct CombinedMacro: Codable, Identifiable, Hashable, Sendable {
 
     var containsControllerEvents: Bool {
         events.contains { $0.kind == .controller }
+    }
+
+    var requiresEventPostingPermission: Bool {
+        events.contains { $0.kind != .controller }
     }
 }
 

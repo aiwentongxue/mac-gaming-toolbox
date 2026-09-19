@@ -3,6 +3,7 @@ import Foundation
 
 actor CombinedMacroPlayer {
     private let events: any MouseEventPosting
+    private let controllerOutput: any ControllerOutputPublishing
     private var runTask: Task<Void, Never>?
     private var delayTask: Task<Void, Never>?
     private var runID: UUID?
@@ -14,9 +15,14 @@ actor CombinedMacroPlayer {
     private var suspendedKeys: [UInt16: CGEventFlags] = [:]
     private var lastPosition: ScreenPoint?
     private var timelineClock = PlaybackTimelineClock()
+    private var controllerOutputActive = false
 
-    init(events: any MouseEventPosting = MouseEventService()) {
+    init(
+        events: any MouseEventPosting = MouseEventService(),
+        controllerOutput: any ControllerOutputPublishing = CrossOverXInputPublisher()
+    ) {
         self.events = events
+        self.controllerOutput = controllerOutput
     }
 
     func start(
@@ -65,6 +71,7 @@ actor CombinedMacroPlayer {
         if isPaused {
             timelineClock.resume()
             isPaused = false
+            if controllerOutputActive { try? controllerOutput.resume() }
             resumePauseWaiters()
             AppLogger.automation.notice("Combined macro playback resumed")
         } else {
@@ -74,6 +81,7 @@ actor CombinedMacroPlayer {
             suspendedButtons = pressedButtons
             suspendedKeys = pressedKeys
             releaseActiveInputs()
+            if controllerOutputActive { try? controllerOutput.pause() }
             AppLogger.automation.notice("Combined macro playback paused")
         }
         return isPaused
@@ -96,6 +104,16 @@ actor CombinedMacroPlayer {
         let totalLoops = macro.repeatMode.resolvedLoopCount(configuredCount: macro.repeatCount)
         var loopIndex = 0
         do {
+            if macro.containsControllerEvents {
+                try controllerOutput.begin(primaryControllerName: primaryControllerName(in: macro))
+                controllerOutputActive = true
+            }
+            defer {
+                if controllerOutputActive {
+                    try? controllerOutput.end()
+                    controllerOutputActive = false
+                }
+            }
             while !Task.isCancelled {
                 if let totalLoops, loopIndex >= totalLoops { break }
                 loopIndex += 1
@@ -169,9 +187,12 @@ actor CombinedMacroPlayer {
             try events.postKey(key, down: down, flags: flags)
             if down { pressedKeys[code] = flags } else { pressedKeys.removeValue(forKey: code) }
         case .controller:
-            // GameController exposes controller state to the foreground app, but
-            // does not provide a public API for injecting it into another app.
-            break
+            guard controllerOutputActive else { return }
+            try controllerOutput.apply(
+                controllerName: event.controllerName,
+                controlName: event.controlName,
+                value: event.controlValue
+            )
         }
     }
 
@@ -221,6 +242,7 @@ actor CombinedMacroPlayer {
         }
         suspendedButtons.removeAll()
         suspendedKeys.removeAll()
+        if controllerOutputActive { try controllerOutput.resume() }
     }
 
     private func releaseActiveInputs() {
@@ -237,5 +259,27 @@ actor CombinedMacroPlayer {
         releaseActiveInputs()
         suspendedButtons.removeAll()
         suspendedKeys.removeAll()
+        if controllerOutputActive { try? controllerOutput.reset() }
+    }
+
+    private func primaryControllerName(in macro: CombinedMacro) -> String? {
+        var candidates: [String: (count: Int, firstIndex: Int)] = [:]
+        for (index, event) in macro.events.enumerated() where event.kind == .controller {
+            guard let name = event.controllerName, !name.isEmpty else { continue }
+            if let candidate = candidates[name] {
+                candidates[name] = (candidate.count + 1, candidate.firstIndex)
+            } else {
+                candidates[name] = (1, index)
+            }
+        }
+        return candidates.sorted { lhs, rhs in
+            if lhs.value.count != rhs.value.count {
+                return lhs.value.count > rhs.value.count
+            }
+            if lhs.value.firstIndex != rhs.value.firstIndex {
+                return lhs.value.firstIndex < rhs.value.firstIndex
+            }
+            return lhs.key < rhs.key
+        }.first?.key
     }
 }
