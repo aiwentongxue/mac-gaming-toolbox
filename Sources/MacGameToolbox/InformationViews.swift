@@ -11,6 +11,7 @@ struct ChangelogView: View {
                     Text(tr("新增 CrossOver Windows 游戏手柄集成，可将物理手柄与宏输入通过 XInput 代理传递给所选游戏", "Added CrossOver Windows game controller integration that passes physical-controller and macro input to the selected game through XInput proxies"))
                     Text(tr("新增按游戏设置、诊断、安装、备份和安全恢复，并同时提供 x86 与 x64 代理资源", "Added per-game setup, diagnostics, installation, backup, and safe restore with both x86 and x64 proxy resources"))
                     Text(tr("纯手柄组合宏无需辅助功能权限即可播放，退出应用时会停止手柄直通并释放状态", "Controller-only combined macros can play without Accessibility permission, and quitting the app stops controller passthrough and releases its state"))
+                    Text(tr("修复组合宏页面的 CrossOver 手柄宏入口未固定在底部，以及二级页面标题与顶部切换器重叠的问题", "Fixed the CrossOver controller-macro entry not staying at the bottom of Combined Macros and the secondary-page title overlapping the top switcher"))
                 }
                 Section("3.2.0") {
                     Text(tr("新增内置 ClickFlow，集成连点器、鼠标宏、组合宏和设置", "Added built-in ClickFlow with an auto clicker, mouse macros, combined macros, and settings"))

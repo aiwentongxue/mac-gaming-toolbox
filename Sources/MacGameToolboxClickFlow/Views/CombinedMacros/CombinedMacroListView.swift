@@ -16,30 +16,32 @@ private struct CombinedMacroLibraryView: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
-                if appState.combinedMacros.isEmpty {
-                    ContentUnavailableView(
-                        cf("combined.empty.title"),
-                        systemImage: "gamecontroller",
-                        description: Text(cf("combined.empty.description"))
-                    )
-                } else {
-                    Table(appState.combinedMacros, selection: $appState.selectedCombinedMacroID) {
-                        TableColumn(cf("macros.name"), value: \.name)
-                        TableColumn(cf("macros.events")) { Text($0.events.count.formatted()) }
-                        TableColumn(cf("macros.duration")) {
-                            Text(Duration.milliseconds($0.durationMilliseconds).formatted(.time(pattern: .minuteSecond)))
-                        }
-                        TableColumn(cf("macros.modified")) {
-                            Text($0.updatedAt, format: .dateTime.year().month().day().hour().minute())
+                ZStack {
+                    if appState.combinedMacros.isEmpty {
+                        ContentUnavailableView(
+                            cf("combined.empty.title"),
+                            systemImage: "gamecontroller",
+                            description: Text(cf("combined.empty.description"))
+                        )
+                    } else {
+                        Table(appState.combinedMacros, selection: $appState.selectedCombinedMacroID) {
+                            TableColumn(cf("macros.name"), value: \.name)
+                            TableColumn(cf("macros.events")) { Text($0.events.count.formatted()) }
+                            TableColumn(cf("macros.duration")) {
+                                Text(Duration.milliseconds($0.durationMilliseconds).formatted(.time(pattern: .minuteSecond)))
+                            }
+                            TableColumn(cf("macros.modified")) {
+                                Text($0.updatedAt, format: .dateTime.year().month().day().hour().minute())
+                            }
                         }
                     }
                 }
+                .frame(maxHeight: .infinity)
 
                 Divider()
 
                 NavigationLink {
                     CrossOverGameSetupView()
-                        .navigationTitle(cf("combined.windowsGames.navigationTitle"))
                 } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "pc")
