@@ -115,7 +115,7 @@ public struct SystemProcess: Identifiable, Hashable, Sendable {
     }
 
     private static func appBundlePath(in command: String) -> String? {
-        let expression = try? NSRegularExpression(pattern: #"(?:^|\\s)(/.*?\\.app)(?=/|$)"#)
+        let expression = try? NSRegularExpression(pattern: #"(?:^|\s)(/.*?\.app)(?=/|$)"#)
         let range = NSRange(command.startIndex..., in: command)
         guard let match = expression?.firstMatch(in: command, range: range),
               let bundleRange = Range(match.range(at: 1), in: command) else { return nil }

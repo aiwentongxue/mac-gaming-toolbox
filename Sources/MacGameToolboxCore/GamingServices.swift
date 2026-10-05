@@ -278,10 +278,7 @@ public actor GamingService {
     }
 
     public static func matchingProcesses(_ processes: [SystemProcess], crossOverOnly: Bool) -> [SystemProcess] {
-        let roots = Set(processes.filter {
-            let value = $0.command.lowercased()
-            return value.contains("crossover.app/contents/macos/crossover") || value.hasSuffix("/crossover")
-        }.map(\.pid))
+        let roots = Set(processes.filter(Self.isCrossOverRoot).map(\.pid))
         var descendants = roots
         var addedDescendant = true
         while addedDescendant {
@@ -294,12 +291,27 @@ public actor GamingService {
         return processes.filter { process in
             let value = process.command.lowercased()
             guard !value.contains("macgametoolbox") else { return false }
-            let isWine = value.contains("wine") || value.contains("wineserver") || value.contains("winedevice")
+            // Match the executable name as well as the whole command: a launcher
+            // such as "wine game.exe" reports argv[0] = wine while the game name
+            // itself never contains "wine".
+            let wineMarkers = ["wine", "wineserver", "winedevice"]
+            let isWine = value.contains("wine")
+                || wineMarkers.contains { process.displayName.lowercased().contains($0) }
             if !crossOverOnly { return isWine }
             // Wine services commonly detach from CrossOver and are re-parented to
             // launchd. If the CrossOver root has exited, retain Wine detection.
             return roots.isEmpty ? isWine : descendants.contains(process.pid) || (value.contains("crossover") && isWine)
         }
+    }
+
+    /// A CrossOver root is the manager itself: an executable named `CrossOver`
+    /// inside a CrossOver app bundle. Deriving this from `locationPath` rather
+    /// than a fixed "CrossOver.app" substring keeps versioned and spaced bundle
+    /// names such as "/Applications/CrossOver 25.app" working.
+    private static func isCrossOverRoot(_ process: SystemProcess) -> Bool {
+        guard let bundle = process.locationPath?.lowercased(), bundle.hasSuffix(".app") else { return false }
+        let executable = process.displayName.lowercased()
+        return bundle.contains("crossover") && executable == "crossover"
     }
 }
 
