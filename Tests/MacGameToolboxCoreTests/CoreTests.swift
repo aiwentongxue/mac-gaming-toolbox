@@ -180,7 +180,18 @@ import Testing
 }
 
 @Test func processParserFiltersCrossOver() {
-    let text = "  100 1 /Applications/CrossOver 25.app/Contents/MacOS/CrossOver\n  110 100 /Applications/CrossOver 25.app/Contents/SharedSupport/CrossOver/bin/cxoffice\n  120 110 /Applications/CrossOver 25.app/Contents/SharedSupport/CrossOver/bin/wine64-preloader\n  200 1 /usr/local/bin/wine game.exe\n  300 1 unrelated"
+    // Mirrors `/bin/ps -axo pid=,ppid=,%cpu=,command=`, the exact command
+    // `runningProcesses()` runs. The %cpu column has to be present on every
+    // line: without it a command that itself contains a space (for example
+    // "/Applications/CrossOver 25.app/...") is indistinguishable from the CPU
+    // column, and `parseProcessTable` folds part of the path into the command.
+    let text = """
+      100 1 12.5 /Applications/CrossOver 25.app/Contents/MacOS/CrossOver
+      110 100 3.2 /Applications/CrossOver 25.app/Contents/SharedSupport/CrossOver/bin/cxoffice
+      120 110 48.7 /Applications/CrossOver 25.app/Contents/SharedSupport/CrossOver/bin/wine64-preloader
+      200 1 9.9 /usr/local/bin/wine game.exe
+      300 1 0.0 unrelated
+    """
     let processes = GamingService.parseProcessTable(text)
     #expect(GamingService.matchingProcesses(processes, crossOverOnly: false).map(\.pid) == [120, 200])
     #expect(GamingService.matchingProcesses(processes, crossOverOnly: true).map(\.pid) == [100, 110, 120])
@@ -201,7 +212,9 @@ import Testing
 }
 
 @Test func processParserFallsBackToZeroForMissingOrInvalidCPUUsage() {
-    let text = "  100 1 invalid /Applications/Game.app/Contents/MacOS/Game\n  101 1 /Applications/Legacy.app/Contents/MacOS/Legacy"
+    // Same ps column layout as above; "invalid" stands in for a %cpu value that
+    // fails to parse, and the command must still be recovered intact.
+    let text = "  100 1 invalid /Applications/Game.app/Contents/MacOS/Game\n  101 1 0.0 /Applications/Legacy.app/Contents/MacOS/Legacy"
     let processes = GamingService.parseProcessTable(text)
 
     #expect(processes.map(\.cpuUsage) == [0, 0])
