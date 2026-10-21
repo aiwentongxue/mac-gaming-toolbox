@@ -1,0 +1,6 @@
+ClickFlow CrossOver XInput proxy resources
+
+These x86 and x64 DLLs were built from the corresponding source in
+Experimental/CrossOverXInputProxy/ using its reproducible build.sh script.
+They are part of ClickFlow, are covered by the repository's GPL-3.0 license,
+and are not Microsoft binaries or Microsoft hardware emulation.

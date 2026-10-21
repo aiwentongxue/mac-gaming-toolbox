@@ -1,0 +1,637 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000001 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000001 /* Models.swift */; };
+		A10000000000000000000002 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000002 /* CommandRunner.swift */; };
+		A10000000000000000000003 /* ConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000003 /* ConfigurationStore.swift */; };
+		A10000000000000000000004 /* DiskService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000004 /* DiskService.swift */; };
+		A10000000000000000000005 /* GamingServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000005 /* GamingServices.swift */; };
+		A10000000000000000000006 /* CacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000006 /* CacheService.swift */; };
+		A10000000000000000000007 /* HostsFileEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000007 /* HostsFileEditor.swift */; };
+		A10000000000000000000008 /* PrivilegedXPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* PrivilegedXPC.swift */; };
+		A10000000000000000000009 /* MacGameToolboxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* MacGameToolboxApp.swift */; };
+		A1000000000000000000000A /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000002 /* AppModel.swift */; };
+		A1000000000000000000000B /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000003 /* DashboardView.swift */; };
+		A1000000000000000000000D /* InformationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000005 /* InformationViews.swift */; };
+		A1000000000000000000000E /* PrivilegedHelperClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000006 /* PrivilegedHelperClient.swift */; };
+		A1000000000000000000000F /* MacGameToolboxPrivilegedHelper in Embed Privileged Helper */ = {isa = PBXBuildFile; fileRef = F40000000000000000000002 /* MacGameToolboxPrivilegedHelper */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		A10000000000000000000011 /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F50000000000000000000001 /* ServiceManagement.framework */; };
+		A10000000000000000000012 /* DiagnosticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000007 /* DiagnosticsService.swift */; };
+		A10000000000000000000014 /* DiagnosticFileLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000008 /* DiagnosticFileLogger.swift */; };
+		A10000000000000000000016 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000009 /* Localization.swift */; };
+		A10000000000000000000017 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000A /* Assets.xcassets */; };
+		A1000000000000000000001B /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F50000000000000000000002 /* Security.framework */; };
+		A1000000000000000000001C /* WallpaperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* WallpaperService.swift */; };
+		A1000000000000000000001D /* MetalHUDPresetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000A /* MetalHUDPresetStore.swift */; };
+		A1000000000000000000001E /* CrossOverBottleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000B /* CrossOverBottleService.swift */; };
+		A1000000000000000000001F /* MainContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000B /* MainContentView.swift */; };
+		A10000000000000000000020 /* NavigationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000C /* NavigationModel.swift */; };
+		A10000000000000000000021 /* AppSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000D /* AppSidebarView.swift */; };
+		A10000000000000000000022 /* ToolboxGameDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000E /* ToolboxGameDetailViews.swift */; };
+		A10000000000000000000023 /* ToolboxMaintenanceDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000F /* ToolboxMaintenanceDetailViews.swift */; };
+		A10000000000000000000024 /* ToolboxInformationDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000010 /* ToolboxInformationDetailViews.swift */; };
+		A10000000000000000000025 /* ToolboxDetailRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000011 /* ToolboxDetailRouter.swift */; };
+		B10000000000000000000001 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000001 /* Models.swift */; };
+		B10000000000000000000002 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000002 /* CommandRunner.swift */; };
+		B10000000000000000000003 /* ConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000003 /* ConfigurationStore.swift */; };
+		B10000000000000000000004 /* DiskService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000004 /* DiskService.swift */; };
+		B10000000000000000000005 /* GamingServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000005 /* GamingServices.swift */; };
+		B10000000000000000000006 /* CacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000006 /* CacheService.swift */; };
+		B10000000000000000000007 /* HostsFileEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000007 /* HostsFileEditor.swift */; };
+		B10000000000000000000008 /* PrivilegedXPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* PrivilegedXPC.swift */; };
+		B10000000000000000000009 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000001 /* main.swift */; };
+		B1000000000000000000000A /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F50000000000000000000002 /* Security.framework */; };
+		B1000000000000000000000B /* WallpaperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* WallpaperService.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C10000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = P10000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = T20000000000000000000001;
+			remoteInfo = MacGameToolboxPrivilegedHelper;
+		};
+		C10000000000000000000002 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = P10000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = T10000000000000000000001;
+			remoteInfo = "Mac游戏工具箱";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C20000000000000000000001 /* Embed Privileged Helper */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Contents/Library/LaunchServices;
+			dstSubfolderSpec = 1;
+			files = (
+				A1000000000000000000000F /* MacGameToolboxPrivilegedHelper in Embed Privileged Helper */,
+			);
+			name = "Embed Privileged Helper";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		F10000000000000000000001 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		F10000000000000000000002 /* CommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandRunner.swift; sourceTree = "<group>"; };
+		F10000000000000000000003 /* ConfigurationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationStore.swift; sourceTree = "<group>"; };
+		F10000000000000000000004 /* DiskService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskService.swift; sourceTree = "<group>"; };
+		F10000000000000000000005 /* GamingServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamingServices.swift; sourceTree = "<group>"; };
+		F10000000000000000000006 /* CacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheService.swift; sourceTree = "<group>"; };
+		F10000000000000000000007 /* HostsFileEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostsFileEditor.swift; sourceTree = "<group>"; };
+		F10000000000000000000008 /* PrivilegedXPC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivilegedXPC.swift; sourceTree = "<group>"; };
+		F10000000000000000000009 /* WallpaperService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperService.swift; sourceTree = "<group>"; };
+		F1000000000000000000000A /* MetalHUDPresetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalHUDPresetStore.swift; sourceTree = "<group>"; };
+		F1000000000000000000000B /* CrossOverBottleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossOverBottleService.swift; sourceTree = "<group>"; };
+		F20000000000000000000001 /* MacGameToolboxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacGameToolboxApp.swift; sourceTree = "<group>"; };
+		F20000000000000000000002 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		F20000000000000000000003 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		F20000000000000000000005 /* InformationViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InformationViews.swift; sourceTree = "<group>"; };
+		F20000000000000000000006 /* PrivilegedHelperClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivilegedHelperClient.swift; sourceTree = "<group>"; };
+		F20000000000000000000007 /* DiagnosticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsService.swift; sourceTree = "<group>"; };
+		F20000000000000000000008 /* DiagnosticFileLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticFileLogger.swift; sourceTree = "<group>"; };
+		F20000000000000000000009 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
+		F2000000000000000000000A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F2000000000000000000000B /* MainContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainContentView.swift; sourceTree = "<group>"; };
+		F2000000000000000000000C /* NavigationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationModel.swift; sourceTree = "<group>"; };
+		F2000000000000000000000D /* AppSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSidebarView.swift; sourceTree = "<group>"; };
+		F2000000000000000000000E /* ToolboxGameDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolboxGameDetailViews.swift; sourceTree = "<group>"; };
+		F2000000000000000000000F /* ToolboxMaintenanceDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolboxMaintenanceDetailViews.swift; sourceTree = "<group>"; };
+		F20000000000000000000010 /* ToolboxInformationDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolboxInformationDetailViews.swift; sourceTree = "<group>"; };
+		F20000000000000000000011 /* ToolboxDetailRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolboxDetailRouter.swift; sourceTree = "<group>"; };
+		F30000000000000000000001 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		F30000000000000000000003 /* App-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "App-Info.plist"; sourceTree = "<group>"; };
+		F40000000000000000000001 /* Mac 游戏工具箱.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Mac 游戏工具箱.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		F40000000000000000000002 /* MacGameToolboxPrivilegedHelper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MacGameToolboxPrivilegedHelper; sourceTree = BUILT_PRODUCTS_DIR; };
+		F40000000000000000000003 /* MacGameToolboxClickFlowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacGameToolboxClickFlowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F50000000000000000000001 /* ServiceManagement.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ServiceManagement.framework; path = System/Library/Frameworks/ServiceManagement.framework; sourceTree = SDKROOT; };
+		F50000000000000000000002 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		CF0000000000000000000001 /* MacGameToolboxClickFlow */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Sources/MacGameToolboxClickFlow;
+			sourceTree = "<group>";
+		};
+		CF0000000000000000000002 /* MacGameToolboxClickFlowTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tests/MacGameToolboxClickFlowTests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D10000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000011 /* ServiceManagement.framework in Frameworks */,
+				A1000000000000000000001B /* Security.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D10000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1000000000000000000000A /* Security.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D10000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		3C64F7052FE59F910027447F /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				F50000000000000000000001 /* ServiceManagement.framework */,
+				F50000000000000000000002 /* Security.framework */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
+		G10000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				G10000000000000000000002 /* MacGameToolboxCore */,
+				G10000000000000000000003 /* MacGameToolbox */,
+				CF0000000000000000000001 /* MacGameToolboxClickFlow */,
+				CF0000000000000000000002 /* MacGameToolboxClickFlowTests */,
+				G10000000000000000000004 /* MacGameToolboxPrivilegedHelper */,
+				G10000000000000000000005 /* Config */,
+				G10000000000000000000006 /* Products */,
+				3C64F7052FE59F910027447F /* Recovered References */,
+			);
+			sourceTree = "<group>";
+		};
+		G10000000000000000000002 /* MacGameToolboxCore */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000001 /* Models.swift */,
+				F10000000000000000000002 /* CommandRunner.swift */,
+				F10000000000000000000003 /* ConfigurationStore.swift */,
+				F10000000000000000000004 /* DiskService.swift */,
+				F10000000000000000000005 /* GamingServices.swift */,
+				F10000000000000000000006 /* CacheService.swift */,
+				F10000000000000000000007 /* HostsFileEditor.swift */,
+				F10000000000000000000008 /* PrivilegedXPC.swift */,
+				F10000000000000000000009 /* WallpaperService.swift */,
+				F1000000000000000000000A /* MetalHUDPresetStore.swift */,
+				F1000000000000000000000B /* CrossOverBottleService.swift */,
+			);
+			name = MacGameToolboxCore;
+			path = Sources/MacGameToolboxCore;
+			sourceTree = "<group>";
+		};
+		G10000000000000000000003 /* MacGameToolbox */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000001 /* MacGameToolboxApp.swift */,
+				F20000000000000000000002 /* AppModel.swift */,
+				F20000000000000000000003 /* DashboardView.swift */,
+				F20000000000000000000005 /* InformationViews.swift */,
+				F20000000000000000000006 /* PrivilegedHelperClient.swift */,
+				F20000000000000000000007 /* DiagnosticsService.swift */,
+				F20000000000000000000008 /* DiagnosticFileLogger.swift */,
+				F20000000000000000000009 /* Localization.swift */,
+				F2000000000000000000000A /* Assets.xcassets */,
+				F2000000000000000000000B /* MainContentView.swift */,
+				F2000000000000000000000C /* NavigationModel.swift */,
+				F2000000000000000000000D /* AppSidebarView.swift */,
+				F2000000000000000000000E /* ToolboxGameDetailViews.swift */,
+				F2000000000000000000000F /* ToolboxMaintenanceDetailViews.swift */,
+				F20000000000000000000010 /* ToolboxInformationDetailViews.swift */,
+				F20000000000000000000011 /* ToolboxDetailRouter.swift */,
+			);
+			name = MacGameToolbox;
+			path = Sources/MacGameToolbox;
+			sourceTree = "<group>";
+		};
+		G10000000000000000000004 /* MacGameToolboxPrivilegedHelper */ = {
+			isa = PBXGroup;
+			children = (
+				F30000000000000000000001 /* main.swift */,
+			);
+			name = MacGameToolboxPrivilegedHelper;
+			path = Sources/MacGameToolboxPrivilegedHelper;
+			sourceTree = "<group>";
+		};
+		G10000000000000000000005 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				F30000000000000000000003 /* App-Info.plist */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		G10000000000000000000006 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F40000000000000000000001 /* Mac 游戏工具箱.app */,
+				F40000000000000000000002 /* MacGameToolboxPrivilegedHelper */,
+				F40000000000000000000003 /* MacGameToolboxClickFlowTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		T10000000000000000000001 /* Mac游戏工具箱 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = L20000000000000000000001 /* Build configuration list for PBXNativeTarget "Mac游戏工具箱" */;
+			buildPhases = (
+				S10000000000000000000001 /* Sources */,
+				D10000000000000000000001 /* Frameworks */,
+				R10000000000000000000001 /* Resources */,
+				C20000000000000000000001 /* Embed Privileged Helper */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				T30000000000000000000001 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				CF0000000000000000000001 /* MacGameToolboxClickFlow */,
+			);
+			name = "Mac游戏工具箱";
+			productName = "Mac 游戏工具箱";
+			productReference = F40000000000000000000001 /* Mac 游戏工具箱.app */;
+			productType = "com.apple.product-type.application";
+		};
+		T20000000000000000000001 /* MacGameToolboxPrivilegedHelper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = L30000000000000000000001 /* Build configuration list for PBXNativeTarget "MacGameToolboxPrivilegedHelper" */;
+			buildPhases = (
+				S10000000000000000000002 /* Sources */,
+				D10000000000000000000002 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MacGameToolboxPrivilegedHelper;
+			productName = MacGameToolboxPrivilegedHelper;
+			productReference = F40000000000000000000002 /* MacGameToolboxPrivilegedHelper */;
+			productType = "com.apple.product-type.tool";
+		};
+		T40000000000000000000001 /* MacGameToolboxClickFlowTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = L40000000000000000000001 /* Build configuration list for PBXNativeTarget "MacGameToolboxClickFlowTests" */;
+			buildPhases = (
+				S10000000000000000000003 /* Sources */,
+				D10000000000000000000003 /* Frameworks */,
+				R10000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				T30000000000000000000002 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				CF0000000000000000000002 /* MacGameToolboxClickFlowTests */,
+			);
+			name = MacGameToolboxClickFlowTests;
+			productName = MacGameToolboxClickFlowTests;
+			productReference = F40000000000000000000003 /* MacGameToolboxClickFlowTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		P10000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2650;
+				LastUpgradeCheck = 2650;
+				TargetAttributes = {
+					T10000000000000000000001 = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					T20000000000000000000001 = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					T40000000000000000000001 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = T10000000000000000000001;
+					};
+				};
+			};
+			buildConfigurationList = L10000000000000000000001 /* Build configuration list for PBXProject "Mac游戏工具箱" */;
+			compatibilityVersion = "Xcode 15.0";
+			developmentRegion = zh_CN;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				zh_CN,
+				zh-Hans,
+				zh-Hant,
+				en,
+				ja,
+				ko,
+				de,
+				fr,
+				es,
+				pt,
+				Base,
+			);
+			mainGroup = G10000000000000000000001;
+			productRefGroup = G10000000000000000000006 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+				targets = (
+					T10000000000000000000001 /* Mac游戏工具箱 */,
+					T20000000000000000000001 /* MacGameToolboxPrivilegedHelper */,
+					T40000000000000000000001 /* MacGameToolboxClickFlowTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		R10000000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000017 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		R10000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		S10000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* Models.swift in Sources */,
+				A10000000000000000000002 /* CommandRunner.swift in Sources */,
+				A10000000000000000000003 /* ConfigurationStore.swift in Sources */,
+				A10000000000000000000004 /* DiskService.swift in Sources */,
+				A10000000000000000000005 /* GamingServices.swift in Sources */,
+				A10000000000000000000006 /* CacheService.swift in Sources */,
+				A10000000000000000000007 /* HostsFileEditor.swift in Sources */,
+				A10000000000000000000008 /* PrivilegedXPC.swift in Sources */,
+				A1000000000000000000001C /* WallpaperService.swift in Sources */,
+				A1000000000000000000001D /* MetalHUDPresetStore.swift in Sources */,
+				A1000000000000000000001E /* CrossOverBottleService.swift in Sources */,
+				A10000000000000000000009 /* MacGameToolboxApp.swift in Sources */,
+				A1000000000000000000000A /* AppModel.swift in Sources */,
+				A1000000000000000000000B /* DashboardView.swift in Sources */,
+				A1000000000000000000000D /* InformationViews.swift in Sources */,
+				A1000000000000000000000E /* PrivilegedHelperClient.swift in Sources */,
+				A10000000000000000000012 /* DiagnosticsService.swift in Sources */,
+				A10000000000000000000014 /* DiagnosticFileLogger.swift in Sources */,
+				A10000000000000000000016 /* Localization.swift in Sources */,
+				A1000000000000000000001F /* MainContentView.swift in Sources */,
+				A10000000000000000000020 /* NavigationModel.swift in Sources */,
+				A10000000000000000000021 /* AppSidebarView.swift in Sources */,
+				A10000000000000000000022 /* ToolboxGameDetailViews.swift in Sources */,
+				A10000000000000000000023 /* ToolboxMaintenanceDetailViews.swift in Sources */,
+				A10000000000000000000024 /* ToolboxInformationDetailViews.swift in Sources */,
+				A10000000000000000000025 /* ToolboxDetailRouter.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		S10000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B10000000000000000000001 /* Models.swift in Sources */,
+				B10000000000000000000002 /* CommandRunner.swift in Sources */,
+				B10000000000000000000003 /* ConfigurationStore.swift in Sources */,
+				B10000000000000000000004 /* DiskService.swift in Sources */,
+				B10000000000000000000005 /* GamingServices.swift in Sources */,
+				B10000000000000000000006 /* CacheService.swift in Sources */,
+				B10000000000000000000007 /* HostsFileEditor.swift in Sources */,
+				B10000000000000000000008 /* PrivilegedXPC.swift in Sources */,
+				B1000000000000000000000B /* WallpaperService.swift in Sources */,
+				B10000000000000000000009 /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		S10000000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		T30000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = T20000000000000000000001 /* MacGameToolboxPrivilegedHelper */;
+			targetProxy = C10000000000000000000001 /* PBXContainerItemProxy */;
+		};
+		T30000000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = T10000000000000000000001 /* Mac游戏工具箱 */;
+			targetProxy = C10000000000000000000002 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		X10000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		X10000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		X20000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 3.2.1;
+				DEVELOPMENT_TEAM = HP5WBFL9G3;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_DEBUG_DYLIB = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Config/App-Info.plist";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 3.2.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox;
+				PRODUCT_NAME = "Mac 游戏工具箱";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		X20000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 3.2.1;
+				DEVELOPMENT_TEAM = HP5WBFL9G3;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Config/App-Info.plist";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 3.2.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox;
+				PRODUCT_NAME = "Mac 游戏工具箱";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_COMPILATION_MODE = singlefile;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		X30000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+				DEVELOPMENT_TEAM = HP5WBFL9G3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox.helper;
+				PRODUCT_NAME = MacGameToolboxPrivilegedHelper;
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		X30000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+				DEVELOPMENT_TEAM = HP5WBFL9G3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox.helper;
+				PRODUCT_NAME = MacGameToolboxPrivilegedHelper;
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				SWIFT_COMPILATION_MODE = singlefile;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		X40000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = HP5WBFL9G3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox.ClickFlowTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Mac 游戏工具箱.app/Contents/MacOS/Mac 游戏工具箱";
+			};
+			name = Debug;
+		};
+		X40000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = HP5WBFL9G3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox.ClickFlowTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Mac 游戏工具箱.app/Contents/MacOS/Mac 游戏工具箱";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		L10000000000000000000001 /* Build configuration list for PBXProject "Mac游戏工具箱" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				X10000000000000000000001 /* Debug */,
+				X10000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		L20000000000000000000001 /* Build configuration list for PBXNativeTarget "Mac游戏工具箱" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				X20000000000000000000001 /* Debug */,
+				X20000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		L30000000000000000000001 /* Build configuration list for PBXNativeTarget "MacGameToolboxPrivilegedHelper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				X30000000000000000000001 /* Debug */,
+				X30000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		L40000000000000000000001 /* Build configuration list for PBXNativeTarget "MacGameToolboxClickFlowTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				X40000000000000000000001 /* Debug */,
+				X40000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = P10000000000000000000001 /* Project object */;
+}
