@@ -45,7 +45,10 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
     case cfMacros
     case cfCombinedMacros
     case cfSettings
-    case appDrop
+    case appDropWishlist
+    case appDropTodayDrops
+    case appDropHistoricalLows
+    case appDropSettings
     case appearanceWallpaper
     case tutorials
     case changelogAbout
@@ -63,7 +66,7 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
             .storage
         case .cfClicker, .cfMacros, .cfCombinedMacros, .cfSettings:
             .clickFlow
-        case .appDrop:
+        case .appDropWishlist, .appDropTodayDrops, .appDropHistoricalLows, .appDropSettings:
             .appDrop
         case .appearanceWallpaper, .tutorials, .changelogAbout:
             .information
@@ -82,7 +85,10 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
         case .cfMacros: "record.circle"
         case .cfCombinedMacros: "keyboard.badge.ellipsis"
         case .cfSettings: "gearshape"
-        case .appDrop: "arrow.down.app.fill"
+        case .appDropWishlist: "heart"
+        case .appDropTodayDrops: "arrow.down.right.circle"
+        case .appDropHistoricalLows: "chart.line.downtrend.xyaxis"
+        case .appDropSettings: "gearshape"
         case .appearanceWallpaper: "photo.fill.on.rectangle.fill"
         case .tutorials: "book.pages.fill"
         case .changelogAbout: "info.circle"
@@ -111,8 +117,14 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
             tr("组合宏", "Combined Macros")
         case .cfSettings:
             tr("ClickFlow 设置", "ClickFlow Settings")
-        case .appDrop:
-            "AppDrop"
+        case .appDropWishlist:
+            tr("心愿单", "Wishlist")
+        case .appDropTodayDrops:
+            tr("今日降价", "Today's Drops")
+        case .appDropHistoricalLows:
+            tr("历史低价", "Historical Lows")
+        case .appDropSettings:
+            tr("AppDrop 设置", "AppDrop Settings")
         case .appearanceWallpaper:
             tr("外观与壁纸", "Appearance & Wallpaper")
         case .tutorials:
@@ -144,8 +156,14 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
             tr("组合宏", "Combined Macros")
         case .cfSettings:
             tr("设置", "Settings")
-        case .appDrop:
-            "AppDrop"
+        case .appDropWishlist:
+            tr("心愿单", "Wishlist")
+        case .appDropTodayDrops:
+            tr("今日降价", "Today")
+        case .appDropHistoricalLows:
+            tr("历史低价", "Lowest")
+        case .appDropSettings:
+            tr("设置", "Settings")
         case .appearanceWallpaper:
             tr("外观壁纸", "Appearance")
         case .tutorials:
@@ -168,6 +186,16 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
         default: nil
         }
     }
+
+    var appDropPage: AppDropPage? {
+        switch self {
+        case .appDropWishlist: .wishlist
+        case .appDropTodayDrops: .todayDrops
+        case .appDropHistoricalLows: .historicalLows
+        case .appDropSettings: .settings
+        default: nil
+        }
+    }
 }
 
 @MainActor
@@ -179,21 +207,55 @@ final class NavigationModel: ObservableObject {
         }
     }
 
+    @Published private(set) var expandedSections: Set<SidebarSection> {
+        didSet { persistExpandedSections() }
+    }
+
     private let defaults: UserDefaults
+    private static let expandedSectionsKey = "app.expandedSidebarSections"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         selection = Self.persistedSelection(in: defaults)
+        if let stored = defaults.stringArray(forKey: Self.expandedSectionsKey) {
+            expandedSections = Set(stored.compactMap(SidebarSection.init(rawValue:)))
+        } else {
+            expandedSections = Set(SidebarSection.allCases)
+        }
     }
 
     func select(_ item: SidebarItem) {
-        selection = item
+        if selection != item {
+            selection = item
+        }
+        expand(item.section)
+    }
+
+    func isExpanded(_ section: SidebarSection) -> Bool {
+        expandedSections.contains(section)
+    }
+
+    func toggle(_ section: SidebarSection) {
+        if expandedSections.contains(section) {
+            expandedSections.remove(section)
+        } else {
+            expandedSections.insert(section)
+        }
+    }
+
+    func expand(_ section: SidebarSection) {
+        guard !expandedSections.contains(section) else { return }
+        expandedSections.insert(section)
     }
 
     static func persistedSelection(in defaults: UserDefaults) -> SidebarItem {
         if let stored = defaults.string(forKey: SidebarItem.storageKey),
            let item = SidebarItem(rawValue: stored) {
             return item
+        }
+        if defaults.string(forKey: SidebarItem.storageKey) == "appDrop" {
+            defaults.set(SidebarItem.appDropWishlist.rawValue, forKey: SidebarItem.storageKey)
+            return .appDropWishlist
         }
 
         let migrated: SidebarItem
@@ -207,5 +269,12 @@ final class NavigationModel: ObservableObject {
         }
         defaults.set(migrated.rawValue, forKey: SidebarItem.storageKey)
         return migrated
+    }
+
+    private func persistExpandedSections() {
+        defaults.set(
+            expandedSections.map(\.rawValue).sorted(),
+            forKey: Self.expandedSectionsKey
+        )
     }
 }

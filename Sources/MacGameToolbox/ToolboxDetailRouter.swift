@@ -7,6 +7,7 @@ struct ToolboxDetailRouter: View {
     let selection: SidebarItem
     @ObservedObject var navigation: NavigationModel
     @ObservedObject var clickFlowController: ClickFlowFeatureController
+    @ObservedObject var appDropController: AppDropFeatureController
 
     var body: some View {
         Group {
@@ -32,8 +33,13 @@ struct ToolboxDetailRouter: View {
                         onNavigate: navigateToClickFlowPage
                     )
                 }
-            case .appDrop:
-                AppDropPlaceholderView()
+            case .appDropWishlist, .appDropTodayDrops, .appDropHistoricalLows, .appDropSettings:
+                if let page = selection.appDropPage {
+                    AppDropFeatureHost(
+                        controller: appDropController,
+                        page: page
+                    )
+                }
             case .appearanceWallpaper:
                 AppearanceSettingsDetailView()
             case .tutorials:

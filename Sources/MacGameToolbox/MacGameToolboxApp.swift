@@ -1,4 +1,6 @@
 import AppKit
+import AppDropCore
+import ServiceManagement
 import SwiftUI
 #if SWIFT_PACKAGE
 import MacGameToolboxClickFlow
@@ -10,16 +12,28 @@ struct MacGameToolboxApp: App {
     @StateObject private var model = AppModel()
     @StateObject private var localization = LocalizationController()
     @StateObject private var clickFlowController = ClickFlowFeatureController()
+    @StateObject private var appDropController = AppDropFeatureController()
 
     var body: some Scene {
         Window(tr("Mac游戏工具箱", "Mac Game Toolbox"), id: "main") {
-            MainContentView(clickFlowController: clickFlowController)
+            MainContentView(
+                clickFlowController: clickFlowController,
+                appDropController: appDropController
+            )
                 .environmentObject(model)
                 .environmentObject(localization)
                 .id(localization.refreshToken)
                 .frame(minWidth: 960, minHeight: 640)
                 .onAppear {
                     applicationDelegate.shutdownHandler = { clickFlowController.shutdown() }
+                    applicationDelegate.openFilesHandler = { urls in
+                        appDropController.open(urls: urls)
+                    }
+                    let queued = AppEventBus.shared.queuedFileURLs
+                    if !queued.isEmpty {
+                        appDropController.open(urls: queued)
+                        AppEventBus.shared.queuedFileURLs.removeAll()
+                    }
                 }
         }
         .defaultSize(width: 1120, height: 760)
@@ -53,13 +67,23 @@ struct MacGameToolboxApp: App {
 
 final class MacGameToolboxApplicationDelegate: NSObject, NSApplicationDelegate {
     var shutdownHandler: (() -> Void)?
+    var openFilesHandler: (([URL]) -> Void)?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if ProcessInfo.processInfo.arguments.contains("--unregister-appdrop-helper") {
+            let service = SMAppService.agent(
+                plistName: SharedConstants.helperAgentPlistName
+            )
+            try? service.unregister()
+            DispatchQueue.main.async {
+                MenuCommandCoordinator.shared.quitApplication()
+            }
+            return
+        }
         guard UpdateCheckPreference.isEnabled else { return }
 
         Task {
-            guard let release = await GitHubReleaseChecker.latestStableRelease(),
-                  GitHubReleaseChecker.isNewer(release.version, than: GitHubReleaseChecker.currentVersion) else {
+            guard case let .available(release) = await GitHubReleaseChecker.check() else {
                 return
             }
 
@@ -85,6 +109,24 @@ final class MacGameToolboxApplicationDelegate: NSObject, NSApplicationDelegate {
             return .terminateNow
         }
         return .terminateCancel
+    }
+
+    func application(_ sender: NSApplication, openFiles filenames: [String]) {
+        let urls = filenames.map { URL(fileURLWithPath: $0) }
+        if let openFilesHandler {
+            openFilesHandler(urls)
+        } else {
+            AppEventBus.shared.queuedFileURLs.append(contentsOf: urls)
+        }
+        sender.reply(toOpenOrPrint: .success)
+    }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        if let openFilesHandler {
+            openFilesHandler(urls)
+        } else {
+            AppEventBus.shared.queuedFileURLs.append(contentsOf: urls)
+        }
     }
 
     func applicationShouldHandleReopen(
@@ -127,33 +169,60 @@ struct GitHubRelease: Sendable {
     let version: String
 }
 
+enum GitHubUpdateCheckResult: Sendable, Equatable {
+    case available(GitHubRelease)
+    case upToDate(currentVersion: String)
+    case rateLimited
+    case failed(message: String)
+}
+
+extension GitHubRelease: Equatable {}
+
 enum GitHubReleaseChecker {
     static let releasesPageURL = URL(string: "https://github.com/aiwentongxue/mac-gaming-toolbox/releases/latest")!
     private static let latestReleaseAPIURL = URL(string: "https://api.github.com/repos/aiwentongxue/mac-gaming-toolbox/releases/latest")!
+    private static let releasesAtomURL = URL(string: "https://github.com/aiwentongxue/mac-gaming-toolbox/releases.atom")!
 
     static var currentVersion: String {
         (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "3.2.1"
     }
 
-    static func latestStableRelease() async -> GitHubRelease? {
-        var request = URLRequest(url: latestReleaseAPIURL)
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("MacGameToolbox", forHTTPHeaderField: "User-Agent")
-        request.timeoutInterval = 10
+    static func check(
+        currentVersion: String = currentVersion,
+        session: URLSession = .shared
+    ) async -> GitHubUpdateCheckResult {
+        var apiWasRateLimited = false
 
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode) else {
-                return nil
-            }
-
-            let payload = try JSONDecoder().decode(LatestReleasePayload.self, from: data)
-            let version = payload.tagName.trimmingCharacters(in: .whitespacesAndNewlines)
-            return version.isEmpty ? nil : GitHubRelease(version: version)
+            let version = try await fetchAPIVersion(session: session)
+            return result(for: version, currentVersion: currentVersion)
+        } catch let error as UpdateFetchError {
+            apiWasRateLimited = error == .rateLimited
         } catch {
-            // Update checks are intentionally silent when offline or GitHub is unavailable.
-            return nil
+            // Fall through to public GitHub endpoints below.
+        }
+
+        do {
+            let version = try await fetchAtomVersion(session: session)
+            return result(for: version, currentVersion: currentVersion)
+        } catch {
+            // The redirect endpoint is a final fallback when the Atom feed is
+            // unavailable but the public Releases page is still reachable.
+        }
+
+        do {
+            let version = try await fetchRedirectVersion(session: session)
+            return result(for: version, currentVersion: currentVersion)
+        } catch {
+            if apiWasRateLimited {
+                return .rateLimited
+            }
+            return .failed(
+                message: tr(
+                    "无法连接 GitHub 检查更新，请稍后重试。",
+                    "GitHub could not be reached to check for updates. Please try again later."
+                )
+            )
         }
     }
 
@@ -161,9 +230,94 @@ enum GitHubReleaseChecker {
         normalizedVersion(candidate).compare(normalizedVersion(current), options: .numeric) == .orderedDescending
     }
 
-    private static func normalizedVersion(_ version: String) -> String {
+    static func normalizedVersion(_ version: String) -> String {
         let trimmed = version.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.first?.lowercased() == "v" ? String(trimmed.dropFirst()) : trimmed
+    }
+
+    static func versionFromReleasePath(_ path: String) -> String? {
+        guard let range = path.range(of: "/releases/tag/") else { return nil }
+        let value = path[range.upperBound...]
+            .split(separator: "/")
+            .first
+            .map(String.init)?
+            .removingPercentEncoding
+        guard let value, !value.isEmpty else { return nil }
+        return value
+    }
+
+    private static func result(
+        for version: String,
+        currentVersion: String
+    ) -> GitHubUpdateCheckResult {
+        isNewer(version, than: currentVersion)
+            ? .available(GitHubRelease(version: version))
+            : .upToDate(currentVersion: currentVersion)
+    }
+
+    private static func request(for url: URL, accept: String) -> URLRequest {
+        var request = URLRequest(url: url)
+        request.setValue(accept, forHTTPHeaderField: "Accept")
+        request.setValue("MacGameToolbox", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 10
+        return request
+    }
+
+    private static func fetchAPIVersion(session: URLSession) async throws -> String {
+        let request = request(for: latestReleaseAPIURL, accept: "application/vnd.github+json")
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw UpdateFetchError.invalidResponse
+        }
+        if httpResponse.statusCode == 403,
+           httpResponse.value(forHTTPHeaderField: "x-ratelimit-remaining") == "0" {
+            throw UpdateFetchError.rateLimited
+        }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw UpdateFetchError.httpStatus(httpResponse.statusCode)
+        }
+        let payload = try JSONDecoder().decode(LatestReleasePayload.self, from: data)
+        let version = payload.tagName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !version.isEmpty else { throw UpdateFetchError.invalidResponse }
+        return version
+    }
+
+    private static func fetchAtomVersion(session: URLSession) async throws -> String {
+        let request = request(
+            for: releasesAtomURL,
+            accept: "application/atom+xml, application/xml;q=0.9, text/xml;q=0.8"
+        )
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw UpdateFetchError.invalidResponse
+        }
+        let parser = AtomReleaseParser()
+        let xmlParser = XMLParser(data: data)
+        xmlParser.delegate = parser
+        guard xmlParser.parse(), let version = parser.latestVersion, !version.isEmpty else {
+            throw UpdateFetchError.invalidResponse
+        }
+        return version
+    }
+
+    private static func fetchRedirectVersion(session: URLSession) async throws -> String {
+        let request = request(for: releasesPageURL, accept: "text/html")
+        let (_, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode),
+              let finalURL = response.url,
+              let version = versionFromReleasePath(finalURL.path),
+              !version.isEmpty else {
+            throw UpdateFetchError.invalidResponse
+        }
+        return version
+    }
+
+    private enum UpdateFetchError: Error, Equatable {
+        case rateLimited
+        case invalidResponse
+        case httpStatus(Int)
     }
 
     private struct LatestReleasePayload: Decodable {
@@ -171,6 +325,69 @@ enum GitHubReleaseChecker {
 
         enum CodingKeys: String, CodingKey {
             case tagName = "tag_name"
+        }
+    }
+}
+
+private final class AtomReleaseParser: NSObject, XMLParserDelegate {
+    private var isInsideEntry = false
+    private var didCaptureFirstEntryLink = false
+    private var firstEntryLink: String?
+    private var firstEntryId: String?
+    private var isInsideId = false
+    private var currentText = ""
+
+    var latestVersion: String? {
+        if let firstEntryLink,
+           let version = GitHubReleaseChecker.versionFromReleasePath(firstEntryLink) {
+            return version
+        }
+        guard let firstEntryId else { return nil }
+        let suffix = firstEntryId.split(separator: "/").last.map(String.init)
+        return suffix
+    }
+
+    func parser(
+        _ parser: XMLParser,
+        didStartElement elementName: String,
+        namespaceURI: String?,
+        qualifiedName qName: String?,
+        attributes attributeDict: [String: String] = [:]
+    ) {
+        if elementName == "entry", firstEntryLink == nil, firstEntryId == nil {
+            isInsideEntry = true
+            didCaptureFirstEntryLink = false
+        }
+        guard isInsideEntry else { return }
+        if elementName == "link",
+           !didCaptureFirstEntryLink,
+           attributeDict["rel"] == "alternate",
+           let href = attributeDict["href"] {
+            firstEntryLink = href
+            didCaptureFirstEntryLink = true
+        } else if elementName == "id", firstEntryId == nil {
+            isInsideId = true
+            currentText = ""
+        }
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) {
+        guard isInsideId else { return }
+        currentText += string
+    }
+
+    func parser(
+        _ parser: XMLParser,
+        didEndElement elementName: String,
+        namespaceURI: String?,
+        qualifiedName qName: String?
+    ) {
+        if elementName == "id", isInsideId, firstEntryId == nil {
+            firstEntryId = currentText.trimmingCharacters(in: .whitespacesAndNewlines)
+            isInsideId = false
+            currentText = ""
+        } else if elementName == "entry" {
+            isInsideEntry = false
         }
     }
 }

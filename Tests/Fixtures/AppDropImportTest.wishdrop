@@ -1,0 +1,15 @@
+{
+  "formatIdentifier": "com.appdrop.wishdrop",
+  "version": 1,
+  "title": "AppDrop Import Test",
+  "author": "Mac Game Toolbox",
+  "exportedAt": "2026-10-21T14:50:00Z",
+  "apps": [
+    {
+      "trackId": "6502622570",
+      "name": "Infinity Nikki",
+      "countryCode": "us",
+      "appStoreURL": "https://apps.apple.com/us/app/infinity-nikki/id6502622570?uo=4"
+    }
+  ]
+}

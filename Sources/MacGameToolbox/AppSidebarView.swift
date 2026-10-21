@@ -15,18 +15,51 @@ struct AppSidebarView: View {
     var body: some View {
         List(selection: selectionBinding) {
             ForEach(SidebarSection.allCases) { section in
-                Section(section.localizedTitle) {
-                    ForEach(section.items) { item in
-                        SidebarLabel(
-                            item: item,
-                            badge: badge(for: item),
-                            isActive: item == .cfClicker || item == .cfMacros || item == .cfCombinedMacros
-                                ? clickFlowController.isAutomationActive
-                                : false
-                        )
-                        .tag(item)
-                        .accessibilityIdentifier("sidebar.\(item.rawValue)")
+                Section {
+                    if navigation.isExpanded(section) {
+                        ForEach(section.items) { item in
+                            SidebarLabel(
+                                item: item,
+                                badge: badge(for: item),
+                                isActive: item == .cfClicker ||
+                                    item == .cfMacros ||
+                                    item == .cfCombinedMacros
+                                    ? clickFlowController.isAutomationActive
+                                    : false
+                            )
+                            .tag(item)
+                            .accessibilityIdentifier("sidebar.\(item.rawValue)")
+                        }
                     }
+                } header: {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            navigation.toggle(section)
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.bold))
+                                .frame(width: 12)
+                                .rotationEffect(
+                                    .degrees(navigation.isExpanded(section) ? 90 : 0)
+                                )
+                            Text(section.localizedTitle)
+                                .font(.caption.weight(.semibold))
+                                .textCase(nil)
+                            Spacer(minLength: 2)
+                        }
+                        .padding(.leading, 2)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(section.localizedTitle)
+                    .accessibilityValue(
+                        navigation.isExpanded(section)
+                            ? tr("已展开", "Expanded")
+                            : tr("已收起", "Collapsed")
+                    )
+                    .accessibilityHint(tr("切换侧边栏分组", "Toggle sidebar group"))
                 }
             }
         }
@@ -134,8 +167,8 @@ struct AppSidebarView: View {
             return model.disks.isEmpty ? nil : "\(model.disks.count)"
         case .cfClicker, .cfMacros, .cfCombinedMacros:
             return clickFlowController.isAutomationActive ? tr("运行中", "ACTIVE") : nil
-        case .appDrop:
-            return tr("预留", "SOON")
+        case .appDropWishlist, .appDropTodayDrops, .appDropHistoricalLows, .appDropSettings:
+            return nil
         default:
             return nil
         }
@@ -148,26 +181,27 @@ struct AppSidebarView: View {
 
     private func checkForUpdates() {
         Task {
-            guard let release = await GitHubReleaseChecker.latestStableRelease() else {
-                await MainActor.run {
-                    updateMessage = tr(
-                        "暂时无法读取最新版本，请稍后重试。",
-                        "Could not read the latest version. Please try again later."
-                    )
-                }
-                return
-            }
-            let isNewer = GitHubReleaseChecker.isNewer(
-                release.version,
-                than: GitHubReleaseChecker.currentVersion
-            )
+            let result = await GitHubReleaseChecker.check()
             await MainActor.run {
-                updateMessage = isNewer
-                    ? tr(
+                switch result {
+                case .available(let release):
+                    updateMessage = tr(
                         "发现新版本 \(release.version)，当前版本为 \(GitHubReleaseChecker.currentVersion)。",
                         "Version \(release.version) is available; you are running \(GitHubReleaseChecker.currentVersion)."
                     )
-                    : tr("当前已是最新可用版本。", "You are running the latest available version.")
+                case .upToDate:
+                    updateMessage = tr(
+                        "当前已是最新可用版本。",
+                        "You are running the latest available version."
+                    )
+                case .rateLimited:
+                    updateMessage = tr(
+                        "GitHub API 暂时限流，备用更新通道也未能读取版本，请稍后重试。",
+                        "GitHub's API is temporarily rate-limited and the fallback channels could not read a version. Please try again later."
+                    )
+                case .failed(let message):
+                    updateMessage = message
+                }
             }
         }
     }
@@ -196,7 +230,7 @@ private struct SidebarLabel: View {
             } else if let badge {
                 Text(badge)
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(item == .appDrop ? .secondary : .primary)
+                    .foregroundStyle(.primary)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(.quaternary, in: Capsule())

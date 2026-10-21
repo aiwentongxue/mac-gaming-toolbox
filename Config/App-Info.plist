@@ -8,9 +8,45 @@
     <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>zh-Hans</string>
+        <string>zh-Hant</string>
+        <string>en</string>
+        <string>ja</string>
+        <string>ko</string>
+        <string>de</string>
+        <string>fr</string>
+        <string>es</string>
+        <string>pt</string>
+    </array>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>3.2.1</string>
     <key>CFBundleVersion</key><string>$(MARKETING_VERSION)</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key><string>Wishdrop Preset</string>
+            <key>CFBundleTypeRole</key><string>Viewer</string>
+            <key>LSHandlerRank</key><string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array><string>com.appdrop.wishdrop</string></array>
+        </dict>
+    </array>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeConformsTo</key>
+            <array><string>public.json</string></array>
+            <key>UTTypeDescription</key><string>Wishdrop Preset</string>
+            <key>UTTypeIdentifier</key><string>com.appdrop.wishdrop</string>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array><string>wishdrop</string></array>
+            </dict>
+        </dict>
+    </array>
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSHumanReadableCopyright</key><string>Copyright © 2026 我是艾文喵</string>

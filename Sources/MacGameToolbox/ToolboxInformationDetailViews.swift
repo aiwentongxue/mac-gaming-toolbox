@@ -402,122 +402,29 @@ struct ChangelogAboutDetailView: View {
         isCheckingUpdate = true
         updateStatus = tr("正在检查…", "Checking…")
         Task {
-            let release = await GitHubReleaseChecker.latestStableRelease()
+            let result = await GitHubReleaseChecker.check()
             await MainActor.run {
                 isCheckingUpdate = false
-                guard let release else {
-                    updateStatus = tr("暂时无法读取更新信息。", "Could not read update information.")
-                    return
-                }
-                updateStatus = GitHubReleaseChecker.isNewer(
-                    release.version,
-                    than: GitHubReleaseChecker.currentVersion
-                )
-                    ? tr("发现新版本 \(release.version)。", "Version \(release.version) is available.")
-                    : tr("当前已是最新可用版本。", "You are running the latest available version.")
-            }
-        }
-    }
-}
-
-struct AppDropPlaceholderView: View {
-    var body: some View {
-        ToolboxPage(
-            icon: SidebarItem.appDrop.iconName,
-            title: "AppDrop",
-            subtitle: tr(
-                "该入口已为后续合并 AppDrop No Sandbox 预留。本版本不包含价格追踪或后台检查功能。",
-                "This entry is reserved for the future AppDrop No Sandbox integration. This build does not include price tracking or background checks."
-            )
-        ) {
-            ToolboxCard(
-                tr("模块预留", "Module Reserved"),
-                subtitle: tr(
-                    "这一位置固定在 ClickFlow 下方、外观壁纸上方，便于后续以独立功能模块接入。",
-                    "This position is fixed below ClickFlow and above Appearance so AppDrop can be integrated as an independent feature module."
-                )
-            ) {
-                HStack(spacing: 14) {
-                    Image(systemName: "shippingbox.and.arrow.backward.fill")
-                        .font(.system(size: 34))
-                        .foregroundStyle(.purple)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(tr("当前不可用", "Not Available Yet"))
-                            .font(.headline)
-                        Text(tr("不会读取或修改独立版 AppDrop 的数据库、偏好设置或后台 Helper。", "The standalone AppDrop database, preferences, and background helper are not read or modified."))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                switch result {
+                case .available(let release):
+                    updateStatus = tr(
+                        "发现新版本 \(release.version)。",
+                        "Version \(release.version) is available."
+                    )
+                case .upToDate:
+                    updateStatus = tr(
+                        "当前已是最新可用版本。",
+                        "You are running the latest available version."
+                    )
+                case .rateLimited:
+                    updateStatus = tr(
+                        "GitHub API 暂时限流，请稍后重试。",
+                        "GitHub's API is temporarily rate-limited. Please try again later."
+                    )
+                case .failed(let message):
+                    updateStatus = message
                 }
             }
-
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 250), spacing: 14)],
-                spacing: 14
-            ) {
-                PlannedAppDropFeature(
-                    icon: "heart.fill",
-                    title: tr("心愿单", "Wishlist"),
-                    detail: tr("追踪感兴趣的应用与游戏。", "Track apps and games you care about.")
-                )
-                PlannedAppDropFeature(
-                    icon: "chart.line.downtrend.xyaxis",
-                    title: tr("价格历史", "Price History"),
-                    detail: tr("查看不同商店区域的价格记录。", "Review price observations across store regions.")
-                )
-                PlannedAppDropFeature(
-                    icon: "bell.fill",
-                    title: tr("降价通知", "Price Alerts"),
-                    detail: tr("通过系统通知提示价格变化。", "Use system notifications for price changes.")
-                )
-                PlannedAppDropFeature(
-                    icon: "arrow.trianglehead.2.clockwise.rotate.90",
-                    title: tr("后台检查", "Background Checks"),
-                    detail: tr("后续独立规划调度与授权。", "Scheduling and permissions will be designed separately.")
-                )
-            }
-
-            ToolboxCard(tr("集成边界", "Integration Boundary")) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label(
-                        tr("独立、可测试的 AppDrop 功能模块", "Independent, testable AppDrop feature module"),
-                        systemImage: "checkmark.circle"
-                    )
-                    Label(
-                        tr("与 ClickFlow 和工具箱数据目录隔离", "Isolated from ClickFlow and toolbox data directories"),
-                        systemImage: "checkmark.circle"
-                    )
-                    Label(
-                        tr("实际合并时单独评估 SwiftData、通知和后台 Helper", "SwiftData, notifications, and background helper reviewed separately during integration"),
-                        systemImage: "checkmark.circle"
-                    )
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
         }
-    }
-}
-
-private struct PlannedAppDropFeature: View {
-    let icon: String
-    let title: String
-    let detail: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(.purple)
-            Text(title)
-                .font(.headline)
-            Text(detail)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 122, alignment: .topLeading)
-        .toolboxCard()
     }
 }

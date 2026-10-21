@@ -16,7 +16,8 @@ Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming u
 - Clear caches and logs in one click. By default, only user caches and user logs are removed; sensitive-file exclusions can be disabled for a complete, high-risk cleanup.
 - Switch to or restore a Steam Deck hostname mode for compatibility testing.
 - Import a custom interface wallpaper, export diagnostic information, and access Mac gaming and CrossOver tutorials. GitHub update checks can run automatically.
-- AppDrop has a reserved position below ClickFlow and above Appearance. This build only displays a placeholder and does not read or modify standalone AppDrop data.
+- The integrated AppDrop includes a wishlist, today's drops, historical lows, and price settings. It supports App Store links, keyword search, 17 storefront regions, `.wishdrop` import/export, price history, and price-drop notifications.
+- AppDrop stores data independently at `~/Library/Application Support/MacGameToolbox/AppDrop` and does not read or modify standalone AppDrop data. Background checks use a dedicated user-level helper that is registered only when enabled in AppDrop Settings.
 
 ## System Requirements
 
@@ -42,7 +43,7 @@ After the build finishes, the app is located at:
 build/DerivedData/Build/Products/Release/Mac 游戏工具箱.app
 ```
 
-Copy the app to the Applications folder; Mac Gaming Toolbox must run from `/Applications/Mac 游戏工具箱.app`. The first time you use a feature that requires system privileges, macOS registers the privileged helper bundled with the app. If macOS asks for approval, go to System Settings > General > Login Items & Extensions and allow the corresponding background item.
+Copy the app to the Applications folder; Mac Gaming Toolbox must run from `/Applications/Mac 游戏工具箱.app`. The first time you use a feature that requires system privileges, macOS registers the privileged helper bundled with the app. AppDrop background checks use a separate login item that is registered only after you enable it. Approve the corresponding background items in System Settings > General > Login Items & Extensions when prompted.
 
 You can also create a debug build with Swift Package Manager:
 
@@ -88,3 +89,4 @@ Copyright (C) 2026 我是艾文喵
 This project is licensed under the [GNU General Public License v3.0](LICENSE). You may use, modify, and distribute it under the terms of GPL-3.0. Modified distributions must retain the same open-source license and make the corresponding source code available.
 
 The integrated ClickFlow 1.0.1 feature is derived from the GPL-3.0 ClickFlow project maintained by the same author, with its copyright and license requirements preserved.
+The AppDrop feature is derived from the GPL-3.0 AppDrop No Sandbox project maintained by the same author, with its copyright and license requirements preserved.

@@ -6,11 +6,13 @@ import MacGameToolboxClickFlow
 
 struct MainContentView: View {
     @ObservedObject var clickFlowController: ClickFlowFeatureController
+    @ObservedObject var appDropController: AppDropFeatureController
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var localization: LocalizationController
     @Environment(\.colorScheme) private var systemColorScheme
     @StateObject private var navigation = NavigationModel()
     @State private var nativeGlassEnabled = NSApp.isActive
+    @State private var dismissedStatusMessage: String?
 
     private var usesWallpaper: Bool {
         model.wallpaperImage != nil
@@ -36,7 +38,8 @@ struct MainContentView: View {
                     ToolboxDetailRouter(
                         selection: navigation.selection,
                         navigation: navigation,
-                        clickFlowController: clickFlowController
+                        clickFlowController: clickFlowController,
+                        appDropController: appDropController
                     )
                     .id(navigation.selection)
                 }
@@ -45,7 +48,11 @@ struct MainContentView: View {
             .navigationSplitViewStyle(.balanced)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            ToolboxStatusBar()
+            if shouldShowStatusBar {
+                ToolboxStatusBar {
+                    dismissedStatusMessage = model.status.message
+                }
+            }
         }
         .background(
             WindowAppearanceConfigurator(
@@ -94,9 +101,15 @@ struct MainContentView: View {
             if item.isClickFlowPage {
                 clickFlowController.refreshPermissions()
             }
+            if model.status.phase != .running && model.status.phase != .awaitingAuthorization {
+                dismissedStatusMessage = nil
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .toolboxNavigateToTutorials)) { _ in
             navigation.select(.tutorials)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .toolboxNavigateToAppDropWishlist)) { _ in
+            navigation.select(.appDropWishlist)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             nativeGlassEnabled = true
@@ -123,6 +136,17 @@ struct MainContentView: View {
                     .opacity(usesWallpaper ? 0.44 : 0.18)
             }
             .ignoresSafeArea()
+    }
+
+    private var shouldShowStatusBar: Bool {
+        guard model.status.phase != .idle,
+              dismissedStatusMessage != model.status.message else {
+            return false
+        }
+        if model.status.phase == .running || model.status.phase == .awaitingAuthorization {
+            return true
+        }
+        return navigation.selection.section == .gaming || navigation.selection.section == .storage
     }
 
     private func synchronizeClickFlowLanguage() {

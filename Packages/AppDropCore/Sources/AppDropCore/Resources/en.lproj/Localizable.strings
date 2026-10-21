@@ -1,0 +1,6 @@
+"notification.drop.title" = "Price drop: %@";
+"notification.drop.body" = "Now %@ in the %@ store — %@ lower than the previous price.";
+"notification.drop.body.newLow" = "Now %@ in the %@ store — %@ lower than the previous price. New all-time low!";
+"notification.batch.title" = "%lld Games Dropped in Price";
+"notification.batch.body.all" = "%@ have dropped in price.";
+"notification.batch.body.more" = "%@, plus %lld more, have dropped in price.";

@@ -9,7 +9,11 @@ let package = Package(
         .library(name: "MacGameToolboxCore", targets: ["MacGameToolboxCore"]),
         .library(name: "MacGameToolboxClickFlow", targets: ["MacGameToolboxClickFlow"]),
         .executable(name: "MacGameToolbox", targets: ["MacGameToolbox"]),
-        .executable(name: "MacGameToolboxPrivilegedHelper", targets: ["MacGameToolboxPrivilegedHelper"])
+        .executable(name: "MacGameToolboxPrivilegedHelper", targets: ["MacGameToolboxPrivilegedHelper"]),
+        .executable(name: "MacGameToolboxAppDropHelper", targets: ["MacGameToolboxAppDropHelper"])
+    ],
+    dependencies: [
+        .package(path: "Packages/AppDropCore")
     ],
     targets: [
         .target(name: "MacGameToolboxCore"),
@@ -19,9 +23,22 @@ let package = Package(
         ),
         .executableTarget(
             name: "MacGameToolbox",
-            dependencies: ["MacGameToolboxCore", "MacGameToolboxClickFlow"],
-            resources: [.process("Assets.xcassets")],
+            dependencies: [
+                "MacGameToolboxCore",
+                "MacGameToolboxClickFlow",
+                .product(name: "AppDropCore", package: "AppDropCore")
+            ],
+            resources: [
+                .process("Assets.xcassets"),
+                .process("AppDropFeature/Resources")
+            ],
             linkerSettings: [.linkedFramework("ServiceManagement"), .linkedFramework("Security")]
+        ),
+        .executableTarget(
+            name: "MacGameToolboxAppDropHelper",
+            dependencies: [.product(name: "AppDropCore", package: "AppDropCore")],
+            path: "Sources/AppDropHelper",
+            linkerSettings: [.linkedFramework("ServiceManagement"), .linkedFramework("UserNotifications")]
         ),
         .executableTarget(
             name: "MacGameToolboxPrivilegedHelper",

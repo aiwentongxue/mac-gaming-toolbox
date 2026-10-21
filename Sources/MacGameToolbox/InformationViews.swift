@@ -7,7 +7,9 @@ struct ChangelogView: View {
                     Text(tr("采用全局两栏式导航，统一游戏工具、磁盘维护、ClickFlow、AppDrop 和帮助页面", "Introduced global two-column navigation for gaming tools, storage, ClickFlow, AppDrop, and help"))
                     Text(tr("移除标题栏控件注入，改用系统原生侧边栏和工具栏", "Removed title-bar control injection in favor of a native sidebar and toolbar"))
                     Text(tr("主要功能从弹窗迁入固定详情页面，仅破坏性操作保留确认提示", "Moved primary features from sheets into fixed detail pages, retaining confirmations only for destructive actions"))
-                    Text(tr("为后续 AppDrop 合并预留 ClickFlow 下方、外观壁纸上方入口", "Reserved an AppDrop entry below ClickFlow and above Appearance"))
+                    Text(tr("正式接入 AppDrop 心愿单、今日降价、历史低价、价格设置与独立后台检查", "Integrated AppDrop wishlist, today's drops, historical lows, price settings, and an independent background checker"))
+                    Text(tr("侧边栏功能分组支持收起与展开，并记住展开状态", "Added collapsible sidebar groups with persisted expansion state"))
+                    Text(tr("修复 GitHub API 限流时更新检查失败，新增 Atom Feed 和 Release 页面备用通道", "Fixed update checks during GitHub API rate limiting with Atom Feed and Release page fallbacks"))
                 }
                 Section("3.2.1") {
                     Text(tr("内置 ClickFlow 更新至 1.0.1，改进组合宏手柄回放和设置", "Updated the built-in ClickFlow to 1.0.1 with improved combined-macro controller playback and settings"))
@@ -160,4 +162,3 @@ struct ChangelogView: View {
             }
     }
 }
-

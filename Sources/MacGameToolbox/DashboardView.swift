@@ -152,6 +152,7 @@ struct ToolboxCard<Content: View>: View {
 
 struct ToolboxStatusBar: View {
     @EnvironmentObject private var model: AppModel
+    let onDismiss: () -> Void
 
     var body: some View {
         if model.status.phase != .idle {
@@ -176,6 +177,14 @@ struct ToolboxStatusBar: View {
                 Text(AppLanguage.phase(model.status.phase))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Button {
+                    onDismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(.plain)
+                .help(tr("关闭状态提示", "Dismiss Status"))
+                .accessibilityLabel(tr("关闭状态提示", "Dismiss Status"))
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 10)

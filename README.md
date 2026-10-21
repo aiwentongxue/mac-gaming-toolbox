@@ -16,7 +16,8 @@ Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常�
 - 一键清理缓存日志，默认仅清理用户缓存和用户日志，也可关闭敏感文件排除执行完整高风险清理。
 - 切换或恢复用于兼容性测试的 Steam Deck 主机名模式。
 - 导入自定义界面壁纸、导出诊断信息，并提供 Mac 游戏与 CrossOver 教程入口；可自动检查 GitHub 更新。
-- ClickFlow 下方、外观壁纸上方已预留 AppDrop 模块位置；当前版本仅显示预留说明，不读取或修改独立版 AppDrop 数据。
+- 内置 AppDrop 心愿单、今日降价、历史低价和价格设置；支持 App Store 链接、关键词搜索、17 个商店区域、`.wishdrop` 导入导出、价格历史与降价通知。
+- AppDrop 使用工具箱独立的 `~/Library/Application Support/MacGameToolbox/AppDrop` 数据目录，不读取或修改独立版 AppDrop 数据；需要后台检查时，可在 AppDrop 设置中注册专用的用户级 Helper。
 
 ## 系统要求
 
@@ -42,7 +43,7 @@ cd mac-gaming-toolbox
 build/DerivedData/Build/Products/Release/Mac 游戏工具箱.app
 ```
 
-请将应用复制到“应用程序”目录；Mac 游戏工具箱必须从 `/Applications/Mac 游戏工具箱.app` 运行。首次使用需要系统权限的功能时，macOS 会注册随应用提供的特权辅助服务。如果系统要求批准，请前往“系统设置 > 通用 > 登录项与扩展”允许相应后台项目。
+请将应用复制到“应用程序”目录；Mac 游戏工具箱必须从 `/Applications/Mac 游戏工具箱.app` 运行。首次使用需要系统权限的功能时，macOS 会注册随应用提供的特权辅助服务；AppDrop 后台检查使用单独的登录项，并仅在用户主动开启后注册。请按系统提示在“系统设置 > 通用 > 登录项与扩展”允许对应后台项目。
 
 也可以使用 Swift Package Manager 进行调试构建：
 
@@ -88,3 +89,4 @@ Copyright (C) 2026 我是艾文喵
 本项目基于 [GNU General Public License v3.0](LICENSE) 开源。你可以在遵守 GPL-3.0 条款的前提下使用、修改和分发本项目；分发修改版本时必须保留相同的开源许可并提供相应源代码。
 
 内置 ClickFlow 1.0.1 功能来源于同一作者维护的 GPL-3.0 项目 ClickFlow，并保留其版权与许可要求。
+AppDrop 功能来源于同一作者维护的 GPL-3.0 项目 AppDrop No Sandbox，并保留其版权与许可要求。

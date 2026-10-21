@@ -640,25 +640,38 @@ extension ClickFlowTests {
         }
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
-        XCTAssertEqual(SidebarItem.allCases.count, 14)
-        XCTAssertEqual(Set(SidebarItem.allCases).count, 14)
+        XCTAssertEqual(SidebarItem.allCases.count, 17)
+        XCTAssertEqual(Set(SidebarItem.allCases).count, 17)
         XCTAssertEqual(SidebarSection.allCases, [.gaming, .storage, .clickFlow, .appDrop, .information])
 
         let clickFlowSettingsIndex = try! XCTUnwrap(SidebarItem.allCases.firstIndex(of: .cfSettings))
-        let appDropIndex = try! XCTUnwrap(SidebarItem.allCases.firstIndex(of: .appDrop))
+        let appDropIndex = try! XCTUnwrap(SidebarItem.allCases.firstIndex(of: .appDropWishlist))
+        let appDropSettingsIndex = try! XCTUnwrap(SidebarItem.allCases.firstIndex(of: .appDropSettings))
         let appearanceIndex = try! XCTUnwrap(SidebarItem.allCases.firstIndex(of: .appearanceWallpaper))
         XCTAssertLessThan(clickFlowSettingsIndex, appDropIndex)
-        XCTAssertLessThan(appDropIndex, appearanceIndex)
+        XCTAssertLessThan(appDropSettingsIndex, appearanceIndex)
+        XCTAssertEqual(SidebarItem.appDropWishlist.appDropPage, .wishlist)
+        XCTAssertEqual(SidebarItem.appDropTodayDrops.appDropPage, .todayDrops)
+        XCTAssertEqual(SidebarItem.appDropHistoricalLows.appDropPage, .historicalLows)
+        XCTAssertEqual(SidebarItem.appDropSettings.appDropPage, .settings)
 
         XCTAssertEqual(NavigationModel.persistedSelection(in: defaults), .metalHUD)
         defaults.removeObject(forKey: SidebarItem.storageKey)
         defaults.set("clickFlow", forKey: SidebarItem.legacyStorageKey)
         XCTAssertEqual(NavigationModel.persistedSelection(in: defaults), .cfClicker)
+        defaults.set("appDrop", forKey: SidebarItem.storageKey)
+        XCTAssertEqual(NavigationModel.persistedSelection(in: defaults), .appDropWishlist)
         defaults.removeObject(forKey: SidebarItem.legacyStorageKey)
         defaults.set("future-value", forKey: SidebarItem.storageKey)
         XCTAssertEqual(NavigationModel.persistedSelection(in: defaults), .metalHUD)
 
         let navigation = NavigationModel(defaults: defaults)
+        XCTAssertTrue(navigation.isExpanded(.appDrop))
+        navigation.toggle(.appDrop)
+        XCTAssertFalse(navigation.isExpanded(.appDrop))
+        XCTAssertFalse(NavigationModel(defaults: defaults).isExpanded(.appDrop))
+        navigation.select(.appDropTodayDrops)
+        XCTAssertTrue(navigation.isExpanded(.appDrop))
         navigation.select(.diskManager)
         XCTAssertEqual(defaults.string(forKey: SidebarItem.storageKey), SidebarItem.diskManager.rawValue)
     }
@@ -1533,3 +1546,133 @@ private final class RecordedControllerOutput: ControllerOutputPublishing, @unche
         lock.withLock { operations.append(operation) }
     }
 }
+
+#if !SWIFT_PACKAGE
+final class UpdateCheckerURLProtocol: URLProtocol {
+    nonisolated(unsafe) static var handler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        guard let handler = Self.handler else {
+            client?.urlProtocol(self, didFailWithError: URLError(.unknown))
+            return
+        }
+        do {
+            let (response, data) = try handler(request)
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {}
+}
+
+extension ClickFlowTests {
+    @MainActor
+    func testUpdateCheckerFallsBackToAtomWhenAPIIsRateLimited() async {
+        let session = makeUpdateCheckSession()
+        defer { UpdateCheckerURLProtocol.handler = nil }
+        UpdateCheckerURLProtocol.handler = { request in
+            if request.url?.host == "api.github.com" {
+                return (
+                    HTTPURLResponse(
+                        url: request.url!,
+                        statusCode: 403,
+                        httpVersion: nil,
+                        headerFields: ["x-ratelimit-remaining": "0"]
+                    )!,
+                    Data()
+                )
+            }
+            if request.url?.path.hasSuffix("releases.atom") == true {
+                let xml = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <feed xmlns="http://www.w3.org/2005/Atom">
+                  <entry>
+                    <id>tag:github.com,2008:Repository/1/v3.2.2</id>
+                    <link rel="alternate" href="https://github.com/aiwentongxue/mac-gaming-toolbox/releases/tag/v3.2.2"/>
+                  </entry>
+                </feed>
+                """
+                return (
+                    HTTPURLResponse(
+                        url: request.url!,
+                        statusCode: 200,
+                        httpVersion: nil,
+                        headerFields: ["Content-Type": "application/atom+xml"]
+                    )!,
+                    Data(xml.utf8)
+                )
+            }
+            throw URLError(.badServerResponse)
+        }
+
+        let result = await GitHubReleaseChecker.check(
+            currentVersion: "3.2.1",
+            session: session
+        )
+        XCTAssertEqual(result, .available(GitHubRelease(version: "v3.2.2")))
+    }
+
+    @MainActor
+    func testUpdateCheckerReportsCurrentVersionFromAPI() async {
+        let session = makeUpdateCheckSession()
+        defer { UpdateCheckerURLProtocol.handler = nil }
+        UpdateCheckerURLProtocol.handler = { request in
+            (
+                HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 200,
+                    httpVersion: nil,
+                    headerFields: ["Content-Type": "application/json"]
+                )!,
+                Data(#"{"tag_name":"v3.2.1"}"#.utf8)
+            )
+        }
+
+        let result = await GitHubReleaseChecker.check(
+            currentVersion: "3.2.1",
+            session: session
+        )
+        XCTAssertEqual(result, .upToDate(currentVersion: "3.2.1"))
+    }
+
+    @MainActor
+    func testUpdateCheckerReportsNetworkFailureAfterAllFallbacksFail() async {
+        let session = makeUpdateCheckSession()
+        defer { UpdateCheckerURLProtocol.handler = nil }
+        UpdateCheckerURLProtocol.handler = { _ in
+            throw URLError(.notConnectedToInternet)
+        }
+
+        let result = await GitHubReleaseChecker.check(
+            currentVersion: "3.2.1",
+            session: session
+        )
+        guard case .failed = result else {
+            return XCTFail("Expected a structured failure result")
+        }
+    }
+
+    func testReleaseVersionPathParserAcceptsEncodedTags() {
+        XCTAssertEqual(
+            GitHubReleaseChecker.versionFromReleasePath(
+                "/aiwentongxue/mac-gaming-toolbox/releases/tag/v3.3.0"
+            ),
+            "v3.3.0"
+        )
+        XCTAssertNil(GitHubReleaseChecker.versionFromReleasePath("/releases/latest"))
+    }
+
+    private func makeUpdateCheckSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [UpdateCheckerURLProtocol.self]
+        return URLSession(configuration: configuration)
+    }
+}
+#endif
