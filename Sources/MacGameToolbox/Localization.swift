@@ -452,7 +452,12 @@ private extension AppLanguage {
         "需要完全磁盘访问权限": [.traditionalChinese: "需要完全磁碟存取權限", .japanese: "フルディスクアクセスが必要", .korean: "전체 디스크 접근 권한 필요", .german: "Vollzugriff erforderlich", .french: "Accès complet requis", .spanish: "Se requiere acceso completo", .portuguese: "Acesso total necessário"],
         "准备清理": [.traditionalChinese: "準備清理", .japanese: "整理の準備", .korean: "정리 준비", .german: "Bereinigung vorbereiten", .french: "Prêt à nettoyer", .spanish: "Listo para limpiar", .portuguese: "Pronto para limpar"],
         "高风险操作": [.traditionalChinese: "高風險操作", .japanese: "高风险の操作", .korean: "고위험 작업", .german: "Hohes Risiko", .french: "Opération à risque", .spanish: "Operación de riesgo", .portuguese: "Operação de risco"],
-        "最终确认": [.traditionalChinese: "最終確認", .japanese: "最終確認", .korean: "최종 확인", .german: "Letzte Bestätigung", .french: "Confirmation finale", .spanish: "Confirmación final", .portuguese: "Confirmação final"]
+        "最终确认": [.traditionalChinese: "最終確認", .japanese: "最終確認", .korean: "최종 확인", .german: "Letzte Bestätigung", .french: "Confirmation finale", .spanish: "Confirmación final", .portuguese: "Confirmação final"],
+        "添加 HUD 预设": [.traditionalChinese: "加入 HUD 預設", .japanese: "HUD プリセットを追加", .korean: "HUD 프리셋 추가", .german: "HUD-Preset hinzufügen", .french: "Ajouter un préréglage HUD", .spanish: "Añadir ajuste HUD", .portuguese: "Adicionar predefinição HUD"],
+        "更换 HUD 预设": [.traditionalChinese: "更換 HUD 預設", .japanese: "HUD プリセットを変更", .korean: "HUD 프리셋 변경", .german: "HUD-Preset ändern", .french: "Changer le préréglage HUD", .spanish: "Cambiar ajuste HUD", .portuguese: "Alterar predefinição HUD"],
+        "从列表中移除": [.traditionalChinese: "從列表中移除", .japanese: "リストから削除", .korean: "목록에서 제거", .german: "Aus Liste entfernen", .french: "Retirer de la liste", .spanish: "Quitar de la lista", .portuguese: "Remover da lista"],
+        "预设与管理": [.traditionalChinese: "預設與管理", .japanese: "プリセットと管理", .korean: "프리셋 및 관리", .german: "Preset & Verwaltung", .french: "Préréglage et actions", .spanish: "Ajuste y acciones", .portuguese: "Predefinição e ações"],
+        "使用 MetalHUD 启动": [.traditionalChinese: "使用 MetalHUD 啟動", .japanese: "MetalHUD 付きで起動", .korean: "MetalHUD로 실행", .german: "Mit MetalHUD starten", .french: "Lancer avec MetalHUD", .spanish: "Iniciar con MetalHUD", .portuguese: "Iniciar com MetalHUD"]
     ]
 }
 

@@ -87,46 +87,11 @@ struct MetalHUDDetailView: View {
                     )
                 } else {
                     LazyVGrid(
-                        columns: [GridItem(.adaptive(minimum: 92, maximum: 116), spacing: 14)],
-                        spacing: 16
+                        columns: [GridItem(.adaptive(minimum: 150, maximum: 180), spacing: 14)],
+                        spacing: 14
                     ) {
                         ForEach(model.configuration.recentMetalHUDApps) { app in
-                            Button {
-                                model.launchRecordedAppWithMetalHUD(app.path)
-                            } label: {
-                                VStack(spacing: 7) {
-                                    Image(nsImage: NSWorkspace.shared.icon(forFile: app.path))
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 58, height: 58)
-                                    Text(app.displayName)
-                                        .font(.caption)
-                                        .lineLimit(2)
-                                        .multilineTextAlignment(.center)
-                                    if app.preset != nil {
-                                        Label(tr("已设预设", "Preset"), systemImage: "slider.horizontal.3")
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 7)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .contextMenu {
-                                Button(tr("选择 HUD 预设", "Choose HUD Preset")) {
-                                    model.chooseMetalHUDPreset(for: app)
-                                }
-                                Button(tr("移除 HUD 预设", "Remove HUD Preset")) {
-                                    model.removeMetalHUDPreset(for: app)
-                                }
-                                .disabled(app.preset == nil)
-                                Divider()
-                                Button(tr("移除记录", "Remove Record"), role: .destructive) {
-                                    model.removeRecentMetalHUDApp(app)
-                                }
-                            }
+                            MetalHUDRecentAppCard(app: app)
                         }
                     }
                 }
@@ -351,6 +316,214 @@ private enum MetalHUDMode: String, CaseIterable, Identifiable {
         case .desktop: tr("原生与 Wine 游戏", "Native & Wine Games")
         case .ios: tr("iOS / iPadOS 游戏", "iOS / iPadOS Games")
         }
+    }
+}
+
+private struct MetalHUDRecentAppCard: View {
+    @EnvironmentObject private var model: AppModel
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isHovering = false
+
+    let app: RecentMetalHUDApp
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                launch()
+            } label: {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(nsImage: NSWorkspace.shared.icon(forFile: app.path))
+                            .resizable()
+                            .interpolation(.high)
+                            .scaledToFit()
+                            .frame(width: 48, height: 48)
+                            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                    .stroke(.white.opacity(0.14), lineWidth: 0.7)
+                            }
+
+                        Spacer(minLength: 2)
+
+                        ZStack {
+                            Circle()
+                                .fill(Color.blue)
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(.white)
+                                .offset(x: 1)
+                        }
+                        .frame(width: 31, height: 31)
+                        .scaleEffect(isHovering ? 1.07 : 1)
+                        .shadow(
+                            color: Color.blue.opacity(isHovering ? 0.36 : 0.18),
+                            radius: isHovering ? 8 : 4,
+                            y: 2
+                        )
+                    }
+
+                    Text(app.displayName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, minHeight: 34, alignment: .topLeading)
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(
+                tr("使用 MetalHUD 启动", "Launch with MetalHUD")
+                    + ", \(app.displayName)"
+            )
+            .help(
+                tr("使用 MetalHUD 启动 \(app.displayName)", "Launch \(app.displayName) with MetalHUD")
+            )
+
+            presetControls
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 164, alignment: .topLeading)
+        .background {
+            shape
+                .fill(Color(nsColor: .controlBackgroundColor))
+                .overlay {
+                    shape.fill(
+                        Color.accentColor.opacity(isHovering ? 0.055 : 0.018)
+                    )
+                }
+        }
+        .overlay {
+            shape.stroke(
+                isHovering
+                    ? Color.accentColor.opacity(0.58)
+                    : Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.08),
+                lineWidth: isHovering ? 1.25 : 0.8
+            )
+        }
+        .shadow(
+            color: .black.opacity(colorScheme == .dark ? 0.24 : 0.08),
+            radius: isHovering ? 9 : 5,
+            y: isHovering ? 4 : 2
+        )
+        .contentShape(shape)
+        .onHover { hovering in
+            isHovering = hovering
+        }
+        .animation(.easeOut(duration: 0.14), value: isHovering)
+        .contextMenu {
+            Button(app.preset == nil
+                ? tr("添加 HUD 预设", "Add HUD Preset")
+                : tr("更换 HUD 预设", "Change HUD Preset")) {
+                choosePreset()
+            }
+            Button(tr("移除 HUD 预设", "Remove HUD Preset")) {
+                model.removeMetalHUDPreset(for: app)
+            }
+            .disabled(app.preset == nil)
+            Divider()
+            Button(tr("从列表中移除", "Remove from List"), role: .destructive) {
+                model.removeRecentMetalHUDApp(app)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var presetControls: some View {
+        if let preset = app.preset {
+            Menu {
+                Button(tr("更换 HUD 预设", "Change HUD Preset")) {
+                    choosePreset()
+                }
+                Button(tr("移除 HUD 预设", "Remove HUD Preset")) {
+                    model.removeMetalHUDPreset(for: app)
+                }
+                Divider()
+                Button(tr("从列表中移除", "Remove from List"), role: .destructive) {
+                    model.removeRecentMetalHUDApp(app)
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "slider.horizontal.3")
+                        .fixedSize()
+                    Text(preset.displayName)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Spacer(minLength: 2)
+                    Image(systemName: "ellipsis")
+                        .fixedSize()
+                        .layoutPriority(1)
+                }
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, minHeight: 28)
+                .background(.quaternary.opacity(0.55), in: Capsule())
+                .contentShape(Capsule())
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .accessibilityLabel(tr("预设与管理", "Preset & Actions"))
+            .accessibilityValue(preset.displayName)
+        } else {
+            HStack(spacing: 6) {
+                Button {
+                    choosePreset()
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "plus")
+                        Text(tr("添加 HUD 预设", "Add HUD Preset"))
+                            .lineLimit(1)
+                    }
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .frame(maxWidth: .infinity, minHeight: 28)
+                    .background(.quaternary.opacity(0.4), in: Capsule())
+                    .overlay {
+                        Capsule()
+                            .stroke(
+                                .secondary.opacity(0.25),
+                                style: StrokeStyle(lineWidth: 0.8, dash: [3, 3])
+                            )
+                    }
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tr("添加 HUD 预设", "Add HUD Preset"))
+
+                Menu {
+                    Button(tr("从列表中移除", "Remove from List"), role: .destructive) {
+                        model.removeRecentMetalHUDApp(app)
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(.quaternary.opacity(0.55), in: Circle())
+                        .contentShape(Circle())
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .accessibilityLabel(tr("预设与管理", "Preset & Actions"))
+            }
+        }
+    }
+
+    private func launch() {
+        model.launchRecordedAppWithMetalHUD(app.path)
+    }
+
+    private func choosePreset() {
+        model.chooseMetalHUDPreset(for: app)
     }
 }
 
