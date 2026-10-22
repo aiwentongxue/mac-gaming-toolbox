@@ -458,7 +458,37 @@ private extension AppLanguage {
         "从列表中移除": [.traditionalChinese: "從列表中移除", .japanese: "リストから削除", .korean: "목록에서 제거", .german: "Aus Liste entfernen", .french: "Retirer de la liste", .spanish: "Quitar de la lista", .portuguese: "Remover da lista"],
         "预设与管理": [.traditionalChinese: "預設與管理", .japanese: "プリセットと管理", .korean: "프리셋 및 관리", .german: "Preset & Verwaltung", .french: "Préréglage et actions", .spanish: "Ajuste y acciones", .portuguese: "Predefinição e ações"],
         "使用 MetalHUD 启动": [.traditionalChinese: "使用 MetalHUD 啟動", .japanese: "MetalHUD 付きで起動", .korean: "MetalHUD로 실행", .german: "Mit MetalHUD starten", .french: "Lancer avec MetalHUD", .spanish: "Iniciar con MetalHUD", .portuguese: "Iniciar com MetalHUD"]
+        ,"优先级": [.traditionalChinese: "優先權", .japanese: "優先度", .korean: "우선순위", .german: "Priorität", .french: "Priorité", .spanish: "Prioridad", .portuguese: "Prioridade"]
+        ,"最高": [.traditionalChinese: "最高", .japanese: "最高", .korean: "최고", .german: "Höchste", .french: "Maximale", .spanish: "Máxima", .portuguese: "Máxima"]
+        ,"高": [.traditionalChinese: "高", .japanese: "高", .korean: "높음", .german: "Hoch", .french: "Élevée", .spanish: "Alta", .portuguese: "Alta"]
+        ,"默认": [.traditionalChinese: "預設", .japanese: "標準", .korean: "기본", .german: "Standard", .french: "Par défaut", .spanish: "Predeterminada", .portuguese: "Padrão"]
+        ,"较低": [.traditionalChinese: "較低", .japanese: "低め", .korean: "낮음", .german: "Niedriger", .french: "Basse", .spanish: "Baja", .portuguese: "Baixa"]
+        ,"最低": [.traditionalChinese: "最低", .japanese: "最低", .korean: "최저", .german: "Niedrigste", .french: "Minimale", .spanish: "Mínima", .portuguese: "Mínima"]
+        ,"检测并应用优先级": [.traditionalChinese: "偵測並套用優先權", .japanese: "検出して優先度を適用", .korean: "감지 후 우선순위 적용", .german: "Erkennen und Priorität anwenden", .french: "Détecter et appliquer la priorité", .spanish: "Detectar y aplicar prioridad", .portuguese: "Detectar e aplicar prioridade"]
+        ,"应用到所选进程": [.traditionalChinese: "套用至所選程序", .japanese: "選択したプロセスに適用", .korean: "선택한 프로세스에 적용", .german: "Auf Auswahl anwenden", .french: "Appliquer à la sélection", .spanish: "Aplicar a la selección", .portuguese: "Aplicar à seleção"]
+        ,"选择进程": [.traditionalChinese: "選擇程序", .japanese: "プロセスを選択", .korean: "프로세스 선택", .german: "Prozess auswählen", .french: "Sélectionner le processus", .spanish: "Seleccionar proceso", .portuguese: "Selecionar processo"]
+        ,"优先级已更新：": [.traditionalChinese: "優先權已更新：", .japanese: "優先度を更新しました：", .korean: "우선순위가 업데이트되었습니다:", .german: "Priorität aktualisiert:", .french: "Priorité mise à jour :", .spanish: "Prioridad actualizada:", .portuguese: "Prioridade atualizada:"]
+        ,"正在应用所选进程优先级": [.traditionalChinese: "正在套用所選程序優先權", .japanese: "選択したプロセスの優先度を適用中", .korean: "선택한 프로세스 우선순위 적용 중", .german: "Priorität der Auswahl wird angewendet", .french: "Application de la priorité à la sélection", .spanish: "Aplicando prioridad a la selección", .portuguese: "Aplicando prioridade à seleção"]
+        ,"默认档位为系统 nice 0，不会恢复进程之前的历史值。": [.traditionalChinese: "預設等級為系統 nice 0，不會還原程序先前的歷史值。", .japanese: "標準はシステムの nice 0 で、以前の値には戻しません。", .korean: "기본은 시스템 nice 0이며 이전 값을 복원하지 않습니다.", .german: "Standard entspricht System-nice 0 und stellt keinen früheren Wert wieder her.", .french: "Par défaut correspond à nice 0 et ne restaure aucune valeur précédente.", .spanish: "Predeterminada corresponde a nice 0 y no restaura el valor anterior.", .portuguese: "Padrão corresponde a nice 0 e não restaura o valor anterior."]
+        ,"检测所有 CrossOver 或 Wine 游戏进程，并统一应用此模式选定的调度优先级。它不会按 Bottle 单独选择，也不会修改图形后端。": [.traditionalChinese: "偵測所有 CrossOver 或 Wine 遊戲程序，並統一套用此模式選定的排程優先權。不會依 Bottle 個別選擇，也不會修改圖形後端。", .japanese: "すべての CrossOver または Wine ゲームプロセスを検出し、このモードのスケジューリング優先度を一括適用します。Bottle 単位の選択やグラフィックバックエンドの変更は行いません。", .korean: "모든 CrossOver 또는 Wine 게임 프로세스를 감지하고 이 모드의 스케줄링 우선순위를 일괄 적용합니다. Bottle별 선택이나 그래픽 백엔드 변경은 하지 않습니다.", .german: "Erkennt alle CrossOver- oder Wine-Spielprozesse und wendet die in diesem Modus gewählte Planungspriorität gemeinsam an. Keine Bottle-Auswahl und keine Änderung des Grafik-Backends.", .french: "Détecte tous les processus de jeu CrossOver ou Wine et applique la priorité choisie à tous. Aucune sélection par bottle ni modification du backend graphique.", .spanish: "Detecta todos los procesos de juego CrossOver o Wine y aplica su prioridad de planificación conjuntamente. No selecciona por Bottle ni cambia el backend gráfico.", .portuguese: "Detecta todos os processos de jogo CrossOver ou Wine e aplica a prioridade deste modo em conjunto. Não seleciona por Bottle nem altera o backend gráfico."]
+        ,"最多可选择 64 个进程。搜索会匹配完整路径、名称和 PID。": [.traditionalChinese: "最多可選擇 64 個程序。搜尋會比對完整路徑、名稱與 PID。", .japanese: "最大64個のプロセスを選択できます。完全パス、名前、PIDを検索できます。", .korean: "최대 64개 프로세스를 선택할 수 있습니다. 전체 경로, 이름 및 PID를 검색합니다.", .german: "Bis zu 64 Prozesse auswählen. Die Suche umfasst vollständige Pfade, Namen und PIDs.", .french: "Sélectionnez jusqu’à 64 processus. La recherche couvre les chemins complets, les noms et les PID.", .spanish: "Selecciona hasta 64 procesos. La búsqueda incluye rutas completas, nombres y PID.", .portuguese: "Selecione até 64 processos. A pesquisa inclui caminhos completos, nomes e PIDs."]
     ]
+}
+
+extension ProcessPriorityLevel {
+    var localizedDisplayName: String {
+        switch self {
+        case .highest: tr("最高", "Highest")
+        case .high: tr("高", "High")
+        case .normal: tr("默认", "Default")
+        case .lower: tr("较低", "Lower")
+        case .lowest: tr("最低", "Lowest")
+        }
+    }
+
+    var localizedMenuTitle: String {
+        "\(localizedDisplayName) · nice \(rawValue)"
+    }
 }
 
 @inline(__always)

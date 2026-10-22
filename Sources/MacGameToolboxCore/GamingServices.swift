@@ -4,7 +4,8 @@ public enum PrivilegedOperation: Sendable, Equatable {
     case healthCheck
     case addHoYoHosts
     case removeHoYoHosts
-    /// `-20` is the highest scheduling priority and `20` is the lowest user-process priority.
+    /// Process priorities use the five supported nice values from
+    /// `ProcessPriorityLevel` (`-20`, `-10`, `0`, `10`, `20`).
     /// Keep the value in the request so the privileged helper, rather than the UI,
     /// remains the only component that changes a process's scheduling priority.
     case renice([Int32], Int32)

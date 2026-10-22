@@ -38,7 +38,6 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
     case metalHUD
     case hoYoAssistant
     case processPriority
-    case steamDeckSpoof
     case diskManager
     case systemCleaner
     case cfClicker
@@ -60,7 +59,7 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
 
     var section: SidebarSection {
         switch self {
-        case .metalHUD, .hoYoAssistant, .processPriority, .steamDeckSpoof:
+        case .metalHUD, .hoYoAssistant, .processPriority:
             .gaming
         case .diskManager, .systemCleaner:
             .storage
@@ -78,7 +77,6 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
         case .metalHUD: "gauge.with.dots.needle.67percent"
         case .hoYoAssistant: "gamecontroller.fill"
         case .processPriority: "bolt.fill"
-        case .steamDeckSpoof: "rectangle.2.swap"
         case .diskManager: "externaldrive.fill"
         case .systemCleaner: "trash.fill"
         case .cfClicker: "cursorarrow.click.2"
@@ -103,8 +101,6 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
             tr("HoYoGames 启动帮助", "HoYoGames Launch Assistant")
         case .processPriority:
             tr("进程优化", "Process Optimization")
-        case .steamDeckSpoof:
-            tr("SteamDeck 模式", "SteamDeck Mode")
         case .diskManager:
             tr("磁盘挂载管理", "Volume Mounting")
         case .systemCleaner:
@@ -142,8 +138,6 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
             "HoYoGames"
         case .processPriority:
             tr("进程优化", "Process Boost")
-        case .steamDeckSpoof:
-            "SteamDeck"
         case .diskManager:
             tr("磁盘挂载", "Volumes")
         case .systemCleaner:
@@ -252,6 +246,10 @@ final class NavigationModel: ObservableObject {
         if let stored = defaults.string(forKey: SidebarItem.storageKey),
            let item = SidebarItem(rawValue: stored) {
             return item
+        }
+        if defaults.string(forKey: SidebarItem.storageKey) == "steamDeckSpoof" {
+            defaults.set(SidebarItem.hoYoAssistant.rawValue, forKey: SidebarItem.storageKey)
+            return .hoYoAssistant
         }
         if defaults.string(forKey: SidebarItem.storageKey) == "appDrop" {
             defaults.set(SidebarItem.appDropWishlist.rawValue, forKey: SidebarItem.storageKey)

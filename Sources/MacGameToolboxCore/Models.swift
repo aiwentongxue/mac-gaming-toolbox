@@ -69,6 +69,24 @@ public struct HostnameBackup: Codable, Equatable, Sendable {
     }
 }
 
+public enum ProcessPriorityLevel: Int32, CaseIterable, Codable, Identifiable, Sendable {
+    case highest = -20
+    case high = -10
+    case normal = 0
+    case lower = 10
+    case lowest = 20
+
+    public var id: Int32 { rawValue }
+
+    /// Reads a raw value previously stored in UserDefaults. Unknown or
+    /// out-of-range values deliberately fall back to the safest default used
+    /// by the existing optimization flows.
+    public static func fromStoredRawValue(_ value: Int) -> ProcessPriorityLevel {
+        guard let rawValue = Int32(exactly: value) else { return .highest }
+        return ProcessPriorityLevel(rawValue: rawValue) ?? .highest
+    }
+}
+
 public struct SystemProcess: Identifiable, Hashable, Sendable {
     public var id: Int32 { pid }
     public let pid: Int32

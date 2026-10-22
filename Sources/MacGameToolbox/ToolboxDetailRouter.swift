@@ -18,8 +18,6 @@ struct ToolboxDetailRouter: View {
                 HoYoGamesDetailView()
             case .processPriority:
                 ProcessPriorityDetailView()
-            case .steamDeckSpoof:
-                SteamDeckDetailView()
             case .diskManager:
                 DiskManagerDetailView()
             case .systemCleaner:

@@ -6,10 +6,14 @@ import MacGameToolboxCore
 import Security
 import OSLog
 
-private let serviceName = "com.iven.macgametoolbox.helper.v8"
-private let installedHelperPath = "/Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v8"
-private let installedPlistPath = "/Library/LaunchDaemons/com.iven.macgametoolbox.helper.v8.plist"
-private let requirementPath = "/Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v8.requirement"
+private let serviceName = "com.iven.macgametoolbox.helper.v9"
+private let installedHelperPath = "/Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v9"
+private let installedPlistPath = "/Library/LaunchDaemons/com.iven.macgametoolbox.helper.v9.plist"
+private let requirementPath = "/Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v9.requirement"
+private let legacyServiceName = "com.iven.macgametoolbox.helper.v8"
+private let legacyHelperPath = "/Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v8"
+private let legacyPlistPath = "/Library/LaunchDaemons/com.iven.macgametoolbox.helper.v8.plist"
+private let legacyRequirementPath = "/Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v8.requirement"
 private let expectedAppPath = "/Applications/Mac 游戏工具箱.app"
 private let hoyoDomains = GamingService.hoyoDomains
 private let logger = Logger(subsystem: "com.iven.macgametoolbox", category: "PrivilegedHelper")
@@ -48,9 +52,11 @@ final class HelperService: NSObject, PrivilegedHelperXPCProtocol {
         case .addHoYoHosts: try rewriteHosts(addBlock: true)
         case .removeHoYoHosts: try rewriteHosts(addBlock: false)
         case .renice(let pids, let priority):
-            // These are the only priority levels exposed by the app: its existing
-            // elevated level and macOS's lowest process priority.
-            guard !pids.isEmpty, pids.count <= 64, [-20, 20].contains(priority) else { throw HelperError.invalidArguments }
+            guard !pids.isEmpty,
+                  pids.count <= 64,
+                  ProcessPriorityLevel(rawValue: priority) != nil else {
+                throw HelperError.invalidArguments
+            }
             var updatedCount = 0
             for pid in pids {
                 guard pid > 1 else { throw HelperError.invalidArguments }
@@ -166,6 +172,15 @@ func installPersistentHelper(for appPath: String) throws {
     try plistData.write(to: URL(fileURLWithPath: installedPlistPath), options: .atomic)
     try fileManager.setAttributes([.posixPermissions: 0o644, .ownerAccountID: 0, .groupOwnerAccountID: 0], ofItemAtPath: installedPlistPath)
     try run("/bin/launchctl", ["bootstrap", "system", installedPlistPath])
+
+    // The v8 helper only accepts the previous -20/20 extremes. Keep it active
+    // until v9 starts successfully, then remove the superseded root service.
+    _ = try? run("/bin/launchctl", ["bootout", "system/\(legacyServiceName)"])
+    for legacyPath in [legacyPlistPath, legacyHelperPath, legacyRequirementPath] {
+        if fileManager.fileExists(atPath: legacyPath) {
+            try? fileManager.removeItem(atPath: legacyPath)
+        }
+    }
 }
 
 func selfExecutableURL() -> URL? {

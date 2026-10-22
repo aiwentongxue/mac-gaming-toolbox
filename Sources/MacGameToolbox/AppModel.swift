@@ -295,7 +295,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func increaseCrossOverPriority() {
+    func increaseCrossOverPriority(priority level: ProcessPriorityLevel) {
         runTask(tr("正在检测 CrossOver", "Detecting CrossOver")) {
             let processes = try await self.gamingService.wineProcesses(crossOverOnly: true)
             DiagnosticFileLogger.write("Detected CrossOver process count: \(processes.count)")
@@ -303,8 +303,9 @@ final class AppModel: ObservableObject {
                 throw ToolboxError.commandFailed(tr("未检测到 CrossOver 或 Wine 进程", "No CrossOver or Wine process found"))
             }
             self.status.phase = .awaitingAuthorization
-            try await self.privileged.perform(.renice(processes.map(\.pid), -20))
-            return tr("已提高 \(processes.count) 个进程的优先级", "Updated \(processes.count) processes")
+            try await self.privileged.perform(.renice(processes.map(\.pid), level.rawValue))
+            return tr("优先级已更新：", "Priority updated:")
+                + " \(processes.count) · \(level.localizedDisplayName)"
         }
     }
 
@@ -332,16 +333,14 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func increaseSelectedProcessPriority(lowerPriority: Bool = false) {
+    func increaseSelectedProcessPriority(priority level: ProcessPriorityLevel) {
         let identifiers = Array(selectedProcessIDs)
         guard !identifiers.isEmpty else { return }
-        let priority = lowerPriority ? Int32(20) : Int32(-20)
-        runTask(lowerPriority ? tr("正在降低所选进程优先级", "Lowering selected process priority") : tr("正在提高所选进程优先级", "Increasing selected process priority")) {
+        runTask(tr("正在应用所选进程优先级", "Applying selected process priority")) {
             self.status.phase = .awaitingAuthorization
-            try await self.privileged.perform(.renice(identifiers, priority))
-            return lowerPriority
-                ? tr("已将 \(identifiers.count) 个进程的优先级降至最低", "Lowered \(identifiers.count) selected process(es) to the lowest priority")
-                : tr("已提高 \(identifiers.count) 个进程的优先级", "Updated \(identifiers.count) selected process(es)")
+            try await self.privileged.perform(.renice(identifiers, level.rawValue))
+            return tr("优先级已更新：", "Priority updated:")
+                + " \(identifiers.count) · \(level.localizedDisplayName)"
         }
     }
 
@@ -371,11 +370,10 @@ final class AppModel: ObservableObject {
         saveConfiguration()
     }
 
-    func increaseFavoriteProcessPriority(lowerPriority: Bool = false) {
+    func increaseFavoriteProcessPriority(priority level: ProcessPriorityLevel) {
         let favoriteNames = configuration.favoriteProcessNames
         guard !favoriteNames.isEmpty else { return }
-        let priority = lowerPriority ? Int32(20) : Int32(-20)
-        runTask(lowerPriority ? tr("正在降低常用进程优先级", "Lowering favorite process priority") : tr("正在优化常用进程", "Optimizing favorite processes")) {
+        runTask(tr("正在优化常用进程", "Optimizing favorite processes")) {
             let processes = try await self.gamingService.runningProcesses()
             let matches = GamingService.matchingFavoriteProcesses(processes, favoriteNames: favoriteNames)
             guard !matches.isEmpty else {
@@ -385,10 +383,9 @@ final class AppModel: ObservableObject {
                 throw ToolboxError.commandFailed(tr("匹配的常用进程超过 64 个，请编辑常用进程后重试", "More than 64 favorite processes matched; edit favorites and try again"))
             }
             self.status.phase = .awaitingAuthorization
-            try await self.privileged.perform(.renice(matches.map(\.pid), priority))
-            return lowerPriority
-                ? tr("已将 \(matches.count) 个常用进程的优先级降至最低", "Lowered \(matches.count) favorite process(es) to the lowest priority")
-                : tr("已提高 \(matches.count) 个常用进程的优先级", "Updated \(matches.count) favorite process(es)")
+            try await self.privileged.perform(.renice(matches.map(\.pid), level.rawValue))
+            return tr("优先级已更新：", "Priority updated:")
+                + " \(matches.count) · \(level.localizedDisplayName)"
         }
     }
 
@@ -717,11 +714,12 @@ final class AppModel: ObservableObject {
 
     private static func runCoreFeatureRepairScript() async throws {
         let shellScript = """
-        for plist in /Library/LaunchDaemons/com.iven.macgametoolbox.helper.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v3.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v4.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v5.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v6.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v7.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v8.plist; do
+        for plist in /Library/LaunchDaemons/com.iven.macgametoolbox.helper.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v3.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v4.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v5.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v6.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v7.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v8.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v9.plist; do
             /bin/launchctl bootout system "$plist" 2>/dev/null || true
         done
-        /bin/launchctl enable system/com.iven.macgametoolbox.helper.v8
-        /bin/launchctl bootstrap system /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v8.plist
+        /bin/launchctl enable system/com.iven.macgametoolbox.helper.v9
+        /bin/launchctl bootstrap system /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v9.plist
+        /bin/rm -f /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v8.plist /Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v8 /Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v8.requirement
         """
         let appleScript = """
         on run argv

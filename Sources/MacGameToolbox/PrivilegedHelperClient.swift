@@ -6,8 +6,8 @@ import OSLog
 import Security
 
 public final class PrivilegedHelperClient: PrivilegedOperating, @unchecked Sendable {
-    static let serviceName = "com.iven.macgametoolbox.helper.v8"
-    static let installedHelperPath = "/Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v8"
+    static let serviceName = "com.iven.macgametoolbox.helper.v9"
+    static let installedHelperPath = "/Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v9"
     private let coordinator = PrivilegedHelperCoordinator()
 
     public init() {}
@@ -15,7 +15,7 @@ public final class PrivilegedHelperClient: PrivilegedOperating, @unchecked Senda
     public func diagnosticStatus() -> String {
         let installed = FileManager.default.fileExists(atPath: Self.installedHelperPath)
         let signing = Self.teamIdentifier() == nil ? "development signing" : "Developer ID signing"
-        return "persistent helper v8: \(installed ? "installed" : "not installed"), \(signing)"
+        return "persistent helper v9: \(installed ? "installed" : "not installed"), \(signing)"
     }
 
     public func perform(_ operation: PrivilegedOperation) async throws {
@@ -32,7 +32,7 @@ public final class PrivilegedHelperClient: PrivilegedOperating, @unchecked Senda
             if pids.isEmpty || pids.count > 64 || pids.contains(where: { $0 <= 1 }) {
                 throw ToolboxError.commandFailed("Invalid process list")
             }
-            guard [-20, 20].contains(priority) else {
+            guard ProcessPriorityLevel(rawValue: priority) != nil else {
                 throw ToolboxError.commandFailed("Invalid process priority")
             }
             return .renice(pids, priority)

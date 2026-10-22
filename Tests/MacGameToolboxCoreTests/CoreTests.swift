@@ -9,6 +9,17 @@ import Testing
     #expect(!InputValidation.diskIdentifier("disk0"))
 }
 
+@Test func processPriorityLevelsExposeOnlySupportedNiceValues() {
+    #expect(ProcessPriorityLevel.allCases.map(\.rawValue) == [-20, -10, 0, 10, 20])
+    for level in ProcessPriorityLevel.allCases {
+        #expect(ProcessPriorityLevel.fromStoredRawValue(Int(level.rawValue)) == level)
+    }
+    #expect(ProcessPriorityLevel.fromStoredRawValue(-21) == .highest)
+    #expect(ProcessPriorityLevel.fromStoredRawValue(-1) == .highest)
+    #expect(ProcessPriorityLevel.fromStoredRawValue(21) == .highest)
+    #expect(ProcessPriorityLevel.fromStoredRawValue(Int.max) == .highest)
+}
+
 @Test func legacyConfigurationImportsValues() async throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     let configURL = root.appendingPathComponent("new/configuration.json")
@@ -468,8 +479,11 @@ actor HostnameRunner: CommandRunning {
         .healthCheck,
         .addHoYoHosts,
         .removeHoYoHosts,
-        .renice([42, 84], -20),
-        .renice([42, 84], 20),
+        .renice([42, 84], ProcessPriorityLevel.highest.rawValue),
+        .renice([42, 84], ProcessPriorityLevel.high.rawValue),
+        .renice([42, 84], ProcessPriorityLevel.normal.rawValue),
+        .renice([42, 84], ProcessPriorityLevel.lower.rawValue),
+        .renice([42, 84], ProcessPriorityLevel.lowest.rawValue),
         .clearSystemCaches,
         .setHostnames(HostnameBackup(computerName: "steamdeck", hostName: "steamdeck", localHostName: "steamdeck")),
         .createDirectory("/Users/test/Games")

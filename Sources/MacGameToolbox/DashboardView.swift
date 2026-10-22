@@ -54,17 +54,20 @@ struct ToolboxPage<Content: View>: View {
     let icon: String
     let title: String
     let subtitle: String
+    let maxContentWidth: CGFloat
     @ViewBuilder let content: Content
 
     init(
         icon: String,
         title: String,
         subtitle: String,
+        maxContentWidth: CGFloat = 980,
         @ViewBuilder content: () -> Content
     ) {
         self.icon = icon
         self.title = title
         self.subtitle = subtitle
+        self.maxContentWidth = maxContentWidth
         self.content = content()
     }
 
@@ -74,7 +77,7 @@ struct ToolboxPage<Content: View>: View {
                 ToolboxPageHeader(icon: icon, title: title, subtitle: subtitle)
                 content
             }
-            .frame(maxWidth: 980, alignment: .leading)
+            .frame(maxWidth: maxContentWidth, alignment: .leading)
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .top)
         }

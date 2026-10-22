@@ -653,6 +653,8 @@ struct HoYoGamesDetailView: View {
                 }
             }
 
+            SteamDeckModeSection()
+
             if !model.status.log.isEmpty {
                 ToolboxCard(tr("执行记录", "Activity Log")) {
                     VStack(alignment: .leading, spacing: 7) {
@@ -693,8 +695,13 @@ struct ProcessPriorityDetailView: View {
     @State private var mode = ProcessPriorityMode.crossOver
     @State private var searchText = ""
     @State private var sortOrder = ProcessSortOrder.cpu
-    @State private var lowersPriority = false
     @State private var favoriteName = ""
+    @AppStorage(ProcessPriorityStorageKey.crossOver.rawValue)
+    private var crossOverPriorityRaw = Int(ProcessPriorityLevel.highest.rawValue)
+    @AppStorage(ProcessPriorityStorageKey.manual.rawValue)
+    private var manualPriorityRaw = Int(ProcessPriorityLevel.highest.rawValue)
+    @AppStorage(ProcessPriorityStorageKey.favorites.rawValue)
+    private var favoritesPriorityRaw = Int(ProcessPriorityLevel.highest.rawValue)
 
     var body: some View {
         ToolboxPage(
@@ -703,7 +710,8 @@ struct ProcessPriorityDetailView: View {
             subtitle: tr(
                 "通过系统特权 Helper 调整 CrossOver、手动选择的进程或收藏进程的调度优先级。",
                 "Adjust scheduling priority for CrossOver, selected, or favorite processes through the privileged helper."
-            )
+            ),
+            maxContentWidth: 1180
         ) {
             Picker(tr("优化模式", "Optimization Mode"), selection: $mode) {
                 ForEach(ProcessPriorityMode.allCases) { item in
@@ -729,48 +737,51 @@ struct ProcessPriorityDetailView: View {
         ToolboxCard(
             tr("CrossOver / Wine 全量优化", "CrossOver / Wine Optimization"),
             subtitle: tr(
-                "当前版本会检测所有 CrossOver 或 Wine 游戏进程，并统一提高到尽可能高的调度优先级。它不会按 Bottle 单独选择，也不会修改图形后端。",
-                "This version detects all CrossOver or Wine game processes and raises them together. It does not target one bottle or change the graphics backend."
+                "检测所有 CrossOver 或 Wine 游戏进程，并统一应用此模式选定的调度优先级。它不会按 Bottle 单独选择，也不会修改图形后端。",
+                "Detect all CrossOver or Wine game processes and apply this mode's scheduling priority together. It does not target one bottle or change the graphics backend."
             )
         ) {
-            HStack {
-                Label(tr("最高优先级目标：-20", "Priority target: -20"), systemImage: "bolt.fill")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button(tr("检测并提升优先级", "Detect and Raise Priority")) {
-                    model.increaseCrossOverPriority()
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 16) {
+                    priorityPicker(crossOverPriorityBinding)
+                    Spacer()
+                    Button(tr("检测并应用优先级", "Detect and Apply Priority")) {
+                        model.increaseCrossOverPriority(priority: crossOverPriority)
+                    }
+                    .toolboxProminentButton()
                 }
-                .toolboxProminentButton()
+                priorityHelp
             }
         }
     }
 
     private var manualContent: some View {
-        VStack(spacing: 18) {
-            ToolboxCard(
-                tr("运行中的进程", "Running Processes"),
-                subtitle: tr(
-                    "最多可选择 64 个进程。默认使用完整路径、名称和 PID 搜索。",
-                    "Select up to 64 processes. Search matches names, paths, and PIDs."
-                )
-            ) {
+        ToolboxCard(
+            tr("运行中的进程", "Running Processes"),
+            subtitle: tr(
+                "最多可选择 64 个进程。搜索会匹配完整路径、名称和 PID。",
+                "Select up to 64 processes. Search matches complete paths, names, and PIDs."
+            )
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
                     TextField(tr("搜索名称、路径或 PID", "Search name, path, or PID"), text: $searchText)
                         .textFieldStyle(.roundedBorder)
+                        .layoutPriority(1)
+                        .frame(minWidth: 220, maxWidth: .infinity)
                     Picker(tr("排序", "Sort"), selection: $sortOrder) {
                         ForEach(ProcessSortOrder.allCases) { item in
                             Text(item.title).tag(item)
                         }
                     }
-                    .frame(width: 150)
-                    Toggle(tr("降低优先级", "Lower Priority"), isOn: $lowersPriority)
-                        .toggleStyle(.switch)
+                    .frame(width: 120)
+                    priorityPicker(manualPriorityBinding)
                     Button { model.refreshRunningProcesses() } label: {
                         Image(systemName: "arrow.clockwise")
                     }
                     .help(tr("刷新进程", "Refresh Processes"))
                 }
+                priorityHelp
 
                 if model.runningProcesses.isEmpty {
                     ContentUnavailableText(
@@ -778,33 +789,47 @@ struct ProcessPriorityDetailView: View {
                         title: tr("尚未读取进程", "Processes Not Loaded"),
                         message: tr("点击刷新读取当前可运行的进程。", "Refresh to read the currently running processes.")
                     )
-                    Button(tr("读取进程", "Load Processes")) { model.refreshRunningProcesses() }
+                    HStack {
+                        Spacer()
+                        Button(tr("读取进程", "Load Processes")) {
+                            model.refreshRunningProcesses()
+                        }
+                        Spacer()
+                    }
                 } else {
                     List(sortedProcesses) { process in
-                        Toggle(isOn: processBinding(process)) {
-                            HStack(spacing: 10) {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(process.displayName)
-                                        .font(.subheadline.weight(.medium))
-                                    Text("CPU \(process.cpuUsage.formatted(.number.precision(.fractionLength(1))))% · PID \(process.pid) · \(process.locationPath ?? process.command)")
-                                        .font(.caption.monospaced())
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                        .truncationMode(.middle)
-                                }
-                                Spacer()
-                                Button {
-                                    model.toggleFavoriteProcess(process)
-                                } label: {
-                                    Image(systemName: model.isFavoriteProcess(process) ? "star.fill" : "star")
-                                        .foregroundStyle(model.isFavoriteProcess(process) ? .yellow : .secondary)
-                                }
-                                .buttonStyle(.borderless)
+                        HStack(spacing: 10) {
+                            Toggle("", isOn: processBinding(process))
+                                .labelsHidden()
+                                .toggleStyle(.checkbox)
+                                .fixedSize()
+                                .accessibilityLabel(
+                                    tr("选择进程", "Select Process") + ", \(process.displayName)"
+                                )
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(process.displayName)
+                                    .font(.subheadline.weight(.medium))
+                                Text("CPU \(process.cpuUsage.formatted(.number.precision(.fractionLength(1))))% · PID \(process.pid) · \(process.locationPath ?? process.command)")
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            Button {
+                                model.toggleFavoriteProcess(process)
+                            } label: {
+                                Image(systemName: model.isFavoriteProcess(process) ? "star.fill" : "star")
+                                    .foregroundStyle(model.isFavoriteProcess(process) ? .yellow : .secondary)
+                                    .frame(width: 24)
+                            }
+                            .buttonStyle(.borderless)
+                            .fixedSize()
+                            .help(tr("收藏进程", "Favorite Process"))
                         }
-                        .toggleStyle(.checkbox)
+                        .padding(.vertical, 3)
                     }
-                    .frame(minHeight: 260, maxHeight: 360)
+                    .frame(minHeight: 380, idealHeight: 450, maxHeight: 520)
                 }
 
                 HStack {
@@ -812,8 +837,8 @@ struct ProcessPriorityDetailView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button(lowersPriority ? tr("降低所选进程", "Lower Selected") : tr("提高所选进程", "Raise Selected")) {
-                        model.increaseSelectedProcessPriority(lowerPriority: lowersPriority)
+                    Button(tr("应用到所选进程", "Apply to Selected")) {
+                        model.increaseSelectedProcessPriority(priority: manualPriority)
                     }
                     .toolboxProminentButton()
                     .disabled(model.selectedProcessIDs.isEmpty)
@@ -866,17 +891,72 @@ struct ProcessPriorityDetailView: View {
                     }
                 }
                 HStack {
-                    Toggle(tr("降低优先级", "Lower Priority"), isOn: $lowersPriority)
-                        .toggleStyle(.switch)
+                    priorityPicker(favoritesPriorityBinding)
                     Spacer()
                     Button(tr("优化常用进程", "Optimize Favorites")) {
-                        model.increaseFavoriteProcessPriority(lowerPriority: lowersPriority)
+                        model.increaseFavoriteProcessPriority(priority: favoritesPriority)
                     }
                     .toolboxProminentButton()
                     .disabled(model.configuration.favoriteProcessNames.isEmpty)
                 }
+                priorityHelp
             }
         }
+    }
+
+    private var crossOverPriorityBinding: Binding<ProcessPriorityLevel> {
+        Binding(
+            get: { ProcessPriorityLevel.fromStoredRawValue(crossOverPriorityRaw) },
+            set: { crossOverPriorityRaw = Int($0.rawValue) }
+        )
+    }
+
+    private var manualPriorityBinding: Binding<ProcessPriorityLevel> {
+        Binding(
+            get: { ProcessPriorityLevel.fromStoredRawValue(manualPriorityRaw) },
+            set: { manualPriorityRaw = Int($0.rawValue) }
+        )
+    }
+
+    private var favoritesPriorityBinding: Binding<ProcessPriorityLevel> {
+        Binding(
+            get: { ProcessPriorityLevel.fromStoredRawValue(favoritesPriorityRaw) },
+            set: { favoritesPriorityRaw = Int($0.rawValue) }
+        )
+    }
+
+    private var crossOverPriority: ProcessPriorityLevel {
+        ProcessPriorityLevel.fromStoredRawValue(crossOverPriorityRaw)
+    }
+
+    private var manualPriority: ProcessPriorityLevel {
+        ProcessPriorityLevel.fromStoredRawValue(manualPriorityRaw)
+    }
+
+    private var favoritesPriority: ProcessPriorityLevel {
+        ProcessPriorityLevel.fromStoredRawValue(favoritesPriorityRaw)
+    }
+
+    private var priorityHelp: some View {
+        Label(
+            tr(
+                "默认档位为系统 nice 0，不会恢复进程之前的历史值。",
+                "Default means system nice 0; it does not restore a process's previous value."
+            ),
+            systemImage: "info.circle"
+        )
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+
+    private func priorityPicker(_ selection: Binding<ProcessPriorityLevel>) -> some View {
+        Picker(tr("优先级", "Priority"), selection: selection) {
+            ForEach(ProcessPriorityLevel.allCases) { level in
+                Text(level.localizedMenuTitle).tag(level)
+            }
+        }
+        .pickerStyle(.menu)
+        .frame(width: 190)
     }
 
     private var normalizedFavoriteName: String {
@@ -920,6 +1000,23 @@ struct ProcessPriorityDetailView: View {
     }
 }
 
+enum ProcessPriorityStorageKey: String, CaseIterable {
+    case crossOver = "app.processPriority.crossOver"
+    case manual = "app.processPriority.manual"
+    case favorites = "app.processPriority.favorites"
+
+    var defaultLevel: ProcessPriorityLevel { .highest }
+
+    func level(in defaults: UserDefaults) -> ProcessPriorityLevel {
+        guard defaults.object(forKey: rawValue) != nil else { return defaultLevel }
+        return ProcessPriorityLevel.fromStoredRawValue(defaults.integer(forKey: rawValue))
+    }
+
+    func setLevel(_ level: ProcessPriorityLevel, in defaults: UserDefaults) {
+        defaults.set(Int(level.rawValue), forKey: rawValue)
+    }
+}
+
 private enum ProcessPriorityMode: String, CaseIterable, Identifiable {
     case crossOver
     case manual
@@ -952,19 +1049,12 @@ private enum ProcessSortOrder: String, CaseIterable, Identifiable {
     }
 }
 
-struct SteamDeckDetailView: View {
+struct SteamDeckModeSection: View {
     @EnvironmentObject private var model: AppModel
     @State private var confirmsToggle = false
 
     var body: some View {
-        ToolboxPage(
-            icon: SidebarItem.steamDeckSpoof.iconName,
-            title: tr("SteamDeck 模式", "SteamDeck Mode"),
-            subtitle: tr(
-                "临时将电脑名称、主机名和本地主机名切换为 SteamDeck 形式；退出模式时恢复原始值。",
-                "Temporarily change the computer, host, and local host names for SteamDeck compatibility, then restore the originals."
-            )
-        ) {
+        VStack(spacing: 18) {
             ToolboxCard(
                 isActive ? tr("SteamDeck 模式已启用", "SteamDeck Mode Enabled") : tr("当前使用原始设备名称", "Original Names Active"),
                 subtitle: tr(

@@ -640,8 +640,8 @@ extension ClickFlowTests {
         }
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
-        XCTAssertEqual(SidebarItem.allCases.count, 17)
-        XCTAssertEqual(Set(SidebarItem.allCases).count, 17)
+        XCTAssertEqual(SidebarItem.allCases.count, 16)
+        XCTAssertEqual(Set(SidebarItem.allCases).count, 16)
         XCTAssertEqual(SidebarSection.allCases, [.gaming, .storage, .clickFlow, .appDrop, .information])
 
         let clickFlowSettingsIndex = try! XCTUnwrap(SidebarItem.allCases.firstIndex(of: .cfSettings))
@@ -657,7 +657,10 @@ extension ClickFlowTests {
 
         XCTAssertEqual(NavigationModel.persistedSelection(in: defaults), .metalHUD)
         defaults.removeObject(forKey: SidebarItem.storageKey)
+        defaults.set("steamDeckSpoof", forKey: SidebarItem.storageKey)
+        XCTAssertEqual(NavigationModel.persistedSelection(in: defaults), .hoYoAssistant)
         defaults.set("clickFlow", forKey: SidebarItem.legacyStorageKey)
+        defaults.removeObject(forKey: SidebarItem.storageKey)
         XCTAssertEqual(NavigationModel.persistedSelection(in: defaults), .cfClicker)
         defaults.set("appDrop", forKey: SidebarItem.storageKey)
         XCTAssertEqual(NavigationModel.persistedSelection(in: defaults), .appDropWishlist)
@@ -674,6 +677,46 @@ extension ClickFlowTests {
         XCTAssertTrue(navigation.isExpanded(.appDrop))
         navigation.select(.diskManager)
         XCTAssertEqual(defaults.string(forKey: SidebarItem.storageKey), SidebarItem.diskManager.rawValue)
+    }
+
+    func testProcessPriorityPreferencesAreIndependentAndValidateStoredValues() {
+        let suiteName = "MacGameToolboxClickFlowTests.priorities.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            return XCTFail("Could not create isolated preference suite")
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        XCTAssertEqual(Set(ProcessPriorityStorageKey.allCases.map(\.rawValue)).count, 3)
+        for key in ProcessPriorityStorageKey.allCases {
+            XCTAssertEqual(key.level(in: defaults), .highest)
+        }
+
+        ProcessPriorityStorageKey.crossOver.setLevel(.lower, in: defaults)
+        ProcessPriorityStorageKey.manual.setLevel(.high, in: defaults)
+        ProcessPriorityStorageKey.favorites.setLevel(.lowest, in: defaults)
+        XCTAssertEqual(ProcessPriorityStorageKey.crossOver.level(in: defaults), .lower)
+        XCTAssertEqual(ProcessPriorityStorageKey.manual.level(in: defaults), .high)
+        XCTAssertEqual(ProcessPriorityStorageKey.favorites.level(in: defaults), .lowest)
+
+        defaults.set(7, forKey: ProcessPriorityStorageKey.manual.rawValue)
+        XCTAssertEqual(ProcessPriorityStorageKey.manual.level(in: defaults), .highest)
+        XCTAssertEqual(ProcessPriorityStorageKey.crossOver.level(in: defaults), .lower)
+        XCTAssertEqual(ProcessPriorityStorageKey.favorites.level(in: defaults), .lowest)
+    }
+
+    func testPrivilegedHelperClientAcceptsFiveLevelsAndRejectsOtherValues() {
+        for level in ProcessPriorityLevel.allCases {
+            XCTAssertNoThrow(
+                try PrivilegedHelperClient.request(
+                    for: .renice([42], level.rawValue)
+                )
+            )
+        }
+        for value: Int32 in [-21, -1, 1, 15, 21] {
+            XCTAssertThrowsError(
+                try PrivilegedHelperClient.request(for: .renice([42], value))
+            )
+        }
     }
 #endif
 
