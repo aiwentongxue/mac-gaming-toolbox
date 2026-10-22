@@ -2,7 +2,42 @@ import AppKit
 import SwiftUI
 #if SWIFT_PACKAGE
 import MacGameToolboxClickFlow
+import MacGameToolboxCore
 #endif
+
+struct ToolboxStatusBarState: Equatable {
+    private struct StatusIdentity: Equatable {
+        let phase: TaskPhase
+        let message: String
+
+        init(_ status: TaskStatus) {
+            phase = status.phase
+            message = status.message
+        }
+    }
+
+    private var dismissedStatus: StatusIdentity?
+
+    mutating func dismiss(_ status: TaskStatus) {
+        dismissedStatus = StatusIdentity(status)
+    }
+
+    mutating func statusDidChange(from oldStatus: TaskStatus, to newStatus: TaskStatus) {
+        guard oldStatus.phase != newStatus.phase else { return }
+        dismissedStatus = nil
+    }
+
+    func shouldShow(_ status: TaskStatus, in section: SidebarSection) -> Bool {
+        guard status.phase != .idle,
+              dismissedStatus != StatusIdentity(status) else {
+            return false
+        }
+        if status.phase == .running || status.phase == .awaitingAuthorization {
+            return true
+        }
+        return section == .gaming || section == .storage
+    }
+}
 
 struct MainContentView: View {
     @ObservedObject var clickFlowController: ClickFlowFeatureController
@@ -12,7 +47,7 @@ struct MainContentView: View {
     @Environment(\.colorScheme) private var systemColorScheme
     @StateObject private var navigation = NavigationModel()
     @State private var nativeGlassEnabled = NSApp.isActive
-    @State private var dismissedStatusMessage: String?
+    @State private var statusBarState = ToolboxStatusBarState()
 
     private var usesWallpaper: Bool {
         model.wallpaperImage != nil
@@ -50,7 +85,7 @@ struct MainContentView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if shouldShowStatusBar {
                 ToolboxStatusBar {
-                    dismissedStatusMessage = model.status.message
+                    statusBarState.dismiss(model.status)
                 }
             }
         }
@@ -101,9 +136,9 @@ struct MainContentView: View {
             if item.isClickFlowPage {
                 clickFlowController.refreshPermissions()
             }
-            if model.status.phase != .running && model.status.phase != .awaitingAuthorization {
-                dismissedStatusMessage = nil
-            }
+        }
+        .onChange(of: model.status) { oldStatus, newStatus in
+            statusBarState.statusDidChange(from: oldStatus, to: newStatus)
         }
         .onReceive(NotificationCenter.default.publisher(for: .toolboxNavigateToTutorials)) { _ in
             navigation.select(.tutorials)
@@ -139,14 +174,7 @@ struct MainContentView: View {
     }
 
     private var shouldShowStatusBar: Bool {
-        guard model.status.phase != .idle,
-              dismissedStatusMessage != model.status.message else {
-            return false
-        }
-        if model.status.phase == .running || model.status.phase == .awaitingAuthorization {
-            return true
-        }
-        return navigation.selection.section == .gaming || navigation.selection.section == .storage
+        statusBarState.shouldShow(model.status, in: navigation.selection.section)
     }
 
     private func synchronizeClickFlowLanguage() {

@@ -193,7 +193,6 @@ struct ToolboxStatusBar: View {
             .padding(.vertical, 10)
             .background(.regularMaterial)
             .overlay(alignment: .top) { Divider() }
-            .accessibilityElement(children: .combine)
         }
     }
 

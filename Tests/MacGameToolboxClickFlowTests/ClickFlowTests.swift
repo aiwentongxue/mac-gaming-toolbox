@@ -718,6 +718,54 @@ extension ClickFlowTests {
             )
         }
     }
+
+    func testDismissedStatusBarStaysHiddenAcrossSidebarChanges() {
+        let completed = TaskStatus(
+            phase: .succeeded,
+            message: "Completed process optimization",
+            progress: 1
+        )
+        var state = ToolboxStatusBarState()
+
+        XCTAssertTrue(state.shouldShow(completed, in: .gaming))
+        state.dismiss(completed)
+
+        XCTAssertFalse(state.shouldShow(completed, in: .gaming))
+        XCTAssertFalse(state.shouldShow(completed, in: .storage))
+        XCTAssertFalse(state.shouldShow(completed, in: .clickFlow))
+        XCTAssertFalse(state.shouldShow(completed, in: .appDrop))
+        XCTAssertFalse(state.shouldShow(completed, in: .information))
+        XCTAssertFalse(state.shouldShow(completed, in: .gaming))
+    }
+
+    func testDismissedStatusBarReturnsForANewStatusPhase() {
+        let completed = TaskStatus(
+            phase: .succeeded,
+            message: "Completed process optimization",
+            progress: 1
+        )
+        let nextOperation = TaskStatus(
+            phase: .running,
+            message: "Completed process optimization"
+        )
+        var state = ToolboxStatusBarState()
+
+        state.dismiss(completed)
+        XCTAssertFalse(state.shouldShow(completed, in: .information))
+
+        state.statusDidChange(from: completed, to: nextOperation)
+        XCTAssertTrue(state.shouldShow(nextOperation, in: .information))
+    }
+
+    func testRunningStatusBarRemainsGlobalUntilDismissed() {
+        let running = TaskStatus(phase: .running, message: "Restoring mounts")
+        var state = ToolboxStatusBarState()
+
+        XCTAssertTrue(state.shouldShow(running, in: .appDrop))
+        state.dismiss(running)
+        XCTAssertFalse(state.shouldShow(running, in: .appDrop))
+        XCTAssertFalse(state.shouldShow(TaskStatus(phase: .idle), in: .appDrop))
+    }
 #endif
 
     @MainActor
