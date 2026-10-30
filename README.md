@@ -2,19 +2,19 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 3.2.1，内置 ClickFlow 已更新至 1.0.1，并兼容 Intel Mac 和 Apple Silicon Mac。
+Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 4.0.0，采用全新 SwiftUI 侧边栏界面，集成 AppDrop 与 ClickFlow 1.0.1，并兼容 Intel Mac 和 Apple Silicon Mac。
 
 ## 功能
 
-- 使用统一的两栏侧边栏访问游戏性能、存储维护、ClickFlow、AppDrop 预留入口与帮助页面，并可在侧边栏底部即时切换应用语言。
+- 使用统一的两栏侧边栏访问游戏性能、存储维护、ClickFlow、AppDrop 与帮助页面，并可在侧边栏底部即时切换应用语言。
 - 内置 ClickFlow 1.0.1 连点器、鼠标宏和组合宏；支持通过实验性 XInput 代理为 CrossOver 游戏回放手柄宏，并提供按游戏安装、诊断、备份和安全恢复。接受首次使用声明后，即使停留在其他工具页面也能通过全局快捷键使用，并与独立版 ClickFlow 的偏好、宏文件和适配记录完全隔离。
 - 全局开启或关闭 MetalHUD，或通过最近 App 启动台仅为选定 App 的本次启动启用 MetalHUD；可保存参数预设，并在下次开启游戏时应用。
 - 可为 CrossOver 容器写入 MetalHUD 参数预设，也可为已连接的 iOS 设备上的游戏开启 MetalHUD。
 - 按 10、15 或 20 秒的可选等待时间辅助启动 HoYoGames，并在任务结束或取消时恢复应用管理的 hosts 配置。
-- 自动检测 CrossOver/Wine 进程，支持优化后的手动搜索与选择、常用进程，以及提高或降低进程优先级。
+- 自动检测 CrossOver/Wine 进程，支持优化后的手动搜索与选择、常用进程，以及三个模式独立保存的五档进程优先级。
 - 将外接磁盘挂载到指定路径，保存预设，并自动或手动恢复上次挂载。
 - 一键清理缓存日志，默认仅清理用户缓存和用户日志，也可关闭敏感文件排除执行完整高风险清理。
-- 切换或恢复用于兼容性测试的 Steam Deck 主机名模式。
+- 在 HoYoGames 页面切换或恢复用于兼容性测试的 Steam Deck 主机名模式。
 - 导入自定义界面壁纸、导出诊断信息，并提供 Mac 游戏与 CrossOver 教程入口；可自动检查 GitHub 更新。
 - 内置 AppDrop 心愿单、今日降价、历史低价和价格设置；支持 App Store 链接、关键词搜索、17 个商店区域、`.wishdrop` 导入导出、价格历史与降价通知。
 - AppDrop 使用工具箱独立的 `~/Library/Application Support/MacGameToolbox/AppDrop` 数据目录，不读取或修改独立版 AppDrop 数据；需要后台检查时，可在 AppDrop 设置中注册专用的用户级 Helper。

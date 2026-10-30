@@ -350,7 +350,7 @@ struct ChangelogAboutDetailView: View {
                         }
                         GridRow {
                             Text(tr("构建状态", "Build")).foregroundStyle(.secondary)
-                            Text(tr("本机界面重写候选版", "Local UI Rewrite Candidate"))
+                            Text("Release \(GitHubReleaseChecker.currentVersion)")
                         }
                     }
                     HStack {

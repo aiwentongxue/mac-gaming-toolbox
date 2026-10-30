@@ -184,7 +184,7 @@ enum GitHubReleaseChecker {
     private static let releasesAtomURL = URL(string: "https://github.com/aiwentongxue/mac-gaming-toolbox/releases.atom")!
 
     static var currentVersion: String {
-        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "3.2.1"
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "4.0.0"
     }
 
     static func check(
