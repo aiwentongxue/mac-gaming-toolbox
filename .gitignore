@@ -72,3 +72,8 @@ signing-config*
 # 本项目不公开的历史脚本
 /Mac游戏辅助工具3.1.0.command
 /Disk_Setup_V2.7.1.scpt.backup
+
+# 仅保留在本地的规划与实现文档
+/AppDrop合并实现说明.md
+/SwiftUI重写规划.md
+/需求文档.md
