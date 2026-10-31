@@ -42,13 +42,14 @@ struct AppDropFeatureHost: View {
             if let startupError = controller.environment.startupError {
                 AppDropStartupErrorView(message: startupError)
             } else if let container = controller.environment.container {
-                AppDropPageView(page: page)
+                AppDropPageView(page: page, environment: controller.environment)
                     .environmentObject(controller.environment)
                     .modelContainer(container)
             } else {
                 AppDropStartupErrorView(message: AppStrings.string("startup.storageHint"))
             }
         }
+        .environment(\.locale, Locale(identifier: AppStrings.localeIdentifier))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

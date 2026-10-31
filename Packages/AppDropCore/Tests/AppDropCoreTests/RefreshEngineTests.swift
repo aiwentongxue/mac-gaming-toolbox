@@ -294,3 +294,110 @@ import Testing
         #expect(survivor != nil)
     }
 }
+
+extension RefreshEngineTests {
+    @Test func failedSubmissionRetriesOnUnchangedPriceThenStops() async throws {
+        let h = try makeHarness()
+        let app = try await insert(h.store)
+        h.fetcher.outcome = LookupOutcome(apps: [resultApp()])
+        h.notifier.shouldSucceed = false
+        let failed = await h.engine.run(source: .manual, mode: .skipIfBusy)
+        #expect(failed.changedCount == 1 && failed.notifiedCount == 0)
+        #expect(try await h.store.hasUnsubmittedPriceDrops())
+        h.notifier.shouldSucceed = true
+        let retry = await h.engine.run(source: .manual, mode: .skipIfBusy)
+        #expect(retry.changedCount == 0 && retry.notifiedCount == 1)
+        #expect(try await !h.store.hasUnsubmittedPriceDrops())
+        #expect(h.notifier.sentBatches.count == 2)
+        let final = await h.engine.refreshSingle(appID: app.id)
+        #expect(final.notifiedCount == 0)
+        #expect(h.notifier.sentBatches.count == 2)
+        #expect(try await h.store.records(trackId: app.trackId, countryCode: app.countryCode).count == 2)
+    }
+
+    @Test func missedDropsAreRevalidatedAndCombinedAcrossMainAndHelperEngines() async throws {
+        let h = try makeHarness()
+        _ = try await insert(h.store, trackId: "123456781")
+        _ = try await insert(h.store, trackId: "123456782")
+        h.fetcher.outcome = LookupOutcome(apps: [resultApp(trackId: "123456781"), resultApp(trackId: "123456782")])
+        h.notifier.shouldSucceed = false
+        _ = await h.engine.run(source: .background, mode: .skipIfBusy)
+        h.notifier.shouldSucceed = true
+        let secondEngine = RefreshEngine(container: h.container, fetcher: h.fetcher, notifier: h.notifier, lockURL: h.lockURL)
+        let recovered = await secondEngine.run(source: .manual, mode: .skipIfBusy)
+        #expect(recovered.changedCount == 0)
+        #expect(recovered.notifiedCount == 2)
+        #expect(h.notifier.sentBatches.last?.count == 2)
+        let repeated = await h.engine.run(source: .background, mode: .skipIfBusy)
+        #expect(repeated.notifiedCount == 0)
+        #expect(h.notifier.sentBatches.count == 2)
+    }
+
+    @Test func retryExcludesFailedAndUnavailableLookups() async throws {
+        let h = try makeHarness()
+        _ = try await insert(h.store, trackId: "123456781")
+        _ = try await insert(h.store, trackId: "123456782")
+        h.fetcher.outcome = LookupOutcome(apps: [resultApp(trackId: "123456781"), resultApp(trackId: "123456782")])
+        h.notifier.shouldSucceed = false
+        _ = await h.engine.run(source: .manual, mode: .skipIfBusy)
+        h.notifier.shouldSucceed = true
+        h.fetcher.outcome = LookupOutcome(apps: [], missingIds: ["123456781"], failedIds: ["123456782"], failures: [LookupBatchFailure(ids: ["123456782"], message: "offline")])
+        let failed = await h.engine.run(source: .manual, mode: .skipIfBusy)
+        #expect(failed.notifiedCount == 0)
+        #expect(h.notifier.sentBatches.count == 1)
+        h.fetcher.outcome = LookupOutcome(apps: [resultApp(trackId: "123456781")], failedIds: ["123456782"])
+        let partial = await h.engine.run(source: .manual, mode: .skipIfBusy)
+        #expect(partial.notifiedCount == 1)
+        #expect(h.notifier.sentBatches.last?.first?.trackId == "123456781")
+        #expect(try await h.store.records(trackId: "123456782", countryCode: "us").last?.notifiedAt == nil)
+    }
+
+    @Test func onlyLatestDecreaseIsRetriedAndOldPriceIncreasesAreIgnored() async throws {
+        let h = try makeHarness()
+        _ = try await insert(h.store)
+        h.notifier.shouldSucceed = false
+        h.fetcher.outcome = LookupOutcome(apps: [resultApp()])
+        _ = await h.engine.run(source: .manual, mode: .skipIfBusy)
+        h.fetcher.outcome = LookupOutcome(apps: [resultApp(price: Decimal(string: "2.99"))])
+        _ = await h.engine.run(source: .manual, mode: .skipIfBusy)
+        h.notifier.shouldSucceed = true
+        let retry = await h.engine.run(source: .manual, mode: .skipIfBusy)
+        #expect(retry.notifiedCount == 1)
+        #expect(h.notifier.sentBatches.last?.first?.formattedPrice == "$2.99")
+        let records = try await h.store.records(trackId: "123456789", countryCode: "us")
+        #expect(records.count == 3)
+        #expect(records[1].notifiedAt == nil)
+        #expect(records[2].notifiedAt != nil)
+        h.fetcher.outcome = LookupOutcome(apps: [resultApp(price: Decimal(string: "7.99"))])
+        let increased = await h.engine.run(source: .manual, mode: .skipIfBusy)
+        #expect(increased.notifiedCount == 0)
+    }
+
+    @Test func deletedOrCurrencyChangedAppsDoNotRecoverOldAlerts() async throws {
+        let h = try makeHarness()
+        let app = try await insert(h.store)
+        h.fetcher.outcome = LookupOutcome(apps: [resultApp()])
+        h.notifier.shouldSucceed = false
+        _ = await h.engine.run(source: .manual, mode: .skipIfBusy)
+        h.fetcher.outcome = LookupOutcome(apps: [AppStoreApp(trackId: app.trackId, name: "Example", price: 500, formattedPrice: "¥500", currency: "JPY")])
+        h.notifier.shouldSucceed = true
+        let changed = await h.engine.run(source: .manual, mode: .skipIfBusy)
+        #expect(changed.notifiedCount == 0)
+        try await h.store.delete(appID: app.id)
+        #expect(try await h.store.pendingPriceDrops(validatedAppIDs: [app.id]).isEmpty)
+    }
+
+    @Test func singleCheckOnlyRecoversTheSuccessfullyCheckedApp() async throws {
+        let h = try makeHarness()
+        let a = try await insert(h.store, trackId: "123456781")
+        _ = try await insert(h.store, trackId: "123456782")
+        h.fetcher.outcome = LookupOutcome(apps: [resultApp(trackId: "123456781"), resultApp(trackId: "123456782")])
+        h.notifier.shouldSucceed = false
+        _ = await h.engine.run(source: .manual, mode: .skipIfBusy)
+        h.notifier.shouldSucceed = true
+        let single = await h.engine.refreshSingle(appID: a.id)
+        #expect(single.notifiedCount == 1)
+        #expect(h.notifier.sentBatches.last?.count == 1)
+        #expect(h.notifier.sentBatches.last?.first?.trackId == a.trackId)
+    }
+}

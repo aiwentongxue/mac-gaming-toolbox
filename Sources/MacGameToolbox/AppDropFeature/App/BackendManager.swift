@@ -27,7 +27,7 @@ final class BackendManager: ObservableObject {
             try service.register()
             refreshStatus()
         } catch {
-            lastError = error.localizedDescription
+            lastError = AppStrings.errorDescription(error)
             refreshStatus()
             throw error
         }
@@ -39,7 +39,7 @@ final class BackendManager: ObservableObject {
             try service.unregister()
             refreshStatus()
         } catch {
-            lastError = error.localizedDescription
+            lastError = AppStrings.errorDescription(error)
             refreshStatus()
             throw error
         }
@@ -56,6 +56,25 @@ final class BackendManager: ObservableObject {
     @discardableResult
     func runHelperOnce(timeout: TimeInterval = 120) async -> String? {
         await runHelper(arguments: ["--run-now"], timeout: timeout)
+    }
+
+    func notificationStatus() async throws -> NotificationStatusReport {
+        let output = await runHelper(arguments: ["--notification-status"], timeout: 15)
+        return try decodeNotificationOutput(output, prefix: "APPDROP_NOTIFICATION_STATUS ", as: NotificationStatusReport.self)
+    }
+
+    func submitTestNotification() async throws -> NotificationTestResult {
+        let output = await runHelper(arguments: ["--test-notification"], timeout: 15)
+        return try decodeNotificationOutput(output, prefix: "APPDROP_NOTIFICATION_TEST ", as: NotificationTestResult.self)
+    }
+
+    private func decodeNotificationOutput<T: Decodable>(_ output: String?, prefix: String, as type: T.Type) throws -> T {
+        guard let line = output?.split(separator: "\n").last(where: { $0.hasPrefix(prefix) }),
+              let data = String(line.dropFirst(prefix.count)).data(using: .utf8),
+              let value = try? JSONDecoder().decode(type, from: data) else {
+            throw NSError(domain: "AppDropHelper", code: 1, userInfo: [NSLocalizedDescriptionKey: lastError ?? AppStrings.string("notifications.helperUnavailable")])
+        }
+        return value
     }
 
     private func runHelper(arguments: [String], timeout: TimeInterval) async -> String? {
@@ -83,16 +102,15 @@ final class BackendManager: ObservableObject {
             do {
                 try process.run()
             } catch {
-                lastError = error.localizedDescription
+                lastError = AppStrings.errorDescription(error)
                 if hasResumed.setIfUnset() {
                     continuation.resume(returning: nil)
                 }
                 return
             }
             DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
-                if process.isRunning {
-                    process.terminate()
-                }
+                if process.isRunning { process.terminate() }
+                if hasResumed.setIfUnset() { continuation.resume(returning: nil) }
             }
         }
     }

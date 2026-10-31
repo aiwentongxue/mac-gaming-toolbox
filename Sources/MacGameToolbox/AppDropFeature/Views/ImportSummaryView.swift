@@ -30,7 +30,7 @@ struct ImportSummaryView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(Array(summary.issues.enumerated()), id: \.offset) { _, issue in
-                            Text("• \(issue.reason)")
+                            Text("• \(AppStrings.issueDescription(issue))")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -7,6 +7,7 @@ import MacGameToolboxClickFlow
 struct AppSidebarView: View {
     @ObservedObject var navigation: NavigationModel
     @ObservedObject var clickFlowController: ClickFlowFeatureController
+    @EnvironmentObject private var localization: LocalizationController
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
@@ -92,6 +93,7 @@ struct AppSidebarView: View {
 }
 
 private struct SidebarLabel: View {
+    @EnvironmentObject private var localization: LocalizationController
     let item: SidebarItem
     let badge: String?
     let isActive: Bool

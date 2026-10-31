@@ -1,0 +1,8 @@
+"notification.drop.title" = "値下げ：%@";
+"notification.drop.body" = "現在 %@（%@ ストア）、前回より %@ 値下げ。";
+"notification.drop.body.newLow" = "現在 %@（%@ ストア）、前回より %@ 値下げ。過去最安値です！";
+"notification.batch.title" = "%lld 件のゲームが値下げ";
+"notification.batch.body.all" = "%@ が値下げされました。";
+"notification.batch.body.more" = "%@、ほか %lld 件が値下げされました。";
+"notification.test.title" = "AppDropのテスト通知";
+"notification.test.body" = "ツールボックスまたはヘルパーからのテストです。価格履歴は変更していません。";

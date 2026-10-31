@@ -113,7 +113,7 @@ struct AddAppView: View {
         case .success(let parsed):
             parsedLink = parsed
         case .failure(let error):
-            linkError = error.errorDescription ?? AppStrings.string("add.link.invalid")
+            linkError = AppStrings.errorDescription(error)
         }
     }
 
@@ -213,7 +213,7 @@ struct AddAppView: View {
                 )
             } catch {
                 results = []
-                searchError = error.localizedDescription
+                searchError = AppStrings.errorDescription(error)
             }
             hasSearched = true
             isSearching = false

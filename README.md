@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 4.0.1，采用全新 SwiftUI 侧边栏界面，集成 AppDrop 与 ClickFlow 1.0.1，并兼容 Intel Mac 和 Apple Silicon Mac。
+Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 4.0.2，采用原生 SwiftUI 侧边栏界面，完善 AppDrop 九语言适配、价格历史与降价通知，集成 ClickFlow 1.0.1，并兼容 Intel Mac 和 Apple Silicon Mac。
 
 ## 功能
 
@@ -18,6 +18,7 @@ Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常�
 - 导出诊断信息，并提供 Mac 游戏与 CrossOver 教程入口；在“设置”中开启启动时检查更新或立即检查 GitHub 更新。
 - 内置 AppDrop 心愿单、今日降价、历史低价和价格设置；支持 App Store 链接、关键词搜索、17 个商店区域、`.wishdrop` 导入导出、价格历史与降价通知。
 - AppDrop 使用工具箱独立的 `~/Library/Application Support/MacGameToolbox/AppDrop` 数据目录，不读取或修改独立版 AppDrop 数据；需要后台检查时，可在 AppDrop 设置中注册专用的用户级 Helper。
+- AppDrop 支持简体中文、繁体中文、英文、日语、韩语、德语、法语、西班牙语和葡萄牙语。设置中分别提供工具箱与后台助手的通知授权、状态和测试入口；恢复授权后会先重新核实价格，再合并提醒仍有效的漏发降价。
 
 ## 系统要求
 
@@ -28,6 +29,10 @@ Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常�
 - ClickFlow 的全局输入功能需要单独为 Mac 游戏工具箱授予“辅助功能”和“输入监控”权限。
 
 ## 安装
+
+### 下载安装包
+
+从 [4.0.2 Release](https://github.com/aiwentongxue/mac-gaming-toolbox/releases/tag/v4.0.2) 下载 `MacGameToolbox-4.0.2.dmg`，将应用拖入 `Applications`。同一个 Universal 安装包同时包含 `x86_64` 与 `arm64`，无需按芯片分别下载。安装包使用 Apple Development 身份签名，未经过 Apple 公证；Release 同时提供 SHA-256 校验文件和核验记录。
 
 ### 从源码构建应用
 
@@ -75,6 +80,8 @@ swift test --disable-sandbox
 
 ## 注意事项
 
+- AppDrop 的工具箱通知与后台助手通知需要分别授权。恢复授权后的漏发提醒只包含成功重新核实、仍然有效的最新降价；界面中的“已提交给系统”不代表用户一定看到横幅，专注模式及屏幕共享静音设置仍然生效。
+- 更新后如后台助手通知仍显示旧占位图，可在“活动监视器”中正常退出“通知中心”进程，让系统重新启动显示进程并刷新图标缓存。无需删除通知数据库或重置授权。
 - 缓存与日志清理属于不可撤销的高风险操作，可能导致登录状态、游戏缓存和诊断日志丢失。执行前请退出游戏及其他应用，并备份重要数据。
 - 自定义磁盘挂载、hosts 修改、主机名切换和进程优先级调整会改变系统状态。请确认目标磁盘和路径无误，并避免在系统更新、磁盘读写或重要任务进行时操作。
 - Steam Deck 模式只用于兼容性测试，不能保证绕过或兼容任何游戏的反作弊机制；请遵守游戏服务条款。

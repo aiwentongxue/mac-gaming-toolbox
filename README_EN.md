@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 4.0.1 includes a native SwiftUI sidebar interface, unified settings, improved cache cleanup, and integrated AppDrop and ClickFlow 1.0.1 while remaining compatible with Intel and Apple Silicon Macs.
+Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 4.0.2 improves AppDrop localization in nine languages, price history, and price-drop notifications, alongside a native sidebar and integrated ClickFlow 1.0.1, while remaining compatible with Intel and Apple Silicon Macs.
 
 ## Features
 
@@ -18,6 +18,7 @@ Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming u
 - Export diagnostic information and access Mac gaming and CrossOver tutorials. Settings provides automatic update checks at launch and an immediate GitHub update check.
 - The integrated AppDrop includes a wishlist, today's drops, historical lows, and price settings. It supports App Store links, keyword search, 17 storefront regions, `.wishdrop` import/export, price history, and price-drop notifications.
 - AppDrop stores data independently at `~/Library/Application Support/MacGameToolbox/AppDrop` and does not read or modify standalone AppDrop data. Background checks use a dedicated user-level helper that is registered only when enabled in AppDrop Settings.
+- AppDrop supports Simplified Chinese, Traditional Chinese, English, Japanese, Korean, German, French, Spanish, and Portuguese. Settings provides separate notification permission, status, and test controls for the toolbox and background helper. After authorization is restored, prices are rechecked before still-valid missed drops are submitted in one summary.
 
 ## System Requirements
 
@@ -28,6 +29,10 @@ Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming u
 - ClickFlow global input features require Accessibility and Input Monitoring permissions to be granted separately to Mac Gaming Toolbox.
 
 ## Installation
+
+### Download the DMG
+
+Download `MacGameToolbox-4.0.2.dmg` from the [4.0.2 Release](https://github.com/aiwentongxue/mac-gaming-toolbox/releases/tag/v4.0.2) and drag the app to Applications. The same Universal installer includes both `x86_64` and `arm64`; no separate download is needed for each chip. The app is signed with an Apple Development identity and is not notarized by Apple. The Release also includes a SHA-256 checksum file and a verification report.
 
 ### Build the App from Source
 
@@ -75,6 +80,8 @@ swift test --disable-sandbox
 
 ## Important Notes
 
+- AppDrop toolbox and helper notifications require separate authorization. Recovery reminders include only the latest missed drops that are still valid after a successful price recheck. “Submitted to the system” does not guarantee a visible banner; Focus and screen-sharing notification suppression still apply.
+- If helper notifications retain an old placeholder icon after updating, use Activity Monitor to normally quit Notification Center. macOS restarts its display process and refreshes the icon cache. Deleting notification databases or resetting permission is unnecessary.
 - Cache and log cleanup is irreversible and may remove login state, game caches, and diagnostic logs. Quit games and other apps and back up important data before continuing.
 - Custom disk mounting, hosts changes, hostname switching, and process-priority adjustments modify system state. Verify the target disk and path, and avoid using these features during system updates, disk activity, or other important tasks.
 - Steam Deck mode is intended only for compatibility testing and is not guaranteed to bypass or work with any game's anti-cheat system. Follow the game's terms of service.

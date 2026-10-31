@@ -60,15 +60,19 @@ struct MainContentView: View {
                 .scrollContentBackground(.hidden)
                 .background(.ultraThinMaterial)
             } detail: {
-                ZStack {
-                    detailSurface
-                    ToolboxDetailRouter(
-                        selection: navigation.selection,
-                        navigation: navigation,
-                        clickFlowController: clickFlowController,
-                        appDropController: appDropController
-                    )
-                    .id(navigation.selection)
+                GeometryReader { viewport in
+                    ZStack {
+                        detailSurface
+                        ToolboxDetailRouter(
+                            selection: navigation.selection,
+                            navigation: navigation,
+                            clickFlowController: clickFlowController,
+                            appDropController: appDropController
+                        )
+                        .id("\(navigation.selection.rawValue).\(localization.refreshToken)")
+                    }
+                    .frame(width: viewport.size.width, height: viewport.size.height)
+                    .clipped()
                 }
                 .navigationTitle(navigation.selection.localizedTitle)
             }

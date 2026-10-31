@@ -29,7 +29,7 @@ import Testing
         #expect(
             SharedText.notificationLanguage(
                 preferredLanguages: ["yue-Hant-HK", "en-GB"]
-            ) == .simplifiedChinese
+            ) == .traditionalChinese
         )
         #expect(
             SharedText.notificationLanguage(
@@ -39,7 +39,7 @@ import Testing
         #expect(
             SharedText.notificationLanguage(
                 preferredLanguages: ["fr-FR", "de-DE"]
-            ) == .english
+            ) == .french
         )
     }
 
@@ -136,5 +136,77 @@ import Testing
 
     @Test func emptyBatchHasNoNotificationContent() {
         #expect(NotificationContentBuilder.prepare([]) == nil)
+    }
+}
+
+@Suite struct MultilingualNotificationTests {
+    @Test func everyLanguageResolvesAllNotificationTemplates() {
+        let keys = ["notification.drop.title", "notification.drop.body", "notification.drop.body.newLow", "notification.batch.title", "notification.batch.body.all", "notification.batch.body.more"]
+        for language in NotificationLanguage.allCases {
+            for key in keys {
+                let value = SharedText.string(key, locale: Locale(identifier: language.rawValue))
+                #expect(value != key)
+                #expect(value != "AppDrop")
+                #expect(!value.isEmpty)
+            }
+        }
+    }
+
+    @Test func regionalIdentifiersChooseScriptAndFirstSupportedLanguage() {
+        #expect(SharedText.notificationLanguage(preferredLanguages: ["zh-Hant-TW"]) == .traditionalChinese)
+        #expect(SharedText.notificationLanguage(preferredLanguages: ["zh-Hans-HK"]) == .simplifiedChinese)
+        #expect(SharedText.notificationLanguage(preferredLanguages: ["zh_TW"]) == .traditionalChinese)
+        #expect(SharedText.notificationLanguage(preferredLanguages: ["yue-HK"]) == .traditionalChinese)
+        #expect(SharedText.notificationLanguage(preferredLanguages: ["nl-NL", "pt-BR", "en"]) == .portuguese)
+        #expect(SharedText.notificationLanguage(preferredLanguages: ["xx", "fr-CA", "de-DE"]) == .french)
+        #expect(SharedText.notificationLanguage(preferredLanguages: ["xx"]) == .english)
+    }
+
+    @Test func translatedFormatsKeepAllArgumentsAndCorrectBatchCounts() throws {
+        let notifications = (1...4).map { index in
+            PriceDropNotification(appName: "Game \(index)", trackId: "\(index)", countryCode: "us", formattedPrice: "$4.99", currency: "USD", dropPercent: 50, isNewLow: true, recordID: UUID())
+        }
+        for language in NotificationLanguage.allCases {
+            let locale = Locale(identifier: language.rawValue)
+            let single = try #require(NotificationContentBuilder.prepare([notifications[0]], locale: locale))
+            #expect(single.title.contains("Game 1"))
+            #expect(single.body.contains("$4.99"))
+            #expect(single.body.contains("US"))
+            #expect(single.body.contains("50%"))
+            for count in [2, 3, 4] {
+                let batch = try #require(NotificationContentBuilder.prepare(Array(notifications.prefix(count)), locale: locale))
+                #expect(batch.title.contains("\(count)"))
+                #expect(batch.body.contains("Game 1"))
+                #expect(batch.recordIDs.count == count)
+                #expect(!batch.body.contains("%@"))
+                #expect(!batch.body.contains("%lld"))
+                if count == 4 {
+                    let expectedCount = language == .simplifiedChinese || language == .traditionalChinese ? 4 : 1
+                    let expected = String(format: SharedText.string("notification.batch.body.more", locale: locale), "LIST", Int64(expectedCount))
+                    #expect(expected.contains("\(expectedCount)"))
+                    #expect(batch.body.contains("\(expectedCount)"))
+                }
+            }
+        }
+    }
+}
+
+@Suite struct NotificationStatusReportTests {
+    @Test func statusReportsRoundTripAndDistinguishPermissions() throws {
+        for status in [NotificationPermissionStatus.notDetermined, .denied, .authorized, .provisional, .unknown] {
+            let report = NotificationStatusReport(authorization: status, alerts: "disabled", notificationCenter: "enabled", sound: "disabled")
+            let decoded = try JSONDecoder().decode(NotificationStatusReport.self, from: JSONEncoder().encode(report))
+            #expect(report == decoded)
+            #expect(report.canSubmit == (status == .authorized || status == .provisional))
+        }
+    }
+
+    @Test func testNotificationCopyIsAvailableInAllNineLanguages() {
+        for language in NotificationLanguage.allCases {
+            let title = SharedText.string("notification.test.title", locale: Locale(identifier: language.rawValue))
+            let body = SharedText.string("notification.test.body", locale: Locale(identifier: language.rawValue))
+            #expect(title.contains("AppDrop"))
+            #expect(!body.isEmpty && body != "AppDrop" && body != "notification.test.body")
+        }
     }
 }

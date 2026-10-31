@@ -2,6 +2,7 @@ import AppKit
 import AppDropCore
 import ServiceManagement
 import SwiftUI
+import UserNotifications
 #if SWIFT_PACKAGE
 import MacGameToolboxClickFlow
 #endif
@@ -22,7 +23,6 @@ struct MacGameToolboxApp: App {
             )
                 .environmentObject(model)
                 .environmentObject(localization)
-                .id(localization.refreshToken)
                 .frame(minWidth: 960, minHeight: 640)
                 .onAppear {
                     applicationDelegate.shutdownHandler = { clickFlowController.shutdown() }
@@ -67,11 +67,21 @@ struct MacGameToolboxApp: App {
     }
 }
 
-final class MacGameToolboxApplicationDelegate: NSObject, NSApplicationDelegate {
+final class MacGameToolboxApplicationDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        AppLog.info("foreground notification presentation requested: \(notification.request.identifier)", fileURL: RefreshEngine.defaultLogURL())
+        completionHandler([.banner, .list, .sound])
+    }
+
     var shutdownHandler: (() -> Void)?
     var openFilesHandler: (([URL]) -> Void)?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
         if ProcessInfo.processInfo.arguments.contains("--unregister-appdrop-helper") {
             let service = SMAppService.agent(
                 plistName: SharedConstants.helperAgentPlistName
@@ -186,7 +196,7 @@ enum GitHubReleaseChecker {
     private static let releasesAtomURL = URL(string: "https://github.com/aiwentongxue/mac-gaming-toolbox/releases.atom")!
 
     static var currentVersion: String {
-        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "4.0.1"
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "4.0.2"
     }
 
     static func check(

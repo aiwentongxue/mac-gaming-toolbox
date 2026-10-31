@@ -439,7 +439,7 @@ public final class RefreshEngine: @unchecked Sendable {
         var changedCount = 0
         var failedCount = 0
         var failures: [String] = []
-        var pendingNotifications: [PriceDropNotification] = []
+        var validatedAppIDs = Set<UUID>()
 
         let byCountry = Dictionary(grouping: snapshots, by: \.countryCode)
         for (country, apps) in byCountry.sorted(by: { $0.key < $1.key }) {
@@ -463,24 +463,16 @@ public final class RefreshEngine: @unchecked Sendable {
                     }
                     let result = byId[app.trackId]
                     let evaluation = PriceEngine.evaluate(previous: app.price, result: result)
-                    let applied = try await store.apply(evaluation, appID: app.id, metadata: result, now: now())
+                    _ = try await store.apply(evaluation, appID: app.id, metadata: result, now: now())
                     checkedCount += 1
+                    if case .unavailable = evaluation {
+                        // Failed/missing storefront responses cannot validate old alerts.
+                    } else {
+                        validatedAppIDs.insert(app.id)
+                    }
                     switch evaluation {
-                    case .decreased(_, let dropPercent, let isNewLow):
+                    case .decreased:
                         changedCount += 1
-                        if let recordID = applied.appendedRecordID,
-                           let formatted = applied.app.price.formattedPrice {
-                            pendingNotifications.append(PriceDropNotification(
-                                appName: applied.app.name,
-                                trackId: applied.app.trackId,
-                                countryCode: applied.app.countryCode,
-                                formattedPrice: formatted,
-                                currency: applied.app.price.currency ?? "",
-                                dropPercent: dropPercent,
-                                isNewLow: isNewLow,
-                                recordID: recordID
-                            ))
-                        }
                     case .increased, .currencyChanged:
                         changedCount += 1
                     case .baseline, .unchanged, .unavailable:
@@ -494,12 +486,25 @@ public final class RefreshEngine: @unchecked Sendable {
         }
 
         var notifiedCount = 0
-        if !pendingNotifications.isEmpty,
-           await notifier.sendPriceDrops(pendingNotifications) {
-            for notification in pendingNotifications {
-                try? await store.markNotified(recordID: notification.recordID, at: now())
+        do {
+            let pendingNotifications = try await store.pendingPriceDrops(validatedAppIDs: validatedAppIDs)
+            if !pendingNotifications.isEmpty {
+                if await notifier.sendPriceDrops(pendingNotifications) {
+                    notifiedCount = pendingNotifications.count
+                    for notification in pendingNotifications {
+                        do {
+                            try await store.markNotified(recordID: notification.recordID, at: now())
+                        } catch {
+                            log("notification accepted by system but marker save failed for \(notification.recordID): \(error.localizedDescription)")
+                        }
+                    }
+                    log("notification submitted to system: \(pendingNotifications.count) price drops")
+                } else {
+                    log("notification not submitted; \(pendingNotifications.count) price drops remain pending")
+                }
             }
-            notifiedCount = pendingNotifications.count
+        } catch {
+            log("pending notification lookup failed: \(error.localizedDescription)")
         }
 
         let outcome: CheckRunOutcome

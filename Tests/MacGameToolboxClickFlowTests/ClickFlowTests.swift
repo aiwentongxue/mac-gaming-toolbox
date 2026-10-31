@@ -5,6 +5,8 @@ import XCTest
 @testable import MacGameToolboxClickFlow
 #else
 import SwiftUI
+import SwiftData
+import AppDropCore
 @testable import Mac_游戏工具箱
 #endif
 
@@ -1903,6 +1905,272 @@ extension ClickFlowTests {
                 let data = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
                 XCTAssertGreaterThan(data.count, 1_000)
                 try data.write(to: output.appendingPathComponent("\(name)-\(style).png"))
+                window.close()
+            }
+        }
+    }
+}
+#endif
+
+#if !SWIFT_PACKAGE
+extension ClickFlowTests {
+    @MainActor
+    func testAppDropNineLanguagesHaveCompleteCompiledTablesAndMatchingFormats() throws {
+        let languages = ["zh-Hans", "zh-Hant", "en", "ja", "ko", "de", "fr", "es", "pt"]
+        let expression = try NSRegularExpression(pattern: #"%(?:\d+\$)?(?:lld|d|@)"#)
+        func placeholders(_ value: String) -> [String] {
+            expression.matches(in: value, range: NSRange(value.startIndex..., in: value)).map { match in
+                let token = (value as NSString).substring(with: match.range)
+                return token.replacingOccurrences(of: #"\d+\$"#, with: "", options: .regularExpression)
+            }.sorted()
+        }
+        for language in languages {
+            let path = try XCTUnwrap(Bundle.main.path(forResource: language, ofType: "lproj"))
+            let table = try XCTUnwrap(NSDictionary(contentsOfFile: path + "/AppDrop.strings") as? [String: String])
+            XCTAssertEqual(Set(table.keys), Set(AppStrings.englishFallbacks.keys), "Incomplete \(language) table")
+            for (key, english) in AppStrings.englishFallbacks {
+                let translated = try XCTUnwrap(table[key])
+                XCTAssertFalse(translated.isEmpty, "\(language):\(key)")
+                XCTAssertEqual(placeholders(translated), placeholders(english), "\(language):\(key)")
+                XCTAssertEqual(AppStrings.resolve(key, localeIdentifier: language), translated)
+            }
+            for code in ["us", "gb", "cn", "hk", "tw", "jp", "kr", "de", "fr", "ar", "au", "br", "ca", "in", "ng", "sg", "tr"] {
+                let key = "region.\(code).name"
+                XCTAssertNotEqual(AppStrings.resolve(key, localeIdentifier: language), key)
+            }
+        }
+    }
+
+    @MainActor
+    func testAppDropFallbackWorksWhenLanguageDirectoryLacksItsTable() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".bundle")
+        defer { try? FileManager.default.removeItem(at: root) }
+        for language in ["ja", "en"] {
+            try FileManager.default.createDirectory(at: root.appendingPathComponent(language + ".lproj"), withIntermediateDirectories: true)
+        }
+        try #""other.module" = "別のモジュール";"#.write(to: root.appendingPathComponent("ja.lproj/Localizable.strings"), atomically: true, encoding: .utf8)
+        try #""settings.title" = "Settings from table";"#.write(to: root.appendingPathComponent("en.lproj/AppDrop.strings"), atomically: true, encoding: .utf8)
+        let fixture = try XCTUnwrap(Bundle(url: root))
+        XCTAssertEqual(AppStrings.resolve("settings.title", localeIdentifier: "ja", bundles: [fixture]), "Settings from table")
+        XCTAssertEqual(AppStrings.resolve("common.cancel", localeIdentifier: "ja", bundles: [fixture]), "Cancel")
+        XCTAssertEqual(AppStrings.resolve("future.readableTitle", localeIdentifier: "ja", bundles: [], fallbacks: [:]), "Readable Title")
+    }
+
+    @MainActor
+    func testAppDropLanguageChangesAndPersistsWithoutExposingKeys() {
+        let defaults = UserDefaults.standard
+        let previous = defaults.object(forKey: AppLanguage.preferenceKey)
+        defer {
+            if let previous { defaults.set(previous, forKey: AppLanguage.preferenceKey) }
+            else { defaults.removeObject(forKey: AppLanguage.preferenceKey) }
+        }
+        let localization = LocalizationController()
+        let cases: [(AppLanguage.Preference, String, String)] = [
+            (.simplifiedChinese, "zh-Hans", "设置"), (.traditionalChinese, "zh-Hant", "設定"),
+            (.english, "en", "Settings"), (.japanese, "ja", "設定"), (.korean, "ko", "설정"),
+            (.german, "de", "Einstellungen"), (.french, "fr", "Réglages"),
+            (.spanish, "es", "Ajustes"), (.portuguese, "pt", "Ajustes")
+        ]
+        for (preference, identifier, title) in cases {
+            localization.setPreference(preference)
+            XCTAssertEqual(AppStrings.localeIdentifier, identifier)
+            XCTAssertEqual(AppStrings.string("settings.title"), title)
+            XCTAssertEqual(LocalizationController().preference, preference)
+        }
+    }
+
+    @MainActor
+    func testAppDropValidationAndImportErrorsFollowSelectedLanguage() {
+        let defaults = UserDefaults.standard
+        let previous = defaults.object(forKey: AppLanguage.preferenceKey)
+        defer {
+            if let previous { defaults.set(previous, forKey: AppLanguage.preferenceKey) }
+            else { defaults.removeObject(forKey: AppLanguage.preferenceKey) }
+        }
+        let localization = LocalizationController()
+        for language in AppLanguage.Preference.allCases where language != .system {
+            localization.setPreference(language)
+            XCTAssertEqual(AppStrings.errorDescription(AppStoreURLParserError.notAURL), AppStrings.string("error.link.invalid"))
+            XCTAssertTrue(AppStrings.errorDescription(AppStoreURLParserError.unsupportedHost("example.com")).contains("example.com"))
+            let duplicate = AppStrings.errorDescription(AppDataStoreError.duplicateTrackedApp(trackId: "123456789", countryCode: "jp"))
+            XCTAssertTrue(duplicate.contains("123456789"))
+            XCTAssertTrue(duplicate.contains("JP"))
+            XCTAssertTrue(AppStrings.errorDescription(WishdropError.unsupportedVersion(99)).contains("99"))
+            XCTAssertTrue(AppStrings.errorDescription(AppStoreServiceError.httpStatus(code: 503)).contains("503"))
+            let issue = WishdropEntryIssue(index: 4, code: .invalidURL, reason: "Diagnostic English only")
+            let text = AppStrings.issueDescription(issue)
+            XCTAssertTrue(text.contains("5"))
+            XCTAssertTrue(text.contains(AppStrings.string("import.issue.invalidURL")))
+            XCTAssertFalse(text.contains(issue.reason))
+        }
+    }
+
+    @MainActor
+    func testAboutPageHasOneBoundedScrollableRegionInAllLanguages() throws {
+        let defaults = UserDefaults.standard
+        let previous = defaults.object(forKey: AppLanguage.preferenceKey)
+        defer {
+            if let previous { defaults.set(previous, forKey: AppLanguage.preferenceKey) }
+            else { defaults.removeObject(forKey: AppLanguage.preferenceKey) }
+        }
+        let output = URL(fileURLWithPath: "/tmp/mac-toolbox-402-ui-qa")
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        let model = AppModel(launchAutomatically: false)
+        let localization = LocalizationController()
+        func scrollViews(_ view: NSView) -> [NSScrollView] {
+            (view as? NSScrollView).map { [$0] } ?? view.subviews.flatMap(scrollViews)
+        }
+        for language in AppLanguage.Preference.allCases where language != .system {
+            localization.setPreference(language)
+            for size in [NSSize(width: 672, height: 612), NSSize(width: 880, height: 732)] {
+                for scheme in [ColorScheme.light, .dark] {
+                    let root = ZStack {
+                        AppBackgroundView()
+                        ChangelogAboutDetailView()
+                    }
+                        .environmentObject(model)
+                        .environmentObject(localization)
+                        .environment(\.colorScheme, scheme)
+                        .preferredColorScheme(scheme)
+                    let host = NSHostingView(rootView: root)
+                    let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
+                    window.isReleasedWhenClosed = false
+                    window.contentView = host
+                    host.frame = NSRect(origin: .zero, size: size)
+                    host.layoutSubtreeIfNeeded()
+                    window.displayIfNeeded()
+                    XCTAssertEqual(window.frame.size, size)
+                    XCTAssertLessThanOrEqual(host.fittingSize.width, size.width + 1, "Intrinsic width \(language)")
+                    let scroll = try XCTUnwrap(scrollViews(host).first)
+                    XCTAssertEqual(scrollViews(host).count, 1, "Nested scroll regions \(language)")
+                    XCTAssertLessThanOrEqual(scroll.frame.maxY, host.bounds.maxY + 1)
+                    XCTAssertGreaterThan(try XCTUnwrap(scroll.documentView).frame.height, scroll.contentView.bounds.height)
+                    let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                    let nsAppearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+                    nsAppearance?.performAsCurrentDrawingAppearance {
+                        host.cacheDisplay(in: host.bounds, to: bitmap)
+                    }
+                    let data = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                    let appearance = scheme == .dark ? "dark" : "light"
+                    try data.write(to: output.appendingPathComponent("about-\(language.rawValue)-\(Int(size.width))-\(appearance).png"))
+                    window.close()
+                }
+            }
+        }
+    }
+}
+#endif
+
+#if !SWIFT_PACKAGE
+extension ClickFlowTests {
+    final class AppDropDelayedFetcher: AppStoreFetching, @unchecked Sendable {
+        var result = AppStoreApp(trackId: "6497794841", name: "Fixture", price: Decimal(string: "27.99"), formattedPrice: "$27.99", currency: "USD")
+        var fail = false
+        private(set) var lookupCount = 0
+        func lookup(appIds: [String], country: String) async -> LookupOutcome {
+            lookupCount += 1
+            try? await Task.sleep(for: .milliseconds(150))
+            return fail ? LookupOutcome(apps: [], failedIds: appIds, failures: [LookupBatchFailure(ids: appIds, message: "fixture offline")]) : LookupOutcome(apps: [result])
+        }
+        func lookupOne(appId: String, country: String) async throws -> AppStoreApp? { result }
+        func search(keyword: String, country: String, platform: AppStoreSearchPlatform) async throws -> [AppStoreApp] { [] }
+    }
+
+    @MainActor
+    func testAppDropDetailUsesExplicitEnvironmentAndKeepsHistoryAfterSingleCheck() async throws {
+        let container = try SharedStore.makeInMemoryContainer()
+        let store = AppDataStore(modelContainer: container)
+        let snapshot = try await store.insert(NewTrackedAppDraft(trackId: "6497794841", countryCode: "us", name: "Fixture", price: Decimal(string: "69.99"), formattedPrice: "$69.99", currency: "USD"), now: Date().addingTimeInterval(-100))
+        let fetcher = AppDropDelayedFetcher()
+        let environment = AppEnvironment(container: container, fetcher: fetcher, notifier: NoopNotifier(), automaticallyStart: false)
+        let id = snapshot.id
+        let app = try XCTUnwrap(container.mainContext.fetch(FetchDescriptor<TrackedApp>(predicate: #Predicate { $0.id == id })).first)
+        // The detail intentionally has no ambient AppEnvironment. Navigation
+        // destinations must work from their explicit dependency alone.
+        let view = AppDetailView(app: app, environment: environment).modelContainer(container)
+        let host = NSHostingView(rootView: view)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 750, height: 640), styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        host.layoutSubtreeIfNeeded()
+        let coordinator = try XCTUnwrap(environment.refresh)
+        let first = Task { await coordinator.refreshSingle(appID: id) }
+        try await Task.sleep(for: .milliseconds(30))
+        XCTAssertTrue(coordinator.isRefreshing)
+        let duplicate = await coordinator.refreshSingle(appID: id)
+        XCTAssertNil(duplicate)
+        let summary = await first.value
+        XCTAssertEqual(summary?.outcome, .success)
+        XCTAssertFalse(coordinator.isRefreshing)
+        XCTAssertEqual(fetcher.lookupCount, 1)
+        let records = try await store.records(trackId: snapshot.trackId, countryCode: "us")
+        XCTAssertEqual(records.map(\.price), [Decimal(string: "69.99")!, Decimal(string: "27.99")!])
+        fetcher.fail = true
+        let failed = await coordinator.refreshSingle(appID: id)
+        XCTAssertEqual(failed?.outcome, .failed)
+        XCTAssertFalse(coordinator.isRefreshing)
+        let preserved = try await store.records(trackId: snapshot.trackId, countryCode: "us")
+        XCTAssertEqual(preserved.count, 2)
+        window.close()
+    }
+}
+#endif
+
+#if !SWIFT_PACKAGE
+extension ClickFlowTests {
+    @MainActor
+    func testAppDropAllLibraryDestinationsKeepContextAndHistory() async throws {
+        let container = try SharedStore.makeInMemoryContainer()
+        let store = AppDataStore(modelContainer: container)
+        let snapshot = try await store.insert(NewTrackedAppDraft(trackId: "6497794841", countryCode: "us", name: "Fixture", price: Decimal(string: "69.99"), formattedPrice: "$69.99", currency: "USD"), now: Date().addingTimeInterval(-100))
+        let fetcher = AppDropDelayedFetcher()
+        let environment = AppEnvironment(container: container, fetcher: fetcher, notifier: NoopNotifier(), automaticallyStart: false)
+        _ = await environment.refresh?.refreshSingle(appID: snapshot.id)
+        func hasRenderedStep(_ host: NSView) throws -> Bool {
+            let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: bitmap)
+            var count = 0
+            var minX = bitmap.pixelsWide, maxX = 0, minY = bitmap.pixelsHigh, maxY = 0
+            // The lower chart must contain both a long horizontal segment and
+            // a price decrease, rather than the empty-history placeholder.
+            for y in stride(from: bitmap.pixelsHigh * 2 / 5, to: bitmap.pixelsHigh, by: 2) {
+                for x in stride(from: bitmap.pixelsWide / 3, to: bitmap.pixelsWide, by: 2) {
+                    guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                    if color.blueComponent > 0.75 && color.redComponent < 0.35 && color.blueComponent - color.redComponent > 0.5 && color.greenComponent > 0.2 && color.greenComponent < 0.7 {
+                        count += 1
+                        minX = min(minX, x); maxX = max(maxX, x)
+                        minY = min(minY, y); maxY = max(maxY, y)
+                    }
+                }
+            }
+            return count > 300 && maxX - minX > bitmap.pixelsWide / 3 && maxY - minY > bitmap.pixelsHigh / 15
+        }
+        for page in [AppDropPage.wishlist, .todayDrops, .historicalLows] {
+            for layout in [AppDropLayoutMode.grid, .list] {
+                let root = NavigationSplitView {
+                    Text("Fixture sidebar")
+                } detail: {
+                    AppDropPageView(page: page, environment: environment, initialPath: [snapshot.id], initialLayout: layout)
+                        .modelContainer(container)
+                        .environmentObject(environment)
+                }
+                let host = NSHostingView(rootView: root.background(AppBackgroundView()).tint(.blue).preferredColorScheme(.light))
+                let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 640), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+                window.isReleasedWhenClosed = false
+                window.contentView = host
+                window.makeKeyAndOrderFront(nil)
+                var rendered = false
+                for _ in 0..<20 {
+                    host.layoutSubtreeIfNeeded()
+                    rendered = try hasRenderedStep(host)
+                    if rendered { break }
+                    try await Task.sleep(for: .milliseconds(100))
+                }
+                XCTAssertTrue(rendered, "\(page) / \(layout): expected the two-price step chart")
+                if let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                    host.cacheDisplay(in: host.bounds, to: bitmap)
+                    try bitmap.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "/tmp/appdrop-route-\(page.rawValue)-\(layout.rawValue).png"))
+                }
                 window.close()
             }
         }

@@ -274,64 +274,75 @@ struct ChangelogAboutDetailView: View {
     @EnvironmentObject private var localization: LocalizationController
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            ToolboxPageHeader(
+        GeometryReader { viewport in
+            ToolboxPage(
                 icon: SidebarItem.changelogAbout.iconName,
                 title: tr("更新日志与关于", "Changelog & About"),
                 subtitle: tr(
                     "查看当前本机构建信息、历史版本变化与诊断工具。",
                     "Review this local build, version history, and diagnostic tools."
                 )
-            )
+            ) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 320), spacing: 16)], alignment: .leading, spacing: 16) {
+                    ToolboxCard("Mac 游戏工具箱") {
+                        Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
+                            GridRow {
+                                Text(tr("版本", "Version")).foregroundStyle(.secondary)
+                                Text(GitHubReleaseChecker.currentVersion)
+                            }
+                            GridRow {
+                                Text(tr("界面语言", "Language")).foregroundStyle(.secondary)
+                                Text(AppLanguage.preferenceName(localization.preference))
+                            }
+                            GridRow {
+                                Text(tr("构建状态", "Build")).foregroundStyle(.secondary)
+                                Text("Release \(GitHubReleaseChecker.currentVersion)")
+                            }
+                        }
+                        Button(tr("打开 Releases", "Open Releases")) {
+                            NSWorkspace.shared.open(GitHubReleaseChecker.releasesPageURL)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
 
-            HStack(alignment: .top, spacing: 16) {
-                ToolboxCard("Mac 游戏工具箱") {
-                    Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
-                        GridRow {
-                            Text(tr("版本", "Version")).foregroundStyle(.secondary)
-                            Text(GitHubReleaseChecker.currentVersion)
+                    ToolboxCard(tr("支持工具", "Support Tools")) {
+                        Text(tr("诊断日志、核心功能修复和教程可继续从“帮助”菜单访问。", "Diagnostics, core feature repair, and tutorials remain available from the Help menu."))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        ViewThatFits(in: .horizontal) {
+                            HStack {
+                                diagnosticButton
+                                repairButton
+                            }
+                            VStack(alignment: .leading, spacing: 10) {
+                                diagnosticButton
+                                repairButton
+                            }
                         }
-                        GridRow {
-                            Text(tr("界面语言", "Language")).foregroundStyle(.secondary)
-                            Text(AppLanguage.preferenceName(localization.preference))
-                        }
-                        GridRow {
-                            Text(tr("构建状态", "Build")).foregroundStyle(.secondary)
-                            Text("Release \(GitHubReleaseChecker.currentVersion)")
-                        }
+                        Text("Copyright © 2026 我是艾文喵")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
                     }
-                    Button(tr("打开 Releases", "Open Releases")) {
-                        NSWorkspace.shared.open(GitHubReleaseChecker.releasesPageURL)
-                    }
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
 
-                ToolboxCard(tr("支持工具", "Support Tools")) {
-                    Text(tr("诊断日志、核心功能修复和教程可继续从“帮助”菜单访问。", "Diagnostics, core feature repair, and tutorials remain available from the Help menu."))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    HStack {
-                        Button(tr("导出诊断", "Export Diagnostics")) {
-                            model.requestDiagnosticsExport()
-                        }
-                        Button(tr("修复核心功能", "Repair Core Features")) {
-                            model.repairCoreFeatures()
-                        }
-                    }
-                    Text("Copyright © 2026 我是艾文喵")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-                .frame(maxWidth: .infinity)
+                Divider()
+                ChangelogView()
             }
-
-            Divider()
-
-            ChangelogView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(width: viewport.size.width, height: viewport.size.height)
+            .accessibilityIdentifier("about.page")
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
+    private var diagnosticButton: some View {
+        Button(tr("导出诊断", "Export Diagnostics")) {
+            model.requestDiagnosticsExport()
+        }
+    }
+
+    private var repairButton: some View {
+        Button(tr("修复核心功能", "Repair Core Features")) {
+            model.repairCoreFeatures()
+        }
+    }
 }

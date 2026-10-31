@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Combine
 import AppDropCore
 import SwiftData
 import SwiftUI
@@ -37,7 +38,7 @@ final class AppEnvironment: ObservableObject {
     let container: ModelContainer?
     let startupError: String?
     let store: AppDataStore?
-    let fetcher: AppStoreService
+    let fetcher: any AppStoreFetching
     let notificationScheduler: UserNotificationScheduler
     let backend = BackendManager()
     private(set) var refresh: RefreshCoordinator?
@@ -48,15 +49,27 @@ final class AppEnvironment: ObservableObject {
     @Published var pendingImportSummary: WishdropImportSummary?
     @Published var defaultCountryCode: String
     private var lastObservedCheckAttempt: Date?
+    private var subscriptions = Set<AnyCancellable>()
+    private var checkingNotificationStatuses = false
+    private var lastAppCanSubmit = false
+    private var lastHelperCanSubmit = false
+    private let automaticallyStart: Bool
+    @Published private(set) var appNotificationReport: NotificationStatusReport?
+    @Published private(set) var helperNotificationReport: NotificationStatusReport?
+    @Published private(set) var helperNotificationError: String?
+    @Published private(set) var recoveringNotifications = false
 
-    init() {
+    init(container: ModelContainer? = nil, fetcher: any AppStoreFetching = AppStoreService(), notifier: (any UserNotifying)? = nil, automaticallyStart: Bool = true) {
+        let isTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil || NSClassFromString("XCTestCase") != nil
+        let startsAutomatically = automaticallyStart && !isTestHost
+        self.automaticallyStart = startsAutomatically
         let defaults = UserDefaults.standard
         self.defaultCountryCode = defaults.string(forKey: DefaultsKey.defaultCountryCode) ?? SharedConstants.defaultCountryCode
-        self.fetcher = AppStoreService()
+        self.fetcher = fetcher
         self.notificationScheduler = UserNotificationScheduler()
 
         do {
-            let container = try SharedStore.makeContainer()
+            let container = try container ?? SharedStore.makeContainer()
             self.container = container
             self.startupError = nil
             let store = AppDataStore(modelContainer: container)
@@ -64,9 +77,9 @@ final class AppEnvironment: ObservableObject {
             let engine = RefreshEngine(
                 container: container,
                 fetcher: fetcher,
-                notifier: notificationScheduler,
-                lockURL: RefreshEngine.defaultLockURL(),
-                logURL: RefreshEngine.defaultLogURL()
+                notifier: notifier ?? notificationScheduler,
+                lockURL: startsAutomatically ? RefreshEngine.defaultLockURL() : nil,
+                logURL: startsAutomatically ? RefreshEngine.defaultLogURL() : nil
             )
             self.refresh = RefreshCoordinator(engine: engine) { [weak self] in
                 self?.bumpDataVersion()
@@ -75,15 +88,17 @@ final class AppEnvironment: ObservableObject {
             self.container = nil
             self.store = nil
             self.refresh = nil
-            var message = error.localizedDescription
-            if let storeError = error as? SharedStoreError {
-                message = storeError.errorDescription ?? message
-            }
+            var message = AppStrings.errorDescription(error)
             if let url = try? SharedStore.storeURL(createDirectory: false) {
                 message += "\n\nStore: \(url.path)"
             }
             self.startupError = message
         }
+
+        self.refresh?.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &subscriptions)
+        guard startsAutomatically else { return }
 
         NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification,
@@ -99,6 +114,7 @@ final class AppEnvironment: ObservableObject {
                 self.lastObservedCheckAttempt = try? await store.latestAttemptDate()
             }
             await self.reconcileStoredState()
+            await self.refreshNotificationStatuses()
         }
     }
 
@@ -113,11 +129,45 @@ final class AppEnvironment: ObservableObject {
 
     private func handleDidBecomeActive() async {
         backend.refreshStatus()
+        await refreshNotificationStatuses()
         guard let store else { return }
         if let latest = try? await store.latestAttemptDate(), latest != lastObservedCheckAttempt {
             lastObservedCheckAttempt = latest
             dataVersion += 1
             await reconcileStoredState()
+        }
+    }
+
+    func refreshNotificationStatuses() async {
+        guard !checkingNotificationStatuses else { return }
+        checkingNotificationStatuses = true
+        defer { checkingNotificationStatuses = false }
+        let previousApp = lastAppCanSubmit
+        let previousHelper = lastHelperCanSubmit
+        appNotificationReport = await notificationScheduler.statusReport()
+        lastAppCanSubmit = appNotificationReport?.canSubmit ?? false
+        var helperBecameAllowed = false
+        do {
+            helperNotificationReport = try await backend.notificationStatus()
+            lastHelperCanSubmit = helperNotificationReport?.canSubmit ?? false
+            helperBecameAllowed = lastHelperCanSubmit && !previousHelper
+            helperNotificationError = nil
+        } catch {
+            helperNotificationError = AppStrings.errorDescription(error)
+            helperNotificationReport = nil
+        }
+        let appBecameAllowed = appNotificationReport?.canSubmit == true && !previousApp
+        guard automaticallyStart, !recoveringNotifications,
+              appBecameAllowed || helperBecameAllowed else { return }
+        guard let store, (try? await store.hasUnsubmittedPriceDrops()) == true else { return }
+        recoveringNotifications = true
+        defer { recoveringNotifications = false }
+        // A fresh locked cycle validates old discounts before submitting them.
+        if appNotificationReport?.canSubmit == true {
+            await refresh?.refreshAll()
+        } else if helperNotificationReport?.canSubmit == true {
+            _ = await backend.runHelperOnce()
+            bumpDataVersion()
         }
     }
 
@@ -181,9 +231,9 @@ final class AppEnvironment: ObservableObject {
             if case .duplicateTrackedApp = error {
                 return .duplicate(name: result.name)
             }
-            return .failed(message: error.localizedDescription)
+            return .failed(message: AppStrings.errorDescription(error))
         } catch {
-            return .failed(message: error.localizedDescription)
+            return .failed(message: AppStrings.errorDescription(error))
         }
     }
 
@@ -194,7 +244,7 @@ final class AppEnvironment: ObservableObject {
             }
             return await addTrackedApp(searchResult: result, country: parsedLink.countryCode)
         } catch {
-            return .failed(message: error.localizedDescription)
+            return .failed(message: AppStrings.errorDescription(error))
         }
     }
 
@@ -205,7 +255,7 @@ final class AppEnvironment: ObservableObject {
             bumpDataVersion()
             return nil
         } catch {
-            return error.localizedDescription
+            return AppStrings.errorDescription(error)
         }
     }
 
@@ -216,7 +266,7 @@ final class AppEnvironment: ObservableObject {
             bumpDataVersion()
             return nil
         } catch {
-            return error.localizedDescription
+            return AppStrings.errorDescription(error)
         }
     }
 
@@ -257,7 +307,7 @@ final class AppEnvironment: ObservableObject {
             let preset = WishdropCodec.makePreset(title: "AppDrop Wishlist", snapshots: snapshots, exportedAt: Date())
             return .success(try WishdropCodec.encode(preset))
         } catch {
-            return .failure(AppExportError(message: error.localizedDescription))
+            return .failure(AppExportError(message: AppStrings.errorDescription(error)))
         }
     }
 
@@ -292,7 +342,7 @@ final class AppEnvironment: ObservableObject {
                 existingCount: 0,
                 invalidCount: 0,
                 issues: [],
-                errorMessage: error.localizedDescription
+                errorMessage: AppStrings.errorDescription(error)
             )
         }
     }
@@ -310,14 +360,14 @@ final class AppEnvironment: ObservableObject {
                     pendingImportSummary = summary
                 }
             } catch {
-                AppLog.error("incoming file read failed: \(error.localizedDescription)")
+                AppLog.error("incoming file read failed: \(AppStrings.errorDescription(error))")
                 pendingImportSummary = WishdropImportSummary(
                     fileName: url.lastPathComponent,
                     addedCount: 0,
                     existingCount: 0,
                     invalidCount: 0,
                     issues: [],
-                    errorMessage: error.localizedDescription
+                    errorMessage: AppStrings.errorDescription(error)
                 )
             }
         }

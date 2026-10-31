@@ -5,7 +5,7 @@ import SwiftUI
 /// App Store prices change discretely at points in time.
 struct PriceHistoryChartView: View {
     struct ChartPoint: Identifiable, Equatable {
-        let id = UUID()
+        let id: UUID
         let date: Date
         let price: Double
         let formatted: String

@@ -28,7 +28,9 @@ final class RefreshCoordinator: ObservableObject {
 
     @discardableResult
     func refreshSingle(appID: UUID) async -> RefreshSummary? {
-        guard let engine else { return nil }
+        guard let engine, !isRefreshing else { return nil }
+        isRefreshing = true
+        defer { isRefreshing = false }
         let summary = await engine.refreshSingle(appID: appID, source: .manual)
         lastSummary = summary
         didFinish()

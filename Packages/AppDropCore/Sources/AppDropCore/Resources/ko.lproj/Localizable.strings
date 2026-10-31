@@ -1,0 +1,8 @@
+"notification.drop.title" = "가격 인하: %@";
+"notification.drop.body" = "%2$@ 스토어에서 현재 %1$@, 이전 가격보다 %3$@ 저렴합니다.";
+"notification.drop.body.newLow" = "%2$@ 스토어에서 현재 %1$@, 이전 가격보다 %3$@ 저렴합니다. 역대 최저가입니다!";
+"notification.batch.title" = "게임 %lld개 가격 인하";
+"notification.batch.body.all" = "%@의 가격이 인하되었습니다.";
+"notification.batch.body.more" = "%@ 외 %lld개의 가격이 인하되었습니다.";
+"notification.test.title" = "AppDrop 알림 테스트";
+"notification.test.body" = "도구 상자 또는 도우미가 보낸 테스트입니다. 가격 기록은 변경되지 않았습니다.";

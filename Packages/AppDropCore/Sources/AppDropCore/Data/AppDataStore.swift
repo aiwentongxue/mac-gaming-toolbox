@@ -73,6 +73,50 @@ public actor AppDataStore {
         return try modelContext.fetch(descriptor).map { $0.makeSnapshot() }
     }
 
+    /// A cheap recovery gate. These are candidates, not authorization to
+    /// notify: the engine must still revalidate each price with the store.
+    public func hasUnsubmittedPriceDrops() throws -> Bool {
+        for app in try allSnapshots() {
+            guard let latest = try records(trackId: app.trackId, countryCode: app.countryCode).last,
+                  latest.recordType == .decrease, latest.notifiedAt == nil,
+                  latest.price == app.price.price,
+                  latest.currency.caseInsensitiveCompare(app.price.currency ?? "") == .orderedSame else { continue }
+            return true
+        }
+        return false
+    }
+
+    /// Only the latest still-effective decrease for a successfully rechecked
+    /// app can be retried. An unchanged lookup must not lose a failed alert.
+    public func pendingPriceDrops(validatedAppIDs: Set<UUID>) throws -> [PriceDropNotification] {
+        var pending: [PriceDropNotification] = []
+        for id in validatedAppIDs.sorted(by: { $0.uuidString < $1.uuidString }) {
+            guard let app = try fetchApp(appID: id),
+                  app.lastCheckStatus == .ok,
+                  let currentPrice = app.currentPrice,
+                  let currency = app.currency else { continue }
+            let history = try records(trackId: app.trackId, countryCode: app.countryCode)
+                .sorted { $0.timestamp == $1.timestamp ? $0.id.uuidString < $1.id.uuidString : $0.timestamp < $1.timestamp }
+            guard let latest = history.last,
+                  latest.recordType == .decrease, latest.notifiedAt == nil,
+                  latest.price == currentPrice,
+                  latest.currency.caseInsensitiveCompare(currency) == .orderedSame,
+                  let previous = history.dropLast().last,
+                  previous.currency.caseInsensitiveCompare(currency) == .orderedSame,
+                  previous.price > latest.price else { continue }
+            let earlierMinimum = history.dropLast()
+                .filter { $0.currency.caseInsensitiveCompare(currency) == .orderedSame }
+                .map(\.price).min() ?? previous.price
+            pending.append(PriceDropNotification(
+                appName: app.name, trackId: app.trackId, countryCode: app.countryCode,
+                formattedPrice: latest.formattedPrice, currency: currency,
+                dropPercent: PriceEngine.dropPercent(from: previous.price, to: latest.price),
+                isNewLow: latest.price < earlierMinimum, recordID: latest.id
+            ))
+        }
+        return pending
+    }
+
     public func latestRunEntries(limit: Int = 10) throws -> [CheckRunEntry] {
         var descriptor = FetchDescriptor<CheckRunLog>(
             sortBy: [SortDescriptor(\CheckRunLog.startedAt, order: .reverse)]

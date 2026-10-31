@@ -9,7 +9,8 @@ struct AppDropSettingsView: View {
     @Query(sort: [SortDescriptor(\CheckRunLog.startedAt, order: .reverse)])
     private var runs: [CheckRunLog]
 
-    @State private var notificationStatus: NotificationPermissionStatus = .notDetermined
+    @State private var notificationMessage: String?
+    @State private var notificationBusy = false
     @State private var backendError: String?
     @State private var busy = false
     @State private var changingAllRegions = false
@@ -46,23 +47,25 @@ struct AppDropSettingsView: View {
             }
 
             Section(AppStrings.string("settings.notifications")) {
-                LabeledContent(AppStrings.string("settings.notificationStatus")) {
-                    Text(AppStrings.string(notificationStatusKey(notificationStatus)))
+                notificationControls(title: "notifications.app", report: environment.appNotificationReport, helper: false)
+                notificationControls(title: "notifications.helper", report: environment.helperNotificationReport, helper: true)
+                if let error = environment.helperNotificationError {
+                    Text(error).font(.caption).foregroundStyle(.orange)
                 }
-                HStack {
-                    Button(AppStrings.string("settings.requestNotification")) {
-                        Task {
-                            notificationStatus = await environment.notificationScheduler.requestPermission()
-                        }
-                    }
-                    .disabled(notificationStatus == .authorized)
-                    Button(AppStrings.string("settings.openNotificationSettings")) {
-                        openSystemSettings("x-apple.systempreferences:com.apple.Notifications-Settings.extension")
+                Button(AppStrings.string("settings.openNotificationSettings")) {
+                    openSystemSettings("x-apple.systempreferences:com.apple.Notifications-Settings.extension")
+                }
+                Text(AppStrings.string("notifications.explanation"))
+                    .font(.caption).foregroundStyle(.secondary)
+                if environment.recoveringNotifications {
+                    HStack {
+                        ProgressView().controlSize(.small)
+                        Text(AppStrings.string("notifications.recovering"))
                     }
                 }
-                Text(AppStrings.string("settings.helperPermissionHint"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if let notificationMessage {
+                    Text(notificationMessage).font(.caption).textSelection(.enabled)
+                }
             }
 
             Section(AppStrings.string("settings.background")) {
@@ -186,8 +189,62 @@ struct AppDropSettingsView: View {
             Text(changeAllResultMessage ?? "")
         }
         .task {
-            notificationStatus = await environment.notificationScheduler.permission()
             environment.backend.refreshStatus()
+            await environment.refreshNotificationStatuses()
+        }
+    }
+
+    private func notificationControls(title: String, report: NotificationStatusReport?, helper: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            LabeledContent(AppStrings.string(title)) {
+                Text(AppStrings.string(notificationStatusKey(report?.authorization ?? .unknown)))
+            }
+            if let report {
+                Text(AppStrings.format("notifications.options",
+                    AppStrings.string("notifications.setting.\(report.alerts)"),
+                    AppStrings.string("notifications.setting.\(report.notificationCenter)"),
+                    AppStrings.string("notifications.setting.\(report.sound)")))
+                    .font(.caption).foregroundStyle(.secondary)
+                Text(AppStrings.format("notifications.deliveredCount", report.deliveredCount))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            HStack {
+                Button(AppStrings.string("settings.requestNotification")) {
+                    notificationAction(helper: helper, test: false)
+                }
+                .disabled(notificationBusy || report?.canSubmit == true || report?.authorization == .denied)
+                Button(AppStrings.string("notifications.test")) {
+                    notificationAction(helper: helper, test: true)
+                }
+                .disabled(notificationBusy || report?.canSubmit != true)
+            }
+        }
+        .accessibilityIdentifier(helper ? "appdrop.notifications.helper" : "appdrop.notifications.app")
+    }
+
+    private func notificationAction(helper: Bool, test: Bool) {
+        guard !notificationBusy else { return }
+        notificationBusy = true
+        notificationMessage = nil
+        Task { @MainActor in
+            defer { notificationBusy = false }
+            do {
+                if test {
+                    let result = helper
+                        ? try await environment.backend.submitTestNotification()
+                        : await environment.notificationScheduler.submitTestNotification()
+                    notificationMessage = result.submitted
+                        ? AppStrings.string("notifications.submitted")
+                        : AppStrings.format("notifications.failed", result.error ?? "")
+                } else if helper {
+                    _ = await environment.backend.warmUpHelperNotifications()
+                } else {
+                    _ = await environment.notificationScheduler.requestPermission()
+                }
+                await environment.refreshNotificationStatuses()
+            } catch {
+                notificationMessage = AppStrings.format("notifications.failed", AppStrings.errorDescription(error))
+            }
         }
     }
 
@@ -222,7 +279,7 @@ struct AppDropSettingsView: View {
                         try environment.backend.disable()
                     }
                 } catch {
-                    backendError = error.localizedDescription
+                    backendError = AppStrings.errorDescription(error)
                 }
                 environment.backend.refreshStatus()
             }
@@ -265,7 +322,7 @@ struct AppDropSettingsView: View {
         do {
             try environment.backend.enable()
         } catch {
-            backendError = error.localizedDescription
+            backendError = AppStrings.errorDescription(error)
         }
         environment.backend.refreshStatus()
         busy = false

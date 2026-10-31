@@ -1,0 +1,8 @@
+"notification.drop.title" = "Preissenkung: %@";
+"notification.drop.body" = "Jetzt %@ im Store %@ – %@ günstiger als zuvor.";
+"notification.drop.body.newLow" = "Jetzt %@ im Store %@ – %@ günstiger als zuvor. Neuer Tiefstpreis!";
+"notification.batch.title" = "%lld Spiele im Preis gesenkt";
+"notification.batch.body.all" = "%@ sind günstiger geworden.";
+"notification.batch.body.more" = "%@ und %lld weitere sind günstiger geworden.";
+"notification.test.title" = "AppDrop-Testmitteilung";
+"notification.test.body" = "Dieser Test stammt von der Toolbox oder ihrem Hilfsprogramm. Der Preisverlauf wurde nicht geändert.";

@@ -54,8 +54,9 @@ enum AppDropLayoutMode: String, CaseIterable {
 
 struct AppDropPageView: View {
     let page: AppDropPage
-    @EnvironmentObject private var environment: AppEnvironment
+    @ObservedObject var environment: AppEnvironment
 
+    @State private var navigationPath: [UUID]
     @State private var searchText = ""
     @State private var regionFilter = ""
     @State private var sortMode = AppDropSortMode.name
@@ -75,8 +76,15 @@ struct AppDropPageView: View {
     @Query(sort: [SortDescriptor(\TrackedApp.createdAt)])
     private var trackedApps: [TrackedApp]
 
+    init(page: AppDropPage, environment: AppEnvironment, initialPath: [UUID] = [], initialLayout: AppDropLayoutMode = .grid) {
+        self.page = page
+        self.environment = environment
+        _navigationPath = State(initialValue: initialPath)
+        _layoutMode = State(initialValue: initialLayout)
+    }
+
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             Group {
                 if page == .settings {
                     AppDropSettingsView()
@@ -86,19 +94,17 @@ struct AppDropPageView: View {
             }
             .navigationTitle(AppStrings.string(page.titleKey))
             .navigationDestination(for: UUID.self) { appID in
-                if let app = trackedApps.first(where: { $0.id == appID }) {
-                    AppDetailView(app: app)
-                } else {
-                    ContentUnavailableView(
-                        AppStrings.string("empty.wishlist.title"),
-                        systemImage: "app.dashed"
-                    )
-                }
+                detailDestination(appID: appID)
             }
         }
         .toolbar { toolbarContent }
         .sheet(isPresented: $showingAddSheet) {
-            AddAppView()
+            if let container = environment.container {
+                AddAppView()
+                    .environmentObject(environment)
+                    .modelContainer(container)
+                    .environment(\.locale, Locale(identifier: AppStrings.localeIdentifier))
+            }
         }
         .sheet(item: $environment.pendingImportSummary) { summary in
             ImportSummaryView(summary: summary) {
@@ -118,7 +124,7 @@ struct AppDropPageView: View {
             defaultFilename: AppStrings.string("export.fileName")
         ) { result in
             if case .failure(let error) = result {
-                alertMessage = AppStrings.format("export.errorFormat", error.localizedDescription)
+                alertMessage = AppStrings.format("export.errorFormat", AppStrings.errorDescription(error))
             }
         }
         .alert(
@@ -172,6 +178,18 @@ struct AppDropPageView: View {
         .onChange(of: page) { _, _ in
             isSelectMode = false
             selectedAppIDs.removeAll()
+        }
+    }
+
+    @ViewBuilder
+    private func detailDestination(appID: UUID) -> some View {
+        if let app = trackedApps.first(where: { $0.id == appID }), let container = environment.container {
+            AppDetailView(app: app, environment: environment)
+                .environmentObject(environment)
+                .modelContainer(container)
+                .environment(\.locale, Locale(identifier: AppStrings.localeIdentifier))
+        } else {
+            ContentUnavailableView(AppStrings.string("empty.wishlist.title"), systemImage: "app.dashed")
         }
     }
 
@@ -471,7 +489,7 @@ struct AppDropPageView: View {
                 exportDocument = WishdropDocument(data: data)
                 showingExporter = true
             case .failure(let error):
-                alertMessage = AppStrings.format("export.errorFormat", error.localizedDescription)
+                alertMessage = AppStrings.format("export.errorFormat", AppStrings.errorDescription(error))
             }
         }
     }
@@ -498,7 +516,7 @@ struct AppDropPageView: View {
                     existingCount: 0,
                     invalidCount: 0,
                     issues: [],
-                    errorMessage: error.localizedDescription
+                    errorMessage: AppStrings.errorDescription(error)
                 )
             }
         case .failure(let error):
@@ -508,7 +526,7 @@ struct AppDropPageView: View {
                 existingCount: 0,
                 invalidCount: 0,
                 issues: [],
-                errorMessage: error.localizedDescription
+                errorMessage: AppStrings.errorDescription(error)
             )
         }
     }

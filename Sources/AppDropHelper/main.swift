@@ -13,7 +13,6 @@ import AppDropCore
 // as soon as its task (and any scheduled notifications) are finished.
 
 let arguments = Array(CommandLine.arguments.dropFirst())
-let helperLogURL = RefreshEngine.defaultLogURL()
 
 func hasFlag(_ flag: String) -> Bool {
     arguments.contains(flag)
@@ -23,6 +22,31 @@ func writeErrorLine(_ message: String) {
     FileHandle.standardError.write(Data((message + "\n").utf8))
 }
 
+func emitNotificationResult<T: Encodable>(_ value: T, prefix: String) {
+    do {
+        let data = try JSONEncoder().encode(value)
+        guard let json = String(data: data, encoding: .utf8) else { exit(1) }
+        print(prefix + json)
+    } catch {
+        writeErrorLine(error.localizedDescription)
+        exit(1)
+    }
+}
+
+// Status/test modes intentionally run before resolving storage or a log file.
+if hasFlag("--notification-status") {
+    let report = await UserNotificationScheduler().statusReport()
+    emitNotificationResult(report, prefix: "APPDROP_NOTIFICATION_STATUS ")
+    exit(0)
+}
+
+if hasFlag("--test-notification") {
+    let result = await UserNotificationScheduler().submitTestNotification()
+    emitNotificationResult(result, prefix: "APPDROP_NOTIFICATION_TEST ")
+    exit(0)
+}
+
+let helperLogURL = RefreshEngine.defaultLogURL()
 AppLog.info("AppDropHelper started (arguments: \(arguments.joined(separator: " ")))", fileURL: helperLogURL)
 
 if hasFlag("--dump-store-info") {

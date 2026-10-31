@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		C90000000000000000000001 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = C90000000000000000000002 /* AppIcon.icon */; };
+		C90000000000000000000003 /* AppIcon.icon in Helper Resources */ = {isa = PBXBuildFile; fileRef = C90000000000000000000002 /* AppIcon.icon */; };
+		C90000000000000000000004 /* Assets.xcassets in Helper Resources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000A /* Assets.xcassets */; };
 		A10000000000000000000001 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000001 /* Models.swift */; };
 		A10000000000000000000002 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000002 /* CommandRunner.swift */; };
 		A10000000000000000000003 /* ConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000003 /* ConfigurationStore.swift */; };
@@ -485,6 +487,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C90000000000000000000003 /* AppIcon.icon in Helper Resources */,
+				C90000000000000000000004 /* Assets.xcassets in Helper Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -617,14 +621,14 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4.0.1;
+				CURRENT_PROJECT_VERSION = 4.0.2;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_DEBUG_DYLIB = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/App-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 4.0.1;
+				MARKETING_VERSION = 4.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox;
 				PRODUCT_NAME = "Mac 游戏工具箱";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -641,12 +645,12 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4.0.1;
+				CURRENT_PROJECT_VERSION = 4.0.2;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/App-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 4.0.1;
+				MARKETING_VERSION = 4.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox;
 				PRODUCT_NAME = "Mac 游戏工具箱";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -727,15 +731,16 @@
 		X50000000000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Config/AppDropHelper.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4.0.1;
+				CURRENT_PROJECT_VERSION = 4.0.2;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/AppDropHelper-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 4.0.1;
+				MARKETING_VERSION = 4.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox.appdrop.helper;
 				PRODUCT_NAME = AppDropHelper;
 				SKIP_INSTALL = YES;
@@ -747,15 +752,16 @@
 		X50000000000000000000002 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Config/AppDropHelper.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4.0.1;
+				CURRENT_PROJECT_VERSION = 4.0.2;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/AppDropHelper-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 4.0.1;
+				MARKETING_VERSION = 4.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox.appdrop.helper;
 				PRODUCT_NAME = AppDropHelper;
 				SKIP_INSTALL = YES;

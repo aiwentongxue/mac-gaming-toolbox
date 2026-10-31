@@ -1,0 +1,8 @@
+"notification.drop.title" = "Queda de preço: %@";
+"notification.drop.body" = "Agora %@ na loja %@, %@ abaixo do preço anterior.";
+"notification.drop.body.newLow" = "Agora %@ na loja %@, %@ abaixo do preço anterior. Novo mínimo histórico!";
+"notification.batch.title" = "%lld jogos baixaram de preço";
+"notification.batch.body.all" = "%@ baixaram de preço.";
+"notification.batch.body.more" = "%@ e mais %lld baixaram de preço.";
+"notification.test.title" = "Teste de notificação do AppDrop";
+"notification.test.body" = "Este teste veio da caixa de ferramentas ou do auxiliar. O histórico de preços não foi alterado.";

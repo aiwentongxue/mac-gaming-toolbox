@@ -4,3 +4,5 @@
 "notification.batch.title" = "%lld Games Dropped in Price";
 "notification.batch.body.all" = "%@ have dropped in price.";
 "notification.batch.body.more" = "%@, plus %lld more, have dropped in price.";
+"notification.test.title" = "AppDrop Notification Test";
+"notification.test.body" = "This test was submitted by the toolbox or its background helper. Price history was not changed.";

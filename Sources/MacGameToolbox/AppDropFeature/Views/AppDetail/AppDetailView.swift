@@ -3,26 +3,24 @@ import SwiftUI
 import AppDropCore
 
 struct AppDetailView: View {
-    @EnvironmentObject private var environment: AppEnvironment
+    @ObservedObject var environment: AppEnvironment
     @Environment(\.dismiss) private var dismiss
 
     let app: TrackedApp
 
-    @Query private var records: [PriceRecord]
+    @State private var records: [PriceRecordSnapshot] = []
+    @State private var recordsError: String?
+    @State private var loadingRecords = true
 
     @State private var checkingNow = false
     @State private var alertMessage: String?
     @State private var confirmingDelete = false
     @State private var confirmingRegionChange = false
 
-    init(app: TrackedApp) {
+
+    init(app: TrackedApp, environment: AppEnvironment) {
         self.app = app
-        let trackId = app.trackId
-        let countryCode = app.countryCode
-        _records = Query(
-            filter: #Predicate<PriceRecord> { $0.trackId == trackId && $0.countryCode == countryCode },
-            sort: [SortDescriptor(\PriceRecord.timestamp)]
-        )
+        self.environment = environment
     }
 
     var body: some View {
@@ -36,6 +34,9 @@ struct AppDetailView: View {
             .padding(20)
         }
         .navigationTitle(app.name)
+        .task(id: "\(app.id).\(app.countryCode).\(environment.dataVersion)") {
+            await loadRecords()
+        }
         .alert(
             "AppDrop",
             isPresented: Binding(
@@ -164,10 +165,24 @@ struct AppDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(AppStrings.string("detail.chart.title"))
                 .font(.headline)
-            PriceHistoryChartView(
-                points: chartPoints,
-                lowest: hasPriceComparison ? lowestPoint : nil
-            )
+            if let recordsError {
+                Label(recordsError, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.red)
+                    .textSelection(.enabled)
+                Button(AppStrings.string("detail.reloadHistory")) {
+                    Task { await loadRecords() }
+                }
+            } else if loadingRecords {
+                ProgressView()
+                    .frame(maxWidth: .infinity, minHeight: 200)
+            } else {
+                PriceHistoryChartView(
+                    points: chartPoints,
+                    lowest: hasPriceComparison ? lowestPoint : nil
+                )
+                .accessibilityIdentifier("appdrop.priceHistory")
+                .accessibilityValue(String(chartPoints.count))
+            }
         }
     }
 
@@ -184,7 +199,8 @@ struct AppDetailView: View {
             } label: {
                 Label(AppStrings.string("detail.checkNow"), systemImage: "arrow.clockwise")
             }
-            .disabled(checkingNow)
+            .disabled(checkingNow || environment.refresh?.isRefreshing == true)
+            .accessibilityIdentifier("appdrop.checkNow")
             if checkingNow {
                 ProgressView().controlSize(.small)
             }
@@ -208,9 +224,10 @@ struct AppDetailView: View {
     private var chartPoints: [PriceHistoryChartView.ChartPoint] {
         let currentCurrency = app.currency
         return records
-            .filter { currentCurrency == nil || $0.currency == currentCurrency }
+            .filter { record in currentCurrency.map { record.currency.caseInsensitiveCompare($0) == .orderedSame } ?? true }
             .map { record in
                 PriceHistoryChartView.ChartPoint(
+                    id: record.id,
                     date: record.timestamp,
                     price: NSDecimalNumber(decimal: record.price).doubleValue,
                     formatted: record.formattedPrice
@@ -222,23 +239,47 @@ struct AppDetailView: View {
         chartPoints.min { $0.price < $1.price }
     }
 
+    @MainActor
+    private func loadRecords() async {
+        let trackId = app.trackId
+        let country = app.countryCode
+        guard let store = environment.store else {
+            loadingRecords = false
+            recordsError = AppStrings.string("startup.storageHint")
+            return
+        }
+        do {
+            let fetched = try await store.records(trackId: trackId, countryCode: country)
+            guard !Task.isCancelled else { return }
+            records = fetched
+            recordsError = nil
+        } catch {
+            guard !Task.isCancelled else { return }
+            recordsError = AppStrings.errorDescription(error)
+        }
+        loadingRecords = false
+    }
+
     private func checkNow() {
+        guard !checkingNow, let refresh = environment.refresh, !refresh.isRefreshing else { return }
+        let appID = app.id
+        let environment = environment
         checkingNow = true
-        Task {
-            let summary = await environment.refresh?.refreshSingle(appID: app.id)
+        Task { @MainActor in
+            let summary = await refresh.refreshSingle(appID: appID)
             checkingNow = false
-            if let summary, summary.outcome == .failed, let message = summary.message {
-                alertMessage = message
-            } else if let summary, summary.outcome == .skipped, let message = summary.message {
-                alertMessage = message
+            if let summary, summary.outcome == .failed || summary.outcome == .skipped {
+                alertMessage = summary.message
             }
             environment.bumpDataVersion()
         }
     }
 
     private func changeRegion(to code: String) {
+        let environment = environment
+        let appID = app.id
         Task {
-            if let error = await environment.changeRegion(appID: app.id, to: code) {
+            if let error = await environment.changeRegion(appID: appID, to: code) {
                 alertMessage = error
                 environment.bumpDataVersion()
             } else {
@@ -252,8 +293,10 @@ struct AppDetailView: View {
     }
 
     private func deleteApp() {
+        let environment = environment
+        let appID = app.id
         Task {
-            if let error = await environment.delete(appID: app.id) {
+            if let error = await environment.delete(appID: appID) {
                 alertMessage = error
             } else {
                 environment.bumpDataVersion()

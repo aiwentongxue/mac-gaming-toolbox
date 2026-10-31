@@ -1,0 +1,8 @@
+"notification.drop.title" = "降價提醒：%@";
+"notification.drop.body" = "%2$@ 商店現售 %1$@，較上次價格低 %3$@。";
+"notification.drop.body.newLow" = "%2$@ 商店現售 %1$@，較上次價格低 %3$@，刷新歷史最低價！";
+"notification.batch.title" = "%lld 款遊戲降價";
+"notification.batch.body.all" = "%@ 降價了。";
+"notification.batch.body.more" = "%@ 等 %lld 款遊戲降價了。";
+"notification.test.title" = "AppDrop 通知測試";
+"notification.test.body" = "此測試由工具箱或背景輔助程式提交，未改動價格記錄。";

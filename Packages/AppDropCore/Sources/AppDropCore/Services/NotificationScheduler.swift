@@ -2,7 +2,7 @@ import Foundation
 import UserNotifications
 
 /// Notification permission state, decoupled from UserNotifications types.
-public enum NotificationPermissionStatus: String, Sendable, Equatable {
+public enum NotificationPermissionStatus: String, Codable, Sendable, Equatable {
     case notDetermined
     case denied
     case authorized
@@ -19,6 +19,33 @@ public enum NotificationPermissionStatus: String, Sendable, Equatable {
         case .ephemeral: self = .ephemeral
         @unknown default: self = .unknown
         }
+    }
+}
+
+/// A report belongs to the calling bundle, never to another app's identity.
+public struct NotificationStatusReport: Codable, Sendable, Equatable {
+    public var authorization: NotificationPermissionStatus
+    public var alerts: String
+    public var notificationCenter: String
+    public var sound: String
+    public var deliveredCount: Int
+    public var canSubmit: Bool { authorization == .authorized || authorization == .provisional }
+
+    public init(authorization: NotificationPermissionStatus, alerts: String, notificationCenter: String, sound: String, deliveredCount: Int = 0) {
+        self.authorization = authorization
+        self.alerts = alerts
+        self.notificationCenter = notificationCenter
+        self.sound = sound
+        self.deliveredCount = deliveredCount
+    }
+}
+
+public struct NotificationTestResult: Codable, Sendable {
+    public var submitted: Bool
+    public var error: String?
+    public init(submitted: Bool, error: String? = nil) {
+        self.submitted = submitted
+        self.error = error
     }
 }
 
@@ -70,9 +97,16 @@ public struct NoopNotifier: UserNotifying {
     public func sendPriceDrops(_ notifications: [PriceDropNotification]) async -> Bool { false }
 }
 
-enum NotificationLanguage: String, Sendable, Equatable {
+enum NotificationLanguage: String, Sendable, Equatable, CaseIterable {
     case english = "en"
     case simplifiedChinese = "zh-Hans"
+    case traditionalChinese = "zh-Hant"
+    case japanese = "ja"
+    case korean = "ko"
+    case german = "de"
+    case french = "fr"
+    case spanish = "es"
+    case portuguese = "pt"
 }
 
 /// Localized strings that live inside the AppDropCore resource bundle.
@@ -83,44 +117,35 @@ public enum SharedText {
     public static func string(_ key: String, locale: Locale? = nil) -> String {
         let language = locale.map(language(for:))
             ?? notificationLanguage(preferredLanguages: Locale.preferredLanguages)
-        if let bundle = bundle(for: language) {
-            return bundle.localizedString(forKey: key, value: nil, table: nil)
+        for candidate in [language, .english] {
+            if let bundle = bundle(for: candidate) {
+                let value = bundle.localizedString(forKey: key, value: "", table: nil)
+                if !value.isEmpty, value != key { return value }
+            }
         }
-        return Bundle.module.localizedString(forKey: key, value: nil, table: nil)
+        return "AppDrop"
     }
 
     static func notificationLanguage(preferredLanguages: [String]) -> NotificationLanguage {
-        let candidates = preferredLanguages.isEmpty
-            ? [Locale.current.identifier]
-            : preferredLanguages
+        let candidates = preferredLanguages.isEmpty ? [Locale.current.identifier] : preferredLanguages
         for identifier in candidates {
-            let normalized = identifier
-                .replacingOccurrences(of: "_", with: "-")
-                .lowercased()
-            if normalized == "zh"
-                || normalized.hasPrefix("zh-")
-                || normalized == "yue"
-                || normalized.hasPrefix("yue-") {
+            let normalized = identifier.replacingOccurrences(of: "_", with: "-").lowercased()
+            let parts = normalized.split(separator: "-")
+            guard let base = parts.first else { continue }
+            if base == "zh" || base == "yue" {
+                if parts.contains("hans") { return .simplifiedChinese }
+                if parts.contains("hant") || parts.contains("tw") || parts.contains("hk") || parts.contains("mo") || base == "yue" {
+                    return .traditionalChinese
+                }
                 return .simplifiedChinese
             }
-            if normalized == "en" || normalized.hasPrefix("en-") {
-                return .english
-            }
+            if let language = NotificationLanguage(rawValue: String(base)) { return language }
         }
         return .english
     }
 
     private static func language(for locale: Locale) -> NotificationLanguage {
-        let identifier = locale.identifier
-            .replacingOccurrences(of: "_", with: "-")
-            .lowercased()
-        if identifier == "zh"
-            || identifier.hasPrefix("zh-")
-            || identifier == "yue"
-            || identifier.hasPrefix("yue-") {
-            return .simplifiedChinese
-        }
-        return .english
+        notificationLanguage(preferredLanguages: [locale.identifier])
     }
 
     private static func bundle(for language: NotificationLanguage) -> Bundle? {
@@ -187,7 +212,7 @@ enum NotificationContentBuilder {
         let joinedNames: String
         let body: String
         switch language {
-        case .simplifiedChinese:
+        case .simplifiedChinese, .traditionalChinese:
             joinedNames = listedNames.joined(separator: "、")
             if notifications.count > 3 {
                 body = String(
@@ -221,6 +246,19 @@ enum NotificationContentBuilder {
                     joinedNames
                 )
             }
+        case .japanese, .korean, .german, .french, .spanish, .portuguese:
+            let formatter = ListFormatter()
+            formatter.locale = Locale(identifier: language.rawValue)
+            joinedNames = formatter.string(from: Array(listedNames)) ?? listedNames.joined(separator: ", ")
+            if notifications.count > 3 {
+                body = String(
+                    format: SharedText.string("notification.batch.body.more", locale: locale),
+                    joinedNames,
+                    Int64(notifications.count - 3)
+                )
+            } else {
+                body = String(format: SharedText.string("notification.batch.body.all", locale: locale), joinedNames)
+            }
         }
 
         return PreparedNotification(
@@ -245,9 +283,41 @@ public final class UserNotificationScheduler: UserNotifying, @unchecked Sendable
         self.center = center
     }
 
-    public func permission() async -> NotificationPermissionStatus {
+    public func statusReport() async -> NotificationStatusReport {
         let settings = await center.notificationSettings()
-        return NotificationPermissionStatus(settings.authorizationStatus)
+        func value(_ setting: UNNotificationSetting) -> String {
+            switch setting {
+            case .enabled: return "enabled"
+            case .disabled: return "disabled"
+            case .notSupported: return "notSupported"
+            @unknown default: return "unknown"
+            }
+        }
+        let deliveredCount = await center.deliveredNotifications().count
+        return NotificationStatusReport(
+            authorization: NotificationPermissionStatus(settings.authorizationStatus),
+            alerts: value(settings.alertSetting), notificationCenter: value(settings.notificationCenterSetting),
+            sound: value(settings.soundSetting), deliveredCount: deliveredCount
+        )
+    }
+
+    public func permission() async -> NotificationPermissionStatus {
+        await statusReport().authorization
+    }
+
+    public func submitTestNotification() async -> NotificationTestResult {
+        let report = await statusReport()
+        guard report.canSubmit else { return NotificationTestResult(submitted: false, error: report.authorization.rawValue) }
+        let content = UNMutableNotificationContent()
+        content.title = SharedText.string("notification.test.title")
+        content.body = SharedText.string("notification.test.body")
+        content.sound = .default
+        do {
+            try await center.add(UNNotificationRequest(identifier: "appdrop-test-\(UUID().uuidString)", content: content, trigger: nil))
+            return NotificationTestResult(submitted: true)
+        } catch {
+            return NotificationTestResult(submitted: false, error: error.localizedDescription)
+        }
     }
 
     public func requestPermission() async -> NotificationPermissionStatus {
@@ -257,13 +327,24 @@ public final class UserNotificationScheduler: UserNotifying, @unchecked Sendable
 
     public func sendPriceDrops(_ notifications: [PriceDropNotification]) async -> Bool {
         guard !notifications.isEmpty else { return true }
-        let status = await permission()
-        guard status == .authorized || status == .provisional else {
-            AppLog.info("notification skipped: permission is \(status.rawValue)")
+        let report = await statusReport()
+        guard report.canSubmit else {
+            AppLog.info("notification skipped: permission is \(report.authorization.rawValue)")
             return false
         }
 
-        guard let prepared = NotificationContentBuilder.prepare(notifications) else {
+        // Repair an interrupted marker save without displaying the same alert
+        // again in this identity's Notification Center.
+        let delivered = await center.deliveredNotifications()
+        let requests = await center.pendingNotificationRequests()
+        let infos = delivered.map { $0.request.content.userInfo } + requests.map { $0.content.userInfo }
+        let knownIDs = Set(infos.flatMap { info -> [String] in
+            if let id = info["recordID"] as? String { return [id] }
+            return info["recordIDs"] as? [String] ?? []
+        })
+        let unscheduled = notifications.filter { !knownIDs.contains($0.recordID.uuidString) }
+        if unscheduled.isEmpty { return true }
+        guard let prepared = NotificationContentBuilder.prepare(unscheduled) else {
             return false
         }
         let content = UNMutableNotificationContent()
