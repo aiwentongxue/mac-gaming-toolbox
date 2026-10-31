@@ -49,14 +49,6 @@ struct MainContentView: View {
     @State private var nativeGlassEnabled = NSApp.isActive
     @State private var statusBarState = ToolboxStatusBarState()
 
-    private var usesWallpaper: Bool {
-        model.wallpaperImage != nil
-    }
-
-    private var effectiveColorScheme: ColorScheme {
-        usesWallpaper ? .dark : systemColorScheme
-    }
-
     var body: some View {
         ZStack {
             AppBackgroundView()
@@ -91,33 +83,19 @@ struct MainContentView: View {
         }
         .background(
             WindowAppearanceConfigurator(
-                colorScheme: effectiveColorScheme,
-                usesWallpaper: usesWallpaper,
+                colorScheme: systemColorScheme,
                 nativeGlassEnabled: nativeGlassEnabled
             )
         )
-        .environment(\.colorScheme, effectiveColorScheme)
-        .environment(\.toolboxUsesGlass, usesWallpaper && nativeGlassEnabled)
-        .environment(\.nativeGlassEnabled, nativeGlassEnabled)
-        .preferredColorScheme(usesWallpaper ? .dark : nil)
         .alert(cacheAlertTitle, isPresented: $model.showingCacheConfirmation) {
             Button(tr("取消", "Cancel"), role: .cancel) {}
-            if let scan = model.cacheScan, !scan.inaccessibleTargets.isEmpty {
-                Button(tr("打开系统设置", "Open System Settings")) {
-                    model.openFullDiskAccessSettings()
-                }
-                Button(tr("重新扫描", "Scan Again")) {
-                    model.prepareCacheScan()
-                }
-            } else {
-                Button(
-                    model.cacheConfirmationStage == 1
-                        ? tr("继续", "Continue")
-                        : tr("确认删除", "Delete"),
-                    role: model.configuration.excludesSensitiveCacheFiles ? nil : .destructive
-                ) {
-                    model.confirmCacheCleaning()
-                }
+            Button(
+                model.cacheConfirmationStage == 1
+                    ? tr("继续", "Continue")
+                    : tr("确认删除", "Delete"),
+                role: .destructive
+            ) {
+                model.confirmCacheCleaning()
             }
         } message: {
             Text(cacheAlertMessage)
@@ -139,6 +117,9 @@ struct MainContentView: View {
         }
         .onChange(of: model.status) { oldStatus, newStatus in
             statusBarState.statusDidChange(from: oldStatus, to: newStatus)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .toolboxNavigateToSettings)) { _ in
+            navigation.select(.settings)
         }
         .onReceive(NotificationCenter.default.publisher(for: .toolboxNavigateToTutorials)) { _ in
             navigation.select(.tutorials)
@@ -168,7 +149,7 @@ struct MainContentView: View {
             .fill(.ultraThinMaterial)
             .overlay {
                 Color(nsColor: .windowBackgroundColor)
-                    .opacity(usesWallpaper ? 0.44 : 0.18)
+                    .opacity(0.18)
             }
             .ignoresSafeArea()
     }
@@ -194,9 +175,6 @@ struct MainContentView: View {
     }
 
     private var cacheAlertTitle: String {
-        if let scan = model.cacheScan, !scan.inaccessibleTargets.isEmpty {
-            return tr("需要完全磁盘访问权限", "Full Disk Access Required")
-        }
         if model.configuration.excludesSensitiveCacheFiles {
             return tr("准备清理", "Ready to Clean")
         }
@@ -207,29 +185,17 @@ struct MainContentView: View {
 
     private var cacheAlertMessage: String {
         guard let scan = model.cacheScan else { return "" }
-        let size = ByteCountFormatter.string(fromByteCount: Int64(scan.estimatedBytes), countStyle: .file)
-        if !scan.inaccessibleTargets.isEmpty {
-            let paths = scan.inaccessibleTargets.prefix(3)
-                .map { "\($0.path.path)：\($0.reason)" }
-                .joined(separator: "\n")
-            let suffix = scan.inaccessibleTargets.count > 3
-                ? tr("\n……以及其他项目", "\n…and other items")
-                : ""
-            return tr(
-                "发现 \(scan.inaccessibleTargets.count) 个无法读取的缓存目录，已统计大小 \(size)。请在系统设置中授予完全磁盘访问权限后重新扫描：\n\(paths)\(suffix)",
-                "Found \(scan.inaccessibleTargets.count) unreadable cache item(s); readable size is \(size). Grant Full Disk Access in System Settings, then scan again:\n\(paths)\(suffix)"
-            )
-        }
+        let size = ByteCountFormatter.string(fromByteCount: Int64(clamping: scan.estimatedBytes), countStyle: .file)
         if model.configuration.excludesSensitiveCacheFiles {
             return tr(
-                "预计清理 \(size)，点击继续执行安全清理。",
-                "About \(size) will be cleaned. Click Continue for the safe cleanup."
+                "预计清理 \(size)。无法访问的项目将被跳过，删除无法撤销。",
+                "About \(size) will be cleaned. Inaccessible items will be skipped. Deletion cannot be undone."
             )
         }
         if model.cacheConfirmationStage == 1 {
             return tr(
-                "预计删除 \(size)，涉及 \(scan.userTargets.count) 个用户目录和系统日志。登录状态及游戏缓存可能丢失。",
-                "About \(size) will be deleted across \(scan.userTargets.count) user folders and system logs. Login state and game caches may be lost."
+                "预计删除 \(size)，包含用户缓存和系统日志中的可清理项目。无法访问的项目将被跳过。登录状态及游戏缓存可能丢失。",
+                "About \(size) of accessible user caches and system logs will be deleted. Inaccessible items will be skipped. Login state and game caches may be lost."
             )
         }
         return tr(
@@ -240,5 +206,6 @@ struct MainContentView: View {
 }
 
 extension Notification.Name {
+    static let toolboxNavigateToSettings = Notification.Name("toolbox.navigate.settings")
     static let toolboxNavigateToTutorials = Notification.Name("toolbox.navigate.tutorials")
 }

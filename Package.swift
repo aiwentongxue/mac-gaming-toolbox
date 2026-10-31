@@ -30,6 +30,7 @@ let package = Package(
             ],
             resources: [
                 .process("Assets.xcassets"),
+                .copy("AppIcon.icon"),
                 .process("AppDropFeature/Resources")
             ],
             linkerSettings: [.linkedFramework("ServiceManagement"), .linkedFramework("Security")]

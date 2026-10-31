@@ -116,6 +116,13 @@ private extension AppLanguage {
     static let translations: [String: [Preference: String]] = [
         "Mac游戏工具箱": [.traditionalChinese: "Mac 遊戲工具箱", .japanese: "Macゲームツールボックス", .korean: "Mac 게임 도구 상자", .german: "Mac-Spiele-Toolbox", .french: "Boîte à outils de jeux Mac", .spanish: "Caja de herramientas para juegos Mac", .portuguese: "Caixa de ferramentas de jogos para Mac"],
         "工具箱": [.traditionalChinese: "工具箱", .japanese: "ツールボックス", .korean: "도구 상자", .german: "Toolbox", .french: "Boîte à outils", .spanish: "Caja de herramientas", .portuguese: "Caixa de ferramentas"],
+        "设置…": [.traditionalChinese: "設定…", .japanese: "設定…", .korean: "설정…", .german: "Einstellungen…", .french: "Réglages…", .spanish: "Configuración…", .portuguese: "Ajustes…"],
+        "帮助与设置": [.traditionalChinese: "輔助說明與設定", .japanese: "ヘルプと設定", .korean: "도움말 및 설정", .german: "Hilfe & Einstellungen", .french: "Aide et réglages", .spanish: "Ayuda y configuración", .portuguese: "Ajuda e ajustes"],
+        "立即检查更新": [.traditionalChinese: "立即檢查更新", .japanese: "今すぐ更新を確認", .korean: "지금 업데이트 확인", .german: "Jetzt prüfen", .french: "Vérifier maintenant", .spanish: "Buscar ahora", .portuguese: "Verificar agora"],
+        "已跳过": [.traditionalChinese: "已略過", .japanese: "スキップ", .korean: "건너뜀", .german: "Übersprungen", .french: "Ignorés", .spanish: "Omitidos", .portuguese: "Ignorados"],
+        "已清理": [.traditionalChinese: "已清理", .japanese: "削除済み", .korean: "정리됨", .german: "Entfernt", .french: "Supprimés", .spanish: "Eliminados", .portuguese: "Removidos"],
+        "预计可清理": [.traditionalChinese: "預估可清理", .japanese: "削除可能な推定サイズ", .korean: "예상 정리 용량", .german: "Geschätzt bereinigbar", .french: "Taille estimée à nettoyer", .spanish: "Tamaño estimado", .portuguese: "Tamanho estimado"],
+        "清理结果": [.traditionalChinese: "清理結果", .japanese: "削除結果", .korean: "정리 결과", .german: "Bereinigungsergebnis", .french: "Résultats du nettoyage", .spanish: "Resultados de limpieza", .portuguese: "Resultados da limpeza"],
         "设置": [.traditionalChinese: "設定", .japanese: "設定", .korean: "설정", .german: "Einstellungen", .french: "Réglages", .spanish: "Configuración", .portuguese: "Ajustes"],
         "通用": [.traditionalChinese: "一般", .japanese: "一般", .korean: "일반", .german: "Allgemein", .french: "Général", .spanish: "General", .portuguese: "Geral"],
         "语言": [.traditionalChinese: "語言", .japanese: "言語", .korean: "언어", .german: "Sprache", .french: "Langue", .spanish: "Idioma", .portuguese: "Idioma"],
@@ -506,68 +513,5 @@ final class LocalizationController: ObservableObject {
         self.preference = preference
         UserDefaults.standard.set(preference.rawValue, forKey: AppLanguage.preferenceKey)
         refreshToken = UUID()
-    }
-}
-
-struct SettingsView: View {
-    @EnvironmentObject private var localization: LocalizationController
-    @AppStorage(UpdateCheckPreference.key) private var automaticallyCheckForUpdates = true
-
-    var body: some View {
-        TabView {
-            generalSettings
-                .tabItem { Label(tr("通用", "General"), systemImage: "gearshape") }
-        }
-        .frame(width: 760, height: 520)
-        .background(WindowTitleConfigurator(title: tr("设置", "Settings")))
-    }
-
-    private var generalSettings: some View {
-        VStack {
-            Form {
-                Section {
-                    Picker(tr("显示语言", "Display language"), selection: Binding(
-                        get: { localization.preference },
-                        set: { localization.setPreference($0) }
-                    )) {
-                        ForEach(AppLanguage.Preference.allCases) { preference in
-                            Text(AppLanguage.preferenceName(preference)).tag(preference)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .frame(minWidth: 320)
-                } header: {
-                    Text(tr("语言", "Language"))
-                } footer: {
-                    Text(tr("默认跟随 macOS 系统语言；选择语言后会立即应用，并在下次启动时保留。", "By default, the app follows the macOS language. Your selected language applies immediately and is remembered for future launches."))
-                }
-
-                Section {
-                    Toggle(tr("启动时检查更新", "Check for updates at launch"), isOn: $automaticallyCheckForUpdates)
-                } header: {
-                    Text(tr("更新", "Updates"))
-                } footer: {
-                    Text(tr("默认开启。每次打开 Mac游戏工具箱时静默检查 GitHub Releases；仅发现新版本时才会提示。", "Enabled by default. Mac Game Toolbox silently checks GitHub Releases every time it opens and only notifies you when a newer version is available."))
-                }
-            }
-            .formStyle(.grouped)
-            .padding(.horizontal, 76)
-            .padding(.vertical, 32)
-            Spacer(minLength: 0)
-        }
-    }
-}
-
-private struct WindowTitleConfigurator: NSViewRepresentable {
-    let title: String
-
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async { view.window?.title = title }
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async { nsView.window?.title = title }
     }
 }

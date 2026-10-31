@@ -2,11 +2,11 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 4.0.0 introduces a redesigned SwiftUI sidebar interface with integrated AppDrop and ClickFlow 1.0.1 while remaining compatible with Intel and Apple Silicon Macs.
+Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 4.0.1 includes a native SwiftUI sidebar interface, unified settings, improved cache cleanup, and integrated AppDrop and ClickFlow 1.0.1 while remaining compatible with Intel and Apple Silicon Macs.
 
 ## Features
 
-- Use a unified two-column sidebar for gaming performance, storage maintenance, ClickFlow, AppDrop, and help pages. The application language can be changed directly from the sidebar footer.
+- Use a unified two-column sidebar for gaming performance, storage maintenance, ClickFlow, AppDrop, and help pages. Display language and update checks are managed from the unified Settings page.
 - Use the built-in ClickFlow 1.0.1 auto clicker, mouse macros, and combined macros. Experimental XInput proxies can replay controller macros in CrossOver games with per-game installation, diagnostics, backup, and safe restore. After accepting the first-use notice, global shortcuts remain available while viewing other tool pages, while preferences, macro files, and adapter records stay completely isolated from the standalone ClickFlow app.
 - Enable or disable MetalHUD globally, or use the Recent Apps launcher to enable MetalHUD only for the selected app's next launch. Save parameter presets and apply them when you next launch a game.
 - Apply MetalHUD parameter presets to CrossOver bottles, or enable MetalHUD for games on a connected iOS device.
@@ -15,7 +15,7 @@ Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming u
 - Mount an external disk at a specified path, save presets, and automatically or manually restore the previous mount.
 - Clear caches and logs in one click. By default, only user caches and user logs are removed; sensitive-file exclusions can be disabled for a complete, high-risk cleanup.
 - Switch to or restore a Steam Deck hostname mode for compatibility testing.
-- Import a custom interface wallpaper, export diagnostic information, and access Mac gaming and CrossOver tutorials. GitHub update checks can run automatically.
+- Export diagnostic information and access Mac gaming and CrossOver tutorials. Settings provides automatic update checks at launch and an immediate GitHub update check.
 - The integrated AppDrop includes a wishlist, today's drops, historical lows, and price settings. It supports App Store links, keyword search, 17 storefront regions, `.wishdrop` import/export, price history, and price-drop notifications.
 - AppDrop stores data independently at `~/Library/Application Support/MacGameToolbox/AppDrop` and does not read or modify standalone AppDrop data. Background checks use a dedicated user-level helper that is registered only when enabled in AppDrop Settings.
 

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C90000000000000000000001 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = C90000000000000000000002 /* AppIcon.icon */; };
 		A10000000000000000000001 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000001 /* Models.swift */; };
 		A10000000000000000000002 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000002 /* CommandRunner.swift */; };
 		A10000000000000000000003 /* ConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000003 /* ConfigurationStore.swift */; };
@@ -27,7 +28,6 @@
 		A10000000000000000000016 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000009 /* Localization.swift */; };
 		A10000000000000000000017 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000A /* Assets.xcassets */; };
 		A1000000000000000000001B /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F50000000000000000000002 /* Security.framework */; };
-		A1000000000000000000001C /* WallpaperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* WallpaperService.swift */; };
 		A1000000000000000000001D /* MetalHUDPresetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000A /* MetalHUDPresetStore.swift */; };
 		A1000000000000000000001E /* CrossOverBottleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000B /* CrossOverBottleService.swift */; };
 		A1000000000000000000001F /* MainContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000B /* MainContentView.swift */; };
@@ -51,7 +51,6 @@
 		B10000000000000000000008 /* PrivilegedXPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* PrivilegedXPC.swift */; };
 		B10000000000000000000009 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000001 /* main.swift */; };
 		B1000000000000000000000A /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F50000000000000000000002 /* Security.framework */; };
-		B1000000000000000000000B /* WallpaperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* WallpaperService.swift */; };
 		B10000000000000000000020 /* AppDropCore in Frameworks */ = {isa = PBXBuildFile; productRef = P30000000000000000000001 /* AppDropCore */; };
 /* End PBXBuildFile section */
 
@@ -116,6 +115,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		C90000000000000000000002 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		F10000000000000000000001 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		F10000000000000000000002 /* CommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandRunner.swift; sourceTree = "<group>"; };
 		F10000000000000000000003 /* ConfigurationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationStore.swift; sourceTree = "<group>"; };
@@ -124,7 +124,6 @@
 		F10000000000000000000006 /* CacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheService.swift; sourceTree = "<group>"; };
 		F10000000000000000000007 /* HostsFileEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostsFileEditor.swift; sourceTree = "<group>"; };
 		F10000000000000000000008 /* PrivilegedXPC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivilegedXPC.swift; sourceTree = "<group>"; };
-		F10000000000000000000009 /* WallpaperService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperService.swift; sourceTree = "<group>"; };
 		F1000000000000000000000A /* MetalHUDPresetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalHUDPresetStore.swift; sourceTree = "<group>"; };
 		F1000000000000000000000B /* CrossOverBottleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossOverBottleService.swift; sourceTree = "<group>"; };
 		F20000000000000000000001 /* MacGameToolboxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacGameToolboxApp.swift; sourceTree = "<group>"; };
@@ -252,7 +251,6 @@
 				F10000000000000000000006 /* CacheService.swift */,
 				F10000000000000000000007 /* HostsFileEditor.swift */,
 				F10000000000000000000008 /* PrivilegedXPC.swift */,
-				F10000000000000000000009 /* WallpaperService.swift */,
 				F1000000000000000000000A /* MetalHUDPresetStore.swift */,
 				F1000000000000000000000B /* CrossOverBottleService.swift */,
 			);
@@ -272,6 +270,7 @@
 				F20000000000000000000008 /* DiagnosticFileLogger.swift */,
 				F20000000000000000000009 /* Localization.swift */,
 				F2000000000000000000000A /* Assets.xcassets */,
+				C90000000000000000000002 /* AppIcon.icon */,
 				F2000000000000000000000B /* MainContentView.swift */,
 				F2000000000000000000000C /* NavigationModel.swift */,
 				F2000000000000000000000D /* AppSidebarView.swift */,
@@ -471,6 +470,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000017 /* Assets.xcassets in Resources */,
+				C90000000000000000000001 /* AppIcon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -503,7 +503,6 @@
 				A10000000000000000000006 /* CacheService.swift in Sources */,
 				A10000000000000000000007 /* HostsFileEditor.swift in Sources */,
 				A10000000000000000000008 /* PrivilegedXPC.swift in Sources */,
-				A1000000000000000000001C /* WallpaperService.swift in Sources */,
 				A1000000000000000000001D /* MetalHUDPresetStore.swift in Sources */,
 				A1000000000000000000001E /* CrossOverBottleService.swift in Sources */,
 				A10000000000000000000009 /* MacGameToolboxApp.swift in Sources */,
@@ -536,7 +535,6 @@
 				B10000000000000000000006 /* CacheService.swift in Sources */,
 				B10000000000000000000007 /* HostsFileEditor.swift in Sources */,
 				B10000000000000000000008 /* PrivilegedXPC.swift in Sources */,
-				B1000000000000000000000B /* WallpaperService.swift in Sources */,
 				B10000000000000000000009 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -619,14 +617,14 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4.0.0;
+				CURRENT_PROJECT_VERSION = 4.0.1;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_DEBUG_DYLIB = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/App-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 4.0.0;
+				MARKETING_VERSION = 4.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox;
 				PRODUCT_NAME = "Mac 游戏工具箱";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -643,12 +641,12 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4.0.0;
+				CURRENT_PROJECT_VERSION = 4.0.1;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/App-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 4.0.0;
+				MARKETING_VERSION = 4.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox;
 				PRODUCT_NAME = "Mac 游戏工具箱";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -732,12 +730,12 @@
 				CODE_SIGN_ENTITLEMENTS = Config/AppDropHelper.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4.0.0;
+				CURRENT_PROJECT_VERSION = 4.0.1;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/AppDropHelper-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 4.0.0;
+				MARKETING_VERSION = 4.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox.appdrop.helper;
 				PRODUCT_NAME = AppDropHelper;
 				SKIP_INSTALL = YES;
@@ -752,12 +750,12 @@
 				CODE_SIGN_ENTITLEMENTS = Config/AppDropHelper.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4.0.0;
+				CURRENT_PROJECT_VERSION = 4.0.1;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/AppDropHelper-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 4.0.0;
+				MARKETING_VERSION = 4.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox.appdrop.helper;
 				PRODUCT_NAME = AppDropHelper;
 				SKIP_INSTALL = YES;

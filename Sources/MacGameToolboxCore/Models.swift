@@ -197,6 +197,7 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
     public var automaticallyRestoreMountsOnLaunch = false
     public var restorableDiskMounts: [DiskPreset] = []
     public var hostnameBackup: HostnameBackup?
+    /// Legacy preference retained for decoding older configurations; no longer displayed or loaded.
     public var customWallpaperPath: String?
     public var recentMetalHUDApps: [RecentMetalHUDApp] = []
     public var hoYoWaitSeconds = 15

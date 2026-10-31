@@ -1,144 +1,93 @@
 import AppKit
 import SwiftUI
 
-struct AppearanceSettingsDetailView: View {
-    @EnvironmentObject private var model: AppModel
-    @AppStorage("app.wallpaper.overlayOpacity") private var overlayOpacity = 0.18
-    @AppStorage("app.wallpaper.blurRadius") private var blurRadius = 0.0
+struct ToolboxSettingsDetailView: View {
+    @EnvironmentObject private var localization: LocalizationController
+    @AppStorage(UpdateCheckPreference.key) private var automaticallyCheckForUpdates = true
+    @State private var isCheckingUpdate = false
+    @State private var updateResult: GitHubUpdateCheckResult?
 
     var body: some View {
         ToolboxPage(
-            icon: SidebarItem.appearanceWallpaper.iconName,
-            title: tr("外观与壁纸", "Appearance & Wallpaper"),
-            subtitle: tr(
-                "导入自定义壁纸，并调整遮罩和模糊程度。右侧内容和侧边栏使用半透明材质，让背景柔和透出。",
-                "Import a custom wallpaper and adjust its overlay and blur. The sidebar and detail surfaces use translucent materials so the background remains visible."
-            )
+            icon: SidebarItem.settings.iconName,
+            title: tr("设置", "Settings"),
+            subtitle: tr("管理显示语言与应用更新。", "Manage your display language and app updates.")
         ) {
-            HStack(alignment: .top, spacing: 18) {
-                wallpaperCard
-                    .frame(minWidth: 300, maxWidth: .infinity)
-                adjustmentCard
-                    .frame(minWidth: 300, maxWidth: .infinity)
-            }
             ToolboxCard(
-                tr("显示行为", "Display Behavior"),
-                subtitle: tr(
-                    "导入壁纸后界面会使用深色半透明表面，确保文字与图表保持可读。旧版 macOS 会自动使用稳定的材质回退。",
-                    "With a custom wallpaper, the interface uses dark translucent surfaces for readable text and charts. Older macOS versions automatically use a stable material fallback."
-                )
+                tr("语言", "Language"),
+                subtitle: tr("默认跟随 macOS 系统语言；选择语言后会立即应用，并在下次启动时保留。", "By default, the app follows the macOS language. Your selected language applies immediately and is remembered for future launches.")
             ) {
-                Label(
-                    currentModeDescription,
-                    systemImage: model.wallpaperImage == nil ? "circle.lefthalf.filled" : "photo.fill"
-                )
-                .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var wallpaperCard: some View {
-        ToolboxCard(
-            tr("背景图", "Background Image"),
-            subtitle: model.configuration.customWallpaperPath == nil
-                ? tr("当前使用系统渐变背景。", "Using the built-in gradient background.")
-                : tr("图片按比例填充窗口，不会拉伸。", "The image fills the window proportionally without stretching.")
-        ) {
-            GeometryReader { proxy in
-                backgroundPreview
-                    .frame(width: proxy.size.width, height: proxy.size.height)
-                    .clipShape(RoundedRectangle(cornerRadius: 11))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 11)
-                            .stroke(.white.opacity(0.15))
-                    }
-            }
-            .frame(height: 190)
-
-            HStack {
-                Button(model.wallpaperImage == nil ? tr("导入壁纸", "Import Wallpaper") : tr("更换壁纸", "Replace Wallpaper")) {
-                    model.importWallpaper()
-                }
-                .toolboxProminentButton()
-                if model.wallpaperImage != nil {
-                    Button(tr("恢复默认", "Restore Default")) {
-                        model.resetWallpaper()
+                Picker(tr("显示语言", "Display language"), selection: Binding(
+                    get: { localization.preference },
+                    set: { localization.setPreference($0) }
+                )) {
+                    ForEach(AppLanguage.Preference.allCases) { preference in
+                        Text(AppLanguage.preferenceName(preference)).tag(preference)
                     }
                 }
-                Spacer()
+                .pickerStyle(.menu)
+                .frame(maxWidth: 360, alignment: .leading)
+                .accessibilityIdentifier("settings.language")
             }
-        }
-    }
 
-    @ViewBuilder
-    private var backgroundPreview: some View {
-        if let image = model.wallpaperImage {
-            Image(nsImage: image)
-                .resizable()
-                .scaledToFill()
-                .scaleEffect(1.03)
-                .blur(radius: blurRadius * 0.65)
-                .overlay(Color.black.opacity(overlayOpacity))
-        } else {
-            LinearGradient(
-                colors: [Color(red: 0.16, green: 0.12, blue: 0.36), Color(red: 0.52, green: 0.22, blue: 0.68)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .overlay {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 40))
-                    .foregroundStyle(.white.opacity(0.35))
-            }
-        }
-    }
-
-    private var adjustmentCard: some View {
-        ToolboxCard(tr("玻璃与遮罩", "Glass & Overlay")) {
-            VStack(alignment: .leading, spacing: 18) {
-                sliderRow(
-                    title: tr("遮罩浓度", "Overlay Density"),
-                    value: $overlayOpacity,
-                    range: 0...0.7,
-                    display: "\(Int(overlayOpacity * 100))%"
-                )
-                sliderRow(
-                    title: tr("背景模糊", "Background Blur"),
-                    value: $blurRadius,
-                    range: 0...24,
-                    display: "\(Int(blurRadius.rounded())) pt"
-                )
-                Button(tr("恢复外观默认值", "Reset Appearance")) {
-                    overlayOpacity = 0.18
-                    blurRadius = 0
+            ToolboxCard(
+                tr("更新", "Updates"),
+                subtitle: tr("默认开启。每次打开 Mac游戏工具箱时静默检查 GitHub Releases；仅发现新版本时才会提示。", "Enabled by default. Mac Game Toolbox silently checks GitHub Releases every time it opens and only notifies you when a newer version is available.")
+            ) {
+                Toggle(tr("启动时检查更新", "Check for updates at launch"), isOn: $automaticallyCheckForUpdates)
+                    .toggleStyle(.switch)
+                    .accessibilityIdentifier("settings.automaticUpdates")
+                Divider()
+                HStack(spacing: 12) {
+                    Text(tr("当前版本", "Current Version") + " " + GitHubReleaseChecker.currentVersion)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if isCheckingUpdate {
+                        ProgressView().controlSize(.small)
+                    }
+                    Button(isCheckingUpdate ? tr("正在检查…", "Checking…") : tr("立即检查更新", "Check Now")) {
+                        checkForUpdates()
+                    }
+                    .disabled(isCheckingUpdate)
+                    .accessibilityIdentifier("settings.checkUpdates")
+                }
+                if let result = updateResult {
+                    Text(updateMessage(for: result))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                    if case .available = result {
+                        Button(tr("前往更新", "Download Update")) {
+                            NSWorkspace.shared.open(GitHubReleaseChecker.releasesPageURL)
+                        }
+                        .toolboxProminentButton()
+                    }
                 }
             }
         }
     }
 
-    private func sliderRow(
-        title: String,
-        value: Binding<Double>,
-        range: ClosedRange<Double>,
-        display: String
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(title)
-                Spacer()
-                Text(display)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
-            Slider(value: value, in: range)
+    private func checkForUpdates() {
+        guard !isCheckingUpdate else { return }
+        isCheckingUpdate = true
+        updateResult = nil
+        Task {
+            updateResult = await GitHubReleaseChecker.check()
+            isCheckingUpdate = false
         }
     }
 
-    private var currentModeDescription: String {
-        if model.wallpaperImage != nil {
-            return tr("自定义壁纸 + 深色半透明界面", "Custom wallpaper with dark translucent surfaces")
+    private func updateMessage(for result: GitHubUpdateCheckResult) -> String {
+        switch result {
+        case .available(let release):
+            tr("发现新版本 \(release.version)。", "Version \(release.version) is available.")
+        case .upToDate:
+            tr("当前已是最新可用版本。", "You are running the latest available version.")
+        case .rateLimited:
+            tr("GitHub API 暂时限流，备用更新通道也未能读取版本，请稍后重试。", "GitHub's API is temporarily rate-limited and the fallback channels could not read a version. Please try again later.")
+        case .failed(let message):
+            message
         }
-        return tr("内置渐变背景 + 跟随系统浅色/深色外观", "Built-in gradient with system light or dark appearance")
     }
 }
 
@@ -323,8 +272,6 @@ private struct TutorialItem: Identifiable {
 struct ChangelogAboutDetailView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var localization: LocalizationController
-    @State private var updateStatus = ""
-    @State private var isCheckingUpdate = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -332,8 +279,8 @@ struct ChangelogAboutDetailView: View {
                 icon: SidebarItem.changelogAbout.iconName,
                 title: tr("更新日志与关于", "Changelog & About"),
                 subtitle: tr(
-                    "查看当前本机构建信息、历史版本变化、诊断与更新入口。",
-                    "Review this local build, version history, diagnostics, and update options."
+                    "查看当前本机构建信息、历史版本变化与诊断工具。",
+                    "Review this local build, version history, and diagnostic tools."
                 )
             )
 
@@ -353,19 +300,8 @@ struct ChangelogAboutDetailView: View {
                             Text("Release \(GitHubReleaseChecker.currentVersion)")
                         }
                     }
-                    HStack {
-                        Button(tr("检查更新", "Check for Updates")) {
-                            checkForUpdates()
-                        }
-                        .disabled(isCheckingUpdate)
-                        Button(tr("打开 Releases", "Open Releases")) {
-                            NSWorkspace.shared.open(GitHubReleaseChecker.releasesPageURL)
-                        }
-                    }
-                    if !updateStatus.isEmpty {
-                        Text(updateStatus)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    Button(tr("打开 Releases", "Open Releases")) {
+                        NSWorkspace.shared.open(GitHubReleaseChecker.releasesPageURL)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -398,33 +334,4 @@ struct ChangelogAboutDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private func checkForUpdates() {
-        isCheckingUpdate = true
-        updateStatus = tr("正在检查…", "Checking…")
-        Task {
-            let result = await GitHubReleaseChecker.check()
-            await MainActor.run {
-                isCheckingUpdate = false
-                switch result {
-                case .available(let release):
-                    updateStatus = tr(
-                        "发现新版本 \(release.version)。",
-                        "Version \(release.version) is available."
-                    )
-                case .upToDate:
-                    updateStatus = tr(
-                        "当前已是最新可用版本。",
-                        "You are running the latest available version."
-                    )
-                case .rateLimited:
-                    updateStatus = tr(
-                        "GitHub API 暂时限流，请稍后重试。",
-                        "GitHub's API is temporarily rate-limited. Please try again later."
-                    )
-                case .failed(let message):
-                    updateStatus = message
-                }
-            }
-        }
-    }
 }

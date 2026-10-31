@@ -9,13 +9,13 @@ public enum PrivilegedOperation: Sendable, Equatable {
     /// Keep the value in the request so the privileged helper, rather than the UI,
     /// remains the only component that changes a process's scheduling priority.
     case renice([Int32], Int32)
-    case clearSystemCaches
     case setHostnames(HostnameBackup)
     case createDirectory(String)
 }
 
 public protocol PrivilegedOperating: Sendable {
     func perform(_ operation: PrivilegedOperation) async throws
+    func clearSystemCacheEntries(_ entries: [URL]) async throws -> CacheCleanupResult
 }
 
 public actor GamingService {

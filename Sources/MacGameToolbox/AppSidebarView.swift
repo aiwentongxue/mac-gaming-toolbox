@@ -8,9 +8,6 @@ struct AppSidebarView: View {
     @ObservedObject var navigation: NavigationModel
     @ObservedObject var clickFlowController: ClickFlowFeatureController
     @EnvironmentObject private var model: AppModel
-    @EnvironmentObject private var localization: LocalizationController
-    @State private var sipState = SIPState.checking
-    @State private var updateMessage: String?
 
     var body: some View {
         List(selection: selectionBinding) {
@@ -65,21 +62,6 @@ struct AppSidebarView: View {
         }
         .listStyle(.sidebar)
         .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 300)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            sidebarFooter
-        }
-        .task { await refreshSIPStatus() }
-        .alert(
-            tr("检查更新", "Check for Updates"),
-            isPresented: Binding(
-                get: { updateMessage != nil },
-                set: { if !$0 { updateMessage = nil } }
-            )
-        ) {
-            Button(tr("好", "OK")) { updateMessage = nil }
-        } message: {
-            Text(updateMessage ?? "")
-        }
     }
 
     private var selectionBinding: Binding<SidebarItem?> {
@@ -91,72 +73,6 @@ struct AppSidebarView: View {
                 }
             }
         )
-    }
-
-    private var sidebarFooter: some View {
-        VStack(spacing: 0) {
-            Divider()
-            VStack(spacing: 7) {
-                Button {
-                    Task { await refreshSIPStatus() }
-                } label: {
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(sipState.color)
-                            .frame(width: 7, height: 7)
-                        Text(sipState.label)
-                            .font(.caption)
-                            .lineLimit(1)
-                        Spacer(minLength: 4)
-                        Image(systemName: "arrow.clockwise")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help(tr("刷新系统完整性保护状态", "Refresh System Integrity Protection status"))
-
-                HStack(spacing: 6) {
-                    Menu {
-                        ForEach(AppLanguage.Preference.allCases) { preference in
-                            Button {
-                                localization.setPreference(preference)
-                            } label: {
-                                if preference == localization.preference {
-                                    Label(
-                                        AppLanguage.preferenceName(preference),
-                                        systemImage: "checkmark"
-                                    )
-                                } else {
-                                    Text(AppLanguage.preferenceName(preference))
-                                }
-                            }
-                        }
-                    } label: {
-                        Label(AppLanguage.preferenceName(localization.preference), systemImage: "globe")
-                            .lineLimit(1)
-                    }
-                    .menuStyle(.borderlessButton)
-                    .help(tr("切换显示语言", "Change display language"))
-
-                    Spacer(minLength: 2)
-
-                    Button {
-                        checkForUpdates()
-                    } label: {
-                        Label(tr("检查更新", "Updates"), systemImage: "arrow.triangle.2.circlepath")
-                            .labelStyle(.iconOnly)
-                    }
-                    .buttonStyle(.plain)
-                    .help(tr("检查 GitHub Releases", "Check GitHub Releases"))
-                }
-                .font(.caption)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 11)
-            .background(.ultraThinMaterial)
-        }
     }
 
     private func badge(for item: SidebarItem) -> String? {
@@ -171,38 +87,6 @@ struct AppSidebarView: View {
             return nil
         default:
             return nil
-        }
-    }
-
-    private func refreshSIPStatus() async {
-        sipState = .checking
-        sipState = await SIPStatusReader.read()
-    }
-
-    private func checkForUpdates() {
-        Task {
-            let result = await GitHubReleaseChecker.check()
-            await MainActor.run {
-                switch result {
-                case .available(let release):
-                    updateMessage = tr(
-                        "发现新版本 \(release.version)，当前版本为 \(GitHubReleaseChecker.currentVersion)。",
-                        "Version \(release.version) is available; you are running \(GitHubReleaseChecker.currentVersion)."
-                    )
-                case .upToDate:
-                    updateMessage = tr(
-                        "当前已是最新可用版本。",
-                        "You are running the latest available version."
-                    )
-                case .rateLimited:
-                    updateMessage = tr(
-                        "GitHub API 暂时限流，备用更新通道也未能读取版本，请稍后重试。",
-                        "GitHub's API is temporarily rate-limited and the fallback channels could not read a version. Please try again later."
-                    )
-                case .failed(let message):
-                    updateMessage = message
-                }
-            }
         }
     }
 }
@@ -236,56 +120,5 @@ private struct SidebarLabel: View {
                     .background(.quaternary, in: Capsule())
             }
         }
-    }
-}
-
-private enum SIPState {
-    case checking
-    case enabled
-    case disabled
-    case unknown
-
-    var label: String {
-        switch self {
-        case .checking: tr("正在检查 SIP", "Checking SIP")
-        case .enabled: "SIP " + tr("已启用", "Enabled")
-        case .disabled: "SIP " + tr("已停用", "Disabled")
-        case .unknown: "SIP " + tr("状态未知", "Unknown")
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .checking: .secondary
-        case .enabled: .green
-        case .disabled: .red
-        case .unknown: .orange
-        }
-    }
-}
-
-private enum SIPStatusReader {
-    static func read() async -> SIPState {
-        await Task.detached(priority: .utility) {
-            let process = Process()
-            let pipe = Pipe()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/csrutil")
-            process.arguments = ["status"]
-            process.standardOutput = pipe
-            process.standardError = pipe
-            do {
-                try process.run()
-                process.waitUntilExit()
-                let output = String(
-                    decoding: pipe.fileHandleForReading.readDataToEndOfFile(),
-                    as: UTF8.self
-                ).lowercased()
-                if output.contains("status: enabled") { return .enabled }
-                if output.contains("status: disabled") { return .disabled }
-                return .unknown
-            } catch {
-                return .unknown
-            }
-        }.value
     }
 }

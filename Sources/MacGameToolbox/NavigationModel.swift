@@ -28,7 +28,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .appDrop:
             "AppDrop"
         case .information:
-            tr("帮助与个性化", "Help & Personalization")
+            tr("帮助与设置", "Help & Settings")
         }
     }
 
@@ -48,7 +48,7 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
     case appDropTodayDrops
     case appDropHistoricalLows
     case appDropSettings
-    case appearanceWallpaper
+    case settings
     case tutorials
     case changelogAbout
 
@@ -67,7 +67,7 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
             .clickFlow
         case .appDropWishlist, .appDropTodayDrops, .appDropHistoricalLows, .appDropSettings:
             .appDrop
-        case .appearanceWallpaper, .tutorials, .changelogAbout:
+        case .settings, .tutorials, .changelogAbout:
             .information
         }
     }
@@ -87,7 +87,7 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
         case .appDropTodayDrops: "arrow.down.right.circle"
         case .appDropHistoricalLows: "chart.line.downtrend.xyaxis"
         case .appDropSettings: "gearshape"
-        case .appearanceWallpaper: "photo.fill.on.rectangle.fill"
+        case .settings: "gearshape"
         case .tutorials: "book.pages.fill"
         case .changelogAbout: "info.circle"
         }
@@ -121,8 +121,8 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
             tr("历史低价", "Historical Lows")
         case .appDropSettings:
             tr("AppDrop 设置", "AppDrop Settings")
-        case .appearanceWallpaper:
-            tr("外观与壁纸", "Appearance & Wallpaper")
+        case .settings:
+            tr("设置", "Settings")
         case .tutorials:
             tr("游戏教程", "Tutorials")
         case .changelogAbout:
@@ -158,8 +158,8 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
             tr("历史低价", "Lowest")
         case .appDropSettings:
             tr("设置", "Settings")
-        case .appearanceWallpaper:
-            tr("外观壁纸", "Appearance")
+        case .settings:
+            tr("设置", "Settings")
         case .tutorials:
             tr("游戏教程", "Tutorials")
         case .changelogAbout:
@@ -246,6 +246,10 @@ final class NavigationModel: ObservableObject {
         if let stored = defaults.string(forKey: SidebarItem.storageKey),
            let item = SidebarItem(rawValue: stored) {
             return item
+        }
+        if defaults.string(forKey: SidebarItem.storageKey) == "appearanceWallpaper" {
+            defaults.set(SidebarItem.settings.rawValue, forKey: SidebarItem.storageKey)
+            return .settings
         }
         if defaults.string(forKey: SidebarItem.storageKey) == "steamDeckSpoof" {
             defaults.set(SidebarItem.hoYoAssistant.rawValue, forKey: SidebarItem.storageKey)

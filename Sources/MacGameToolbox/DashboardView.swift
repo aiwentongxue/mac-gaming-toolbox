@@ -2,50 +2,16 @@ import AppKit
 import SwiftUI
 
 struct AppBackgroundView: View {
-    @EnvironmentObject private var model: AppModel
     @Environment(\.colorScheme) private var colorScheme
-    @AppStorage("app.wallpaper.overlayOpacity") private var overlayOpacity = 0.18
-    @AppStorage("app.wallpaper.blurRadius") private var blurRadius = 0.0
 
     var body: some View {
-        GeometryReader { proxy in
-            Group {
-                if let image = model.wallpaperImage {
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: proxy.size.width, height: proxy.size.height)
-                        .scaleEffect(1.035)
-                        .blur(radius: blurRadius)
-                        .overlay {
-                            LinearGradient(
-                                colors: [
-                                    Color.black.opacity(overlayOpacity * 0.55),
-                                    Color.black.opacity(min(0.72, overlayOpacity + 0.14))
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        }
-                        .clipped()
-                } else {
-                    LinearGradient(
-                        colors: colorScheme == .dark
-                            ? [
-                                Color(red: 0.035, green: 0.045, blue: 0.07),
-                                Color(red: 0.08, green: 0.055, blue: 0.13)
-                            ]
-                            : [
-                                Color(red: 0.94, green: 0.96, blue: 1.0),
-                                Color(red: 0.98, green: 0.94, blue: 1.0)
-                            ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                }
-            }
-            .frame(width: proxy.size.width, height: proxy.size.height)
-        }
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [Color(red: 0.035, green: 0.045, blue: 0.07), Color(red: 0.08, green: 0.055, blue: 0.13)]
+                : [Color(red: 0.94, green: 0.96, blue: 1.0), Color(red: 0.98, green: 0.94, blue: 1.0)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
         .ignoresSafeArea()
     }
 }
@@ -219,7 +185,6 @@ struct ToolboxStatusBar: View {
 
 struct WindowAppearanceConfigurator: NSViewRepresentable {
     let colorScheme: ColorScheme
-    let usesWallpaper: Bool
     let nativeGlassEnabled: Bool
 
     func makeNSView(context: Context) -> NSView {
@@ -237,66 +202,34 @@ struct WindowAppearanceConfigurator: NSViewRepresentable {
         window.titlebarAppearsTransparent = true
         window.styleMask.insert(.fullSizeContentView)
         window.isOpaque = true
-        window.backgroundColor = usesWallpaper
-            ? .black
-            : (colorScheme == .dark
-                ? NSColor(calibratedRed: 0.035, green: 0.045, blue: 0.07, alpha: 1)
-                : NSColor(calibratedRed: 0.965, green: 0.97, blue: 0.995, alpha: 1))
+        window.backgroundColor = colorScheme == .dark
+            ? NSColor(calibratedRed: 0.035, green: 0.045, blue: 0.07, alpha: 1)
+            : NSColor(calibratedRed: 0.965, green: 0.97, blue: 0.995, alpha: 1)
         window.animationBehavior = nativeGlassEnabled ? .default : .none
         window.contentView?.wantsLayer = true
         window.contentView?.layer?.backgroundColor = window.backgroundColor?.cgColor
     }
 }
 
-private struct ToolboxUsesGlassKey: EnvironmentKey {
-    static let defaultValue = false
-}
-
-private struct NativeGlassEnabledKey: EnvironmentKey {
-    static let defaultValue = true
-}
-
-extension EnvironmentValues {
-    var toolboxUsesGlass: Bool {
-        get { self[ToolboxUsesGlassKey.self] }
-        set { self[ToolboxUsesGlassKey.self] = newValue }
-    }
-
-    var nativeGlassEnabled: Bool {
-        get { self[NativeGlassEnabledKey.self] }
-        set { self[NativeGlassEnabledKey.self] = newValue }
-    }
-}
-
 private struct ToolboxCardModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.toolboxUsesGlass) private var usesGlass
-    @Environment(\.nativeGlassEnabled) private var nativeGlassEnabled
 
     @ViewBuilder
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
-        if #available(macOS 26.0, *), usesGlass, nativeGlassEnabled {
-            content
-                .background(colorScheme == .dark ? Color.black.opacity(0.18) : Color.white.opacity(0.14), in: shape)
-                .glassEffect(.clear.interactive(), in: shape)
-                .overlay(shape.stroke(Color.white.opacity(colorScheme == .dark ? 0.16 : 0.24), lineWidth: 0.7))
-                .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
-        } else {
-            content
-                .background(
-                    colorScheme == .dark ? Color.black.opacity(0.42) : Color.white.opacity(0.72),
-                    in: shape
+        content
+            .background(
+                colorScheme == .dark ? Color.black.opacity(0.42) : Color.white.opacity(0.72),
+                in: shape
+            )
+            .background(.ultraThinMaterial, in: shape)
+            .overlay(
+                shape.stroke(
+                    colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.08),
+                    lineWidth: 0.7
                 )
-                .background(.ultraThinMaterial, in: shape)
-                .overlay(
-                    shape.stroke(
-                        colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.08),
-                        lineWidth: 0.7
-                    )
-                )
-                .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
-        }
+            )
+            .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
     }
 }
 

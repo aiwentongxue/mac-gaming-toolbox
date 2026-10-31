@@ -18,7 +18,6 @@ struct DiskManagerDetailView: View {
             )
         ) {
             actionBar
-            automaticRestoreCard
             HStack(alignment: .top, spacing: 16) {
                 volumeList
                     .frame(minWidth: 290, idealWidth: 350, maxWidth: 430)
@@ -26,6 +25,7 @@ struct DiskManagerDetailView: View {
                     .frame(minWidth: 330, maxWidth: .infinity)
             }
             configurationCard
+            automaticRestoreCard
         }
         .task {
             if model.disks.isEmpty { model.refreshDisks() }
@@ -357,6 +357,7 @@ struct SystemCleanerDetailView: View {
                     )
                 )
                 .toggleStyle(.switch)
+                .disabled(model.isCacheBusy)
                 HStack {
                     Text(model.configuration.excludesSensitiveCacheFiles
                         ? tr("将只扫描 ~/Library/Caches 与 ~/Library/Logs", "Only ~/Library/Caches and ~/Library/Logs will be scanned")
@@ -368,12 +369,23 @@ struct SystemCleanerDetailView: View {
                         model.prepareCacheScan()
                     }
                     .toolboxProminentButton()
+                    .disabled(model.isCacheBusy)
+                }
+                if model.isCacheBusy {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text(tr("正在处理缓存，请稍候…", "Processing caches, please wait…"))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             }
 
+            if let result = model.cacheCleanupResult {
+                cleanupSummary(result)
+            }
             if let scan = model.cacheScan {
                 scanSummary(scan)
-            } else {
+            } else if model.cacheCleanupResult == nil {
                 ToolboxCard(tr("扫描结果", "Scan Results")) {
                     ContentUnavailableText(
                         icon: "internaldrive",
@@ -402,11 +414,44 @@ struct SystemCleanerDetailView: View {
         }
     }
 
+    private func cleanupSummary(_ result: CacheCleanupResult) -> some View {
+        ToolboxCard(tr("清理结果", "Cleanup Results")) {
+            HStack(spacing: 22) {
+                ScanMetric(title: tr("已清理", "Removed"), value: "\(result.removedCount)", icon: "checkmark.circle")
+                ScanMetric(title: tr("已跳过", "Skipped"), value: "\(result.skippedItems.count)", icon: "minus.circle")
+                ScanMetric(title: tr("失败", "Failed"), value: "\(result.failedItems.count)", icon: "exclamationmark.triangle")
+            }
+            issueList(result.failedItems + result.skippedItems)
+            Text(tr("扫描结果已失效。再次清理前请重新扫描。", "The previous scan is no longer valid. Scan again before another cleanup."))
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func issueList(_ issues: [CacheScanIssue]) -> some View {
+        if !issues.isEmpty {
+            DisclosureGroup(tr("查看跳过或失败的项目", "View Skipped or Failed Items") + " (\(issues.count))") {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        ForEach(Array(issues.enumerated()), id: \.offset) { _, issue in
+                            Text("\(issue.path.path)：\(issue.reason)")
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 220)
+            }
+        }
+    }
+
     private func scanSummary(_ scan: CacheScan) -> some View {
         ToolboxCard(
             tr("扫描结果", "Scan Results"),
-            subtitle: ByteCountFormatter.string(
-                fromByteCount: Int64(scan.estimatedBytes),
+            subtitle: tr("预计可清理", "Estimated Cleanable Size") + " " + ByteCountFormatter.string(
+                fromByteCount: Int64(clamping: scan.estimatedBytes),
                 countStyle: .file
             )
         ) {
@@ -422,7 +467,7 @@ struct SystemCleanerDetailView: View {
                     icon: "gearshape.2"
                 )
                 ScanMetric(
-                    title: tr("无法读取", "Inaccessible"),
+                    title: tr("已跳过", "Skipped"),
                     value: "\(scan.inaccessibleTargets.count)",
                     icon: "lock.slash"
                 )
@@ -431,16 +476,14 @@ struct SystemCleanerDetailView: View {
             if !scan.inaccessibleTargets.isEmpty {
                 VStack(alignment: .leading, spacing: 7) {
                     Label(
-                        tr("部分目录需要完全磁盘访问权限", "Some Folders Require Full Disk Access"),
+                        tr("部分项目已跳过，其余项目可继续清理", "Some Items Were Skipped; Other Items Can Be Cleaned"),
                         systemImage: "lock.shield"
                     )
                     .font(.subheadline.weight(.medium))
-                    ForEach(Array(scan.inaccessibleTargets.prefix(5).enumerated()), id: \.offset) { _, issue in
-                        Text("\(issue.path.path)：\(issue.reason)")
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
+                    issueList(scan.inaccessibleTargets)
+                    Text(tr("无法访问可能由文件权限或系统保护造成，不代表未授予完全磁盘访问权限。若用户目录仍无法读取，可检查授权并退出、重新打开应用后扫描。", "File permissions or system protection can prevent access even with Full Disk Access. If user folders remain unreadable, check the permission, quit and reopen the app, then scan again."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     Button(tr("打开完全磁盘访问设置", "Open Full Disk Access Settings")) {
                         model.openFullDiskAccessSettings()
                     }
@@ -463,12 +506,12 @@ struct SystemCleanerDetailView: View {
                 Button(tr("重新扫描", "Scan Again")) {
                     model.prepareCacheScan()
                 }
+                .disabled(model.isCacheBusy)
                 Spacer()
                 Button(tr("清理扫描结果", "Clean Scan Results"), role: .destructive) {
-                    model.cacheConfirmationStage = 1
-                    model.showingCacheConfirmation = true
+                    model.requestCacheCleaning()
                 }
-                .disabled(!scan.inaccessibleTargets.isEmpty)
+                .disabled(model.isCacheBusy || !scan.hasCleanableEntries)
             }
         }
     }

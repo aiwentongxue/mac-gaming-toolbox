@@ -6,14 +6,10 @@ import MacGameToolboxCore
 import Security
 import OSLog
 
-private let serviceName = "com.iven.macgametoolbox.helper.v9"
-private let installedHelperPath = "/Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v9"
-private let installedPlistPath = "/Library/LaunchDaemons/com.iven.macgametoolbox.helper.v9.plist"
-private let requirementPath = "/Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v9.requirement"
-private let legacyServiceName = "com.iven.macgametoolbox.helper.v8"
-private let legacyHelperPath = "/Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v8"
-private let legacyPlistPath = "/Library/LaunchDaemons/com.iven.macgametoolbox.helper.v8.plist"
-private let legacyRequirementPath = "/Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v8.requirement"
+private let serviceName = "com.iven.macgametoolbox.helper.v10"
+private let installedHelperPath = "/Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v10"
+private let installedPlistPath = "/Library/LaunchDaemons/com.iven.macgametoolbox.helper.v10.plist"
+private let requirementPath = "/Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v10.requirement"
 private let expectedAppPath = "/Applications/Mac 游戏工具箱.app"
 private let hoyoDomains = GamingService.hoyoDomains
 private let logger = Logger(subsystem: "com.iven.macgametoolbox", category: "PrivilegedHelper")
@@ -46,6 +42,18 @@ final class HelperService: NSObject, PrivilegedHelperXPCProtocol {
         }
     }
 
+    func clearSystemCacheEntries(request: Data, withReply reply: @escaping (Data?, String?) -> Void) {
+        do {
+            guard geteuid() == 0 else { throw HelperError.notRoot }
+            let entries = try JSONDecoder().decode([URL].self, from: request)
+            let result = try SystemCacheCleanup.clear(entries)
+            reply(try JSONEncoder().encode(result), nil)
+        } catch {
+            logger.error("Cache cleanup request failed: \(error.localizedDescription, privacy: .public)")
+            reply(nil, error.localizedDescription)
+        }
+    }
+
     private func performValidated(_ request: PrivilegedRequest) throws {
         switch request {
         case .healthCheck: break
@@ -70,8 +78,6 @@ final class HelperService: NSObject, PrivilegedHelperXPCProtocol {
                 }
             }
             guard updatedCount > 0 else { throw HelperError.invalidProcess }
-        case .clearSystemCaches:
-            for path in ["/Library/Caches", "/Library/Logs", "/private/var/log"] { try removeVisibleContents(path) }
         case .setHostnames(let names):
             guard InputValidation.computerName(names.computerName), InputValidation.hostname(names.hostName), InputValidation.hostname(names.localHostName) else { throw HelperError.invalidArguments }
             try run("/usr/sbin/scutil", ["--set", "ComputerName", names.computerName])
@@ -173,12 +179,14 @@ func installPersistentHelper(for appPath: String) throws {
     try fileManager.setAttributes([.posixPermissions: 0o644, .ownerAccountID: 0, .groupOwnerAccountID: 0], ofItemAtPath: installedPlistPath)
     try run("/bin/launchctl", ["bootstrap", "system", installedPlistPath])
 
-    // The v8 helper only accepts the previous -20/20 extremes. Keep it active
-    // until v9 starts successfully, then remove the superseded root service.
-    _ = try? run("/bin/launchctl", ["bootout", "system/\(legacyServiceName)"])
-    for legacyPath in [legacyPlistPath, legacyHelperPath, legacyRequirementPath] {
-        if fileManager.fileExists(atPath: legacyPath) {
-            try? fileManager.removeItem(atPath: legacyPath)
+    // Remove superseded services only after v10 has bootstrapped successfully.
+    for version in [8, 9] {
+        let legacyName = "com.iven.macgametoolbox.helper.v\(version)"
+        _ = try? run("/bin/launchctl", ["bootout", "system/\(legacyName)"])
+        for path in ["/Library/LaunchDaemons/\(legacyName).plist",
+                     "/Library/PrivilegedHelperTools/\(legacyName)",
+                     "/Library/PrivilegedHelperTools/\(legacyName).requirement"] {
+            if fileManager.fileExists(atPath: path) { try? fileManager.removeItem(atPath: path) }
         }
     }
 }
@@ -221,13 +229,6 @@ func rewriteHosts(addBlock: Bool) throws {
     try FileManager.default.setAttributes([.posixPermissions: 0o644, .ownerAccountID: 0, .groupOwnerAccountID: 0], ofItemAtPath: temporary.path)
     _ = try FileManager.default.replaceItemAt(url, withItemAt: temporary)
     try run("/usr/bin/dscacheutil", ["-flushcache"])
-}
-
-func removeVisibleContents(_ path: String) throws {
-    guard let entries = try? FileManager.default.contentsOfDirectory(atPath: path) else { return }
-    for entry in entries where !entry.hasPrefix(".") {
-        try FileManager.default.removeItem(atPath: URL(fileURLWithPath: path).appendingPathComponent(entry).path)
-    }
 }
 
 guard geteuid() == 0 else { fatalError(HelperError.notRoot.localizedDescription) }

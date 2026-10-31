@@ -38,8 +38,8 @@ struct ToolboxDetailRouter: View {
                         page: page
                     )
                 }
-            case .appearanceWallpaper:
-                AppearanceSettingsDetailView()
+            case .settings:
+                ToolboxSettingsDetailView()
             case .tutorials:
                 TutorialsDetailView()
             case .changelogAbout:

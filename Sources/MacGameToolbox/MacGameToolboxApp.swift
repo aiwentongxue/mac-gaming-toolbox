@@ -52,15 +52,17 @@ struct MacGameToolboxApp: App {
             CommandGroup(replacing: .windowSize) { }
         }
         .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button(tr("设置…", "Settings…")) {
+                    MenuCommandCoordinator.shared.showSettings()
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
             CommandGroup(replacing: .help) {
                 Button(tr("导出诊断日志", "Export Diagnostics")) { MenuCommandCoordinator.shared.exportDiagnostics() }
                 Button(tr("修复核心功能", "Repair Core Features")) { MenuCommandCoordinator.shared.repairCoreFeatures() }
                 Button(tr("教程总导航", "Tutorials")) { MenuCommandCoordinator.shared.showTutorials() }
             }
-        }
-        Settings {
-            SettingsView()
-                .environmentObject(localization)
         }
     }
 }
@@ -184,7 +186,7 @@ enum GitHubReleaseChecker {
     private static let releasesAtomURL = URL(string: "https://github.com/aiwentongxue/mac-gaming-toolbox/releases.atom")!
 
     static var currentVersion: String {
-        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "4.0.0"
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "4.0.1"
     }
 
     static func check(
@@ -269,8 +271,8 @@ enum GitHubReleaseChecker {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw UpdateFetchError.invalidResponse
         }
-        if httpResponse.statusCode == 403,
-           httpResponse.value(forHTTPHeaderField: "x-ratelimit-remaining") == "0" {
+        if httpResponse.statusCode == 429 ||
+            (httpResponse.statusCode == 403 && httpResponse.value(forHTTPHeaderField: "x-ratelimit-remaining") == "0") {
             throw UpdateFetchError.rateLimited
         }
         guard (200...299).contains(httpResponse.statusCode) else {
@@ -410,6 +412,9 @@ final class MenuCommandCoordinator: NSObject {
             let relevantModifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
             guard relevantModifiers == .command else { return event }
             switch event.charactersIgnoringModifiers?.lowercased() {
+            case ",":
+                self?.showSettings()
+                return nil
             case "w":
                 self?.closeWindow()
                 return nil
@@ -496,6 +501,13 @@ final class MenuCommandCoordinator: NSObject {
 
     func exportDiagnostics() { model?.requestDiagnosticsExport() }
     func repairCoreFeatures() { model?.repairCoreFeatures() }
+    func showSettings() {
+        // Persist first so a recreated main view also lands on Settings.
+        UserDefaults.standard.set(SidebarItem.settings.rawValue, forKey: SidebarItem.storageKey)
+        reopenMainWindow()
+        NotificationCenter.default.post(name: .toolboxNavigateToSettings, object: nil)
+    }
+
     func showTutorials() {
         NotificationCenter.default.post(name: .toolboxNavigateToTutorials, object: nil)
     }

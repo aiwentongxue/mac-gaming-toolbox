@@ -15,6 +15,8 @@ final class AppModel: ObservableObject {
     @Published var diskPaths: [String: String] = [:]
     @Published var metalHUDEnabled = false
     @Published var cacheScan: CacheScan?
+    @Published private(set) var isCacheBusy = false
+    @Published private(set) var cacheCleanupResult: CacheCleanupResult?
     @Published var showingCacheConfirmation = false
     @Published var cacheConfirmationStage = 0
     @Published var isHoYoAssistantRunning = false
@@ -29,7 +31,6 @@ final class AppModel: ObservableObject {
     @Published var isRefreshingIOSApps = false
     @Published var iosLaunchArgumentsApp: IOSInstalledApp?
     @Published var iosLaunchArgumentsText = ""
-    @Published var wallpaperImage: NSImage?
 
     private let privileged = PrivilegedHelperClient()
     private let configurationStore: ConfigurationStore
@@ -37,7 +38,6 @@ final class AppModel: ObservableObject {
     private let gamingService: GamingService
     private let hostnameService: HostnameService
     private let cacheService: CacheService
-    private let wallpaperService: WallpaperService
     private let metalHUDPresetStore: MetalHUDPresetStore
     private let crossOverBottleService: CrossOverBottleService
     private let diagnosticsService = DiagnosticsService()
@@ -45,16 +45,15 @@ final class AppModel: ObservableObject {
     private var automaticMountTask: Task<Void, Never>?
     private var didLaunch = false
 
-    init() {
-        configurationStore = ConfigurationStore()
+    init(configurationStore: ConfigurationStore = ConfigurationStore(), launchAutomatically: Bool = true) {
+        self.configurationStore = configurationStore
         diskService = DiskService()
         gamingService = GamingService(privileged: privileged)
         hostnameService = HostnameService(privileged: privileged)
         cacheService = CacheService(privileged: privileged)
-        wallpaperService = WallpaperService()
         metalHUDPresetStore = MetalHUDPresetStore()
         crossOverBottleService = CrossOverBottleService()
-        launch()
+        if launchAutomatically { launch() }
     }
 
     func launch() {
@@ -64,7 +63,6 @@ final class AppModel: ObservableObject {
         Task {
             do {
                 configuration = try await configurationStore.load()
-                reloadWallpaper()
             } catch { report(error) }
             metalHUDEnabled = await gamingService.metalHUDEnabled()
             if (try? String(contentsOfFile: "/etc/hosts", encoding: .utf8))?.contains("# BEGIN MAC GAME TOOLBOX HOYO") == true {
@@ -567,72 +565,55 @@ final class AppModel: ObservableObject {
         saveConfiguration()
     }
 
-    func importWallpaper() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = false
-        panel.canChooseFiles = true
-        panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = [.image]
-        panel.title = tr("导入壁纸", "Import Wallpaper")
-        panel.prompt = tr("导入", "Import")
-        guard panel.runModal() == .OK, let source = panel.url else { return }
-
-        do {
-            let oldPath = configuration.customWallpaperPath
-            let destination = try wallpaperService.importWallpaper(from: source, replacing: oldPath)
-            configuration.customWallpaperPath = destination.path
-            reloadWallpaper()
-            saveConfiguration()
-            status = TaskStatus(phase: .succeeded, message: tr("已导入自定义背景", "Custom wallpaper imported"), progress: 1)
-            DiagnosticFileLogger.write("Custom wallpaper imported: \(destination.path)")
-        } catch {
-            report(error)
-        }
-    }
-
-    func resetWallpaper() {
-        let oldPath = configuration.customWallpaperPath
-        configuration.customWallpaperPath = nil
-        reloadWallpaper()
-        saveConfiguration()
-        do {
-            let removed = try wallpaperService.removeManagedWallpaper(at: oldPath)
-            DiagnosticFileLogger.write("Custom wallpaper cleared; removed file: \(removed)")
-        } catch {
-            DiagnosticFileLogger.write("Custom wallpaper cleared; failed to remove file: \(error.localizedDescription)")
-        }
-        status = TaskStatus(phase: .succeeded, message: tr("已恢复默认背景", "Default background restored"), progress: 1)
-    }
-
     func prepareCacheScan() {
+        guard !isCacheBusy else { return }
+        isCacheBusy = true
+        cacheScan = nil
+        cacheCleanupResult = nil
+        showingCacheConfirmation = false
+        let excludesSensitiveFiles = configuration.excludesSensitiveCacheFiles
         status = TaskStatus(phase: .running, message: tr("正在扫描缓存", "Scanning caches"))
         Task {
-            cacheScan = await cacheService.scan(excludingSensitiveFiles: configuration.excludesSensitiveCacheFiles)
-            cacheConfirmationStage = 1
-            showingCacheConfirmation = true
+            defer { isCacheBusy = false }
+            cacheScan = await cacheService.scan(excludingSensitiveFiles: excludesSensitiveFiles)
+            cacheConfirmationStage = 0
             status = TaskStatus()
         }
     }
 
+    func requestCacheCleaning() {
+        guard !isCacheBusy, cacheScan?.hasCleanableEntries == true else { return }
+        cacheConfirmationStage = 1
+        showingCacheConfirmation = true
+    }
+
     func confirmCacheCleaning() {
-        guard let scan = cacheScan, scan.inaccessibleTargets.isEmpty else { return }
+        guard !isCacheBusy, let scan = cacheScan, scan.hasCleanableEntries else { return }
         if cacheConfirmationStage == 1, !configuration.excludesSensitiveCacheFiles {
             cacheConfirmationStage = 2
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { self.showingCacheConfirmation = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                guard self.cacheScan == scan, !self.isCacheBusy else { return }
+                self.showingCacheConfirmation = true
+            }
             return
         }
+        isCacheBusy = true
         runTask(tr("正在清理缓存", "Cleaning caches")) {
-            if !scan.systemTargets.isEmpty { self.status.phase = .awaitingAuthorization }
-            let result = try await self.cacheService.clear(scan)
-            for failure in result.failedItems {
-                DiagnosticFileLogger.write("Cache cleanup failed: \(failure.path.path) - \(failure.reason)")
+            defer {
+                self.isCacheBusy = false
+                self.cacheScan = nil
+                self.showingCacheConfirmation = false
+                self.cacheConfirmationStage = 0
             }
-            if result.failedItems.isEmpty {
-                return tr("缓存清理完成，已清理 \(result.removedCount) 项", "Cache cleaning completed; removed \(result.removedCount) item(s)")
+            if !scan.systemEntries.isEmpty { self.status.phase = .awaitingAuthorization }
+            let result = try await self.cacheService.clear(scan)
+            self.cacheCleanupResult = result
+            for issue in result.failedItems + result.skippedItems {
+                DiagnosticFileLogger.write("Cache cleanup skipped/failed: \(issue.path.path) - \(issue.reason)")
             }
             return tr(
-                "缓存清理完成，已清理 \(result.removedCount) 项，\(result.failedItems.count) 项无法清理",
-                "Cache cleaning completed; removed \(result.removedCount) item(s), \(result.failedItems.count) item(s) could not be removed"
+                "缓存清理完成：已清理 \(result.removedCount) 项，跳过 \(result.skippedItems.count) 项，失败 \(result.failedItems.count) 项",
+                "Cache cleanup completed: \(result.removedCount) removed, \(result.skippedItems.count) skipped, \(result.failedItems.count) failed"
             )
         }
     }
@@ -643,7 +624,12 @@ final class AppModel: ObservableObject {
     }
 
     func setExcludesSensitiveCacheFiles(_ enabled: Bool) {
+        guard !isCacheBusy, configuration.excludesSensitiveCacheFiles != enabled else { return }
         configuration.excludesSensitiveCacheFiles = enabled
+        cacheScan = nil
+        cacheCleanupResult = nil
+        showingCacheConfirmation = false
+        cacheConfirmationStage = 0
         saveConfiguration()
     }
 
@@ -713,14 +699,12 @@ final class AppModel: ObservableObject {
     }
 
     private static func runCoreFeatureRepairScript() async throws {
-        let shellScript = """
-        for plist in /Library/LaunchDaemons/com.iven.macgametoolbox.helper.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v3.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v4.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v5.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v6.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v7.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v8.plist /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v9.plist; do
-            /bin/launchctl bootout system "$plist" 2>/dev/null || true
-        done
-        /bin/launchctl enable system/com.iven.macgametoolbox.helper.v9
-        /bin/launchctl bootstrap system /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v9.plist
-        /bin/rm -f /Library/LaunchDaemons/com.iven.macgametoolbox.helper.v8.plist /Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v8 /Library/PrivilegedHelperTools/com.iven.macgametoolbox.helper.v8.requirement
-        """
+        let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Library/LaunchServices/MacGameToolboxPrivilegedHelper")
+        let quotedHelper = "'" + helper.path.replacingOccurrences(of: "'", with: "'\\''") + "'"
+        let quotedApp = "'" + Bundle.main.bundleURL.path.replacingOccurrences(of: "'", with: "'\\''") + "'"
+        // Reinstall from the current bundle. The installer starts v10 before
+        // retiring older services, including when v10 has never been installed.
+        let shellScript = "set -e\n\(quotedHelper) --install \(quotedApp)"
         let appleScript = """
         on run argv
             do shell script item 1 of argv with administrator privileges
@@ -844,14 +828,6 @@ final class AppModel: ObservableObject {
             DiagnosticFileLogger.write("Added volume UUID to automatic restore record: \(identifier) -> \(volumeUUID)")
         }
         if changed { saveConfiguration() }
-    }
-
-    private func reloadWallpaper() {
-        guard let path = configuration.customWallpaperPath, !path.isEmpty else {
-            wallpaperImage = nil
-            return
-        }
-        wallpaperImage = NSImage(contentsOfFile: path)
     }
 
     private func saveConfiguration() {

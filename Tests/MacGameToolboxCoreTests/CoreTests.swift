@@ -124,44 +124,6 @@ import Testing
     #expect(loaded.defaultPaths.last == "/tmp/Games-1000")
 }
 
-@Test func wallpaperServiceImportsAndRemovesManagedWallpapersOnly() throws {
-    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-    let wallpaperDirectory = root.appendingPathComponent("Wallpapers", isDirectory: true)
-    let source = root.appendingPathComponent("source.png")
-    let external = root.appendingPathComponent("external.png")
-    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    try Data([0, 1, 2]).write(to: source)
-    try Data([3, 4, 5]).write(to: external)
-
-    let service = WallpaperService(wallpaperDirectory: wallpaperDirectory)
-    let first = try service.importWallpaper(from: source)
-    #expect(FileManager.default.fileExists(atPath: first.path))
-    #expect(first.deletingLastPathComponent().standardizedFileURL == wallpaperDirectory.standardizedFileURL)
-
-    let removedExternal = try service.removeManagedWallpaper(at: external.path)
-    #expect(!removedExternal)
-    #expect(FileManager.default.fileExists(atPath: external.path))
-
-    let removedManaged = try service.removeManagedWallpaper(at: first.path)
-    #expect(removedManaged)
-    #expect(!FileManager.default.fileExists(atPath: first.path))
-}
-
-@Test func wallpaperServiceReimportRemovesPreviousManagedWallpaper() throws {
-    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-    let wallpaperDirectory = root.appendingPathComponent("Wallpapers", isDirectory: true)
-    let source = root.appendingPathComponent("source.jpg")
-    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    try Data([6, 7, 8]).write(to: source)
-
-    let service = WallpaperService(wallpaperDirectory: wallpaperDirectory)
-    let first = try service.importWallpaper(from: source)
-    let second = try service.importWallpaper(from: source, replacing: first.path)
-
-    #expect(!FileManager.default.fileExists(atPath: first.path))
-    #expect(FileManager.default.fileExists(atPath: second.path))
-}
-
 @Test func automaticMountMatchingPrefersStableVolumeUUIDAndFallsBackToIdentifier() {
     let oldIdentifier = DiskPreset(diskIdentifier: "disk4s1", volumeUUID: "VOLUME-UUID", mountPath: "/tmp/Games")
     let renumberedVolume = DiskVolume(id: "disk8s2", volumeUUID: "volume-uuid", name: "Games", fileSystem: "apfs", mountPoint: nil, size: 1, wholeDisk: "disk8", isInternal: false)
@@ -309,6 +271,13 @@ import Testing
 actor RecordingPrivilegedOperator: PrivilegedOperating {
     private(set) var operations: [PrivilegedOperation] = []
     func perform(_ operation: PrivilegedOperation) async throws { operations.append(operation) }
+    private(set) var cleanedSystemEntries: [URL] = []
+    var systemResult = CacheCleanupResult(removedCount: 0, failedItems: [])
+    func setSystemResult(_ result: CacheCleanupResult) { systemResult = result }
+    func clearSystemCacheEntries(_ entries: [URL]) async throws -> CacheCleanupResult {
+        cleanedSystemEntries += entries
+        return systemResult
+    }
 }
 
 actor RecordingCommandRunner: CommandRunning {
@@ -484,7 +453,6 @@ actor HostnameRunner: CommandRunning {
         .renice([42, 84], ProcessPriorityLevel.normal.rawValue),
         .renice([42, 84], ProcessPriorityLevel.lower.rawValue),
         .renice([42, 84], ProcessPriorityLevel.lowest.rawValue),
-        .clearSystemCaches,
         .setHostnames(HostnameBackup(computerName: "steamdeck", hostName: "steamdeck", localHostName: "steamdeck")),
         .createDirectory("/Users/test/Games")
     ]
@@ -500,10 +468,13 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
         operations.append(operation)
         throw ToolboxError.authorizationCancelled
     }
+    func clearSystemCacheEntries(_ entries: [URL]) async throws -> CacheCleanupResult {
+        throw ToolboxError.authorizationCancelled
+    }
 }
 
 @Test func cacheClearAuthorizesBeforeDeletingUserFiles() async throws {
-    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let root = CacheFileAccess.canonicalURL(FileManager.default.temporaryDirectory).appendingPathComponent(UUID().uuidString)
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     let file = root.appendingPathComponent("keep-me.cache")
     try Data("important".utf8).write(to: file)
@@ -512,7 +483,7 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
     let privileged = RejectingPrivilegedOperator()
     let service = CacheService(privileged: privileged)
     do {
-        _ = try await service.clear(CacheScan(userTargets: [root], systemTargets: [URL(fileURLWithPath: "/Library/Caches")], estimatedBytes: 9))
+        _ = try await service.clear(CacheScan(userTargets: [root], systemTargets: SystemCacheCleanup.roots, userEntries: [file], systemEntries: [URL(fileURLWithPath: "/Library/Caches/test.cache")], estimatedBytes: 9))
         Issue.record("Expected authorization failure")
     } catch {
         #expect(error as? ToolboxError == .authorizationCancelled)
@@ -522,7 +493,7 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
 }
 
 @Test func sensitiveCacheExclusionScansAndClearsOnlyUserCachesAndLogs() async throws {
-    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let root = CacheFileAccess.canonicalURL(FileManager.default.temporaryDirectory).appendingPathComponent(UUID().uuidString)
     let caches = root.appendingPathComponent("Library/Caches", isDirectory: true)
     let logs = root.appendingPathComponent("Library/Logs", isDirectory: true)
     let sensitive = root.appendingPathComponent("Library/Application Support/Game/Caches", isDirectory: true)
@@ -537,7 +508,7 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
     let privileged = RecordingPrivilegedOperator()
     let service = CacheService(privileged: privileged)
     let scan = await service.scan(excludingSensitiveFiles: true, homeURL: root)
-    #expect(scan.userTargets.map(\.standardizedFileURL.path) == [caches, logs].map(\.standardizedFileURL.path))
+    #expect(Set(scan.userTargets.map(\.path)) == Set([caches, logs].map(\.path)))
     #expect(scan.systemTargets.isEmpty)
     _ = try await service.clear(scan)
 
@@ -548,7 +519,7 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
 }
 
 @Test func cacheCleanupContinuesAfterAnInaccessibleEntry() async throws {
-    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let root = CacheFileAccess.canonicalURL(FileManager.default.temporaryDirectory).appendingPathComponent(UUID().uuidString)
     let blocked = root.appendingPathComponent("com.apple.HomeKit")
     let removable = root.appendingPathComponent("removable.cache")
     try FileManager.default.createDirectory(at: blocked, withIntermediateDirectories: true)
@@ -561,14 +532,14 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
         }
         try FileManager.default.removeItem(at: url)
     }
-    _ = try await service.clear(CacheScan(userTargets: [root], systemTargets: [], estimatedBytes: 6))
+    _ = try await service.clear(CacheScan(userTargets: [root], systemTargets: [], userEntries: [blocked, removable], estimatedBytes: 6))
 
     #expect(FileManager.default.fileExists(atPath: blocked.path))
     #expect(!FileManager.default.fileExists(atPath: removable.path))
 }
 
 @Test func cacheCleanupIncludesHiddenEntriesAndReportsFailures() async throws {
-    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let root = CacheFileAccess.canonicalURL(FileManager.default.temporaryDirectory).appendingPathComponent(UUID().uuidString)
     let caches = root.appendingPathComponent("Library/Caches", isDirectory: true)
     let hidden = caches.appendingPathComponent(".hidden.cache")
     let visible = caches.appendingPathComponent("visible.cache")
@@ -583,7 +554,7 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
         }
         try FileManager.default.removeItem(at: url)
     }
-    let scan = await service.scan(homeURL: root)
+    let scan = await service.scan(excludingSensitiveFiles: true, homeURL: root)
     #expect(scan.estimatedBytes >= 18)
 
     let result = try await service.clear(scan)
@@ -695,4 +666,196 @@ actor MockRunner: CommandRunning {
     #expect(results.count == assignments.count)
     #expect(results["disk4s1"] != nil)
     #expect(results["disk1000s1"] != nil)
+}
+
+// A deterministic filesystem failure lets these tests run with any user/ACL.
+private final class FailingCacheFileManager: FileManager, @unchecked Sendable {
+    let denied: Set<String>
+    init(denied: [URL]) {
+        self.denied = Set(denied.map(\.path))
+        super.init()
+    }
+    override func contentsOfDirectory(at url: URL, includingPropertiesForKeys keys: [URLResourceKey]?, options mask: FileManager.DirectoryEnumerationOptions = []) throws -> [URL] {
+        if denied.contains(url.path) { throw CocoaError(.fileReadNoPermission) }
+        return try super.contentsOfDirectory(at: url, includingPropertiesForKeys: keys, options: mask)
+    }
+}
+
+private func cacheTestRoot() -> URL {
+    CacheFileAccess.canonicalURL(FileManager.default.temporaryDirectory).appendingPathComponent(UUID().uuidString)
+}
+
+@Test func cacheScanSkipsWholeUnreadableEntryAndCleansReadableItems() async throws {
+    let root = cacheTestRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let caches = root.appendingPathComponent("Library/Caches")
+    let blocked = caches.appendingPathComponent("blocked/child")
+    let readable = caches.appendingPathComponent("readable.cache")
+    try FileManager.default.createDirectory(at: blocked, withIntermediateDirectories: true)
+    try Data(repeating: 1, count: 10).write(to: readable)
+    let manager = FailingCacheFileManager(denied: [blocked])
+    let service = CacheService(fileManager: manager, privileged: RecordingPrivilegedOperator())
+    let scan = await service.scan(excludingSensitiveFiles: true, homeURL: root)
+    #expect(scan.estimatedBytes == 10)
+    #expect(scan.userEntries == [readable])
+    #expect(scan.hasCleanableEntries)
+    #expect(scan.inaccessibleTargets.map { $0.path.path } == [blocked.deletingLastPathComponent().path])
+    let result = try await service.clear(scan)
+    #expect(result.removedCount == 1)
+    #expect(result.failedItems.isEmpty)
+    #expect(result.skippedItems == scan.inaccessibleTargets)
+    #expect(FileManager.default.fileExists(atPath: blocked.path))
+    #expect(!FileManager.default.fileExists(atPath: readable.path))
+}
+
+@Test func cacheDiscoveryErrorsDoNotHideOtherTargets() async throws {
+    let root = cacheTestRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let denied = root.appendingPathComponent("Library/Application Support/Denied")
+    let found = root.appendingPathComponent("Library/Application Support/Game/Caches")
+    try FileManager.default.createDirectory(at: denied, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: found, withIntermediateDirectories: true)
+    try Data(repeating: 1, count: 7).write(to: found.appendingPathComponent("game.cache"))
+    let service = CacheService(fileManager: FailingCacheFileManager(denied: [denied]), privileged: RecordingPrivilegedOperator())
+    let scan = await service.scan(homeURL: root, systemRoots: [])
+    #expect(scan.inaccessibleTargets.map { $0.path.path } == [denied.path])
+    #expect(scan.userEntries == [found.appendingPathComponent("game.cache")])
+    #expect(scan.estimatedBytes == 7)
+}
+
+@Test func cacheScanAndCleanupSkipLinksAndRecheckChangedEntries() async throws {
+    let root = cacheTestRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let caches = root.appendingPathComponent("Library/Caches")
+    let external = root.appendingPathComponent("important.txt")
+    let link = caches.appendingPathComponent("link")
+    let changed = caches.appendingPathComponent("changed")
+    try FileManager.default.createDirectory(at: caches, withIntermediateDirectories: true)
+    try Data("keep".utf8).write(to: external)
+    try Data("old".utf8).write(to: changed)
+    try FileManager.default.createSymbolicLink(at: link, withDestinationURL: external)
+    let service = CacheService(privileged: RecordingPrivilegedOperator())
+    let scan = await service.scan(excludingSensitiveFiles: true, homeURL: root)
+    #expect(scan.userEntries == [changed])
+    #expect(scan.inaccessibleTargets.map(\.path) == [link])
+    try FileManager.default.removeItem(at: changed)
+    try FileManager.default.createSymbolicLink(at: changed, withDestinationURL: external)
+    let result = try await service.clear(scan)
+    #expect(result.removedCount == 0)
+    #expect(result.skippedItems.count == 2)
+    #expect(try String(contentsOf: external, encoding: .utf8) == "keep")
+}
+
+@Test func cacheCleanupSkipsMissingEntriesAndDoesNotDeleteNewSiblings() async throws {
+    let root = cacheTestRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let caches = root.appendingPathComponent("Library/Caches")
+    let old = caches.appendingPathComponent("old")
+    let new = caches.appendingPathComponent("new")
+    try FileManager.default.createDirectory(at: caches, withIntermediateDirectories: true)
+    try Data("old".utf8).write(to: old)
+    let service = CacheService(privileged: RecordingPrivilegedOperator())
+    let scan = await service.scan(excludingSensitiveFiles: true, homeURL: root)
+    try FileManager.default.removeItem(at: old)
+    try Data("new".utf8).write(to: new)
+    let result = try await service.clear(scan)
+    #expect(result.removedCount == 0)
+    #expect(result.skippedItems.map(\.path) == [old])
+    #expect(result.failedItems.isEmpty)
+    #expect(FileManager.default.fileExists(atPath: new.path))
+}
+
+@Test func cacheScanDeduplicatesNestedAndRepeatedSystemRoots() async throws {
+    let root = cacheTestRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let system = root.appendingPathComponent("system")
+    let nested = system.appendingPathComponent("nested")
+    try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+    try Data(repeating: 1, count: 6).write(to: nested.appendingPathComponent(".hidden"))
+    let scan = await CacheService(privileged: RecordingPrivilegedOperator()).scan(homeURL: root, systemRoots: [system, nested, system])
+    #expect(scan.systemTargets.map(\.path) == [system.path])
+    #expect(scan.systemEntries.map(\.path) == [nested.path])
+    #expect(scan.estimatedBytes == 6)
+}
+
+@Test func systemCacheCleanupValidatesEntireRequestBeforeDeletion() throws {
+    let root = cacheTestRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let allowed = root.appendingPathComponent("system")
+    let entry = allowed.appendingPathComponent("cache")
+    let outside = root.appendingPathComponent("outside")
+    try FileManager.default.createDirectory(at: allowed, withIntermediateDirectories: true)
+    try Data("keep".utf8).write(to: entry)
+    try Data("keep".utf8).write(to: outside)
+    for invalid in [allowed, outside, allowed.appendingPathComponent("nested/entry"), URL(string: "https://example.com/cache")!] {
+        #expect(throws: (any Error).self) {
+            try SystemCacheCleanup.clear([entry, invalid], allowedRoots: [allowed], fileManager: .default)
+        }
+        #expect(FileManager.default.fileExists(atPath: entry.path))
+    }
+    let link = allowed.appendingPathComponent("link")
+    try FileManager.default.createSymbolicLink(at: link, withDestinationURL: outside)
+    #expect(throws: (any Error).self) {
+        try SystemCacheCleanup.clear([entry, link], allowedRoots: [allowed], fileManager: .default)
+    }
+    #expect(FileManager.default.fileExists(atPath: entry.path))
+    // The production allowlist never accepts test/temp paths.
+    #expect(throws: (any Error).self) { try SystemCacheCleanup.clear([entry]) }
+}
+
+@Test func systemCacheCleanupContinuesAfterFailureAndReturnsStructuredResult() throws {
+    let root = cacheTestRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let denied = root.appendingPathComponent("denied")
+    let good = root.appendingPathComponent(".hidden")
+    try Data("keep".utf8).write(to: denied)
+    try Data("remove".utf8).write(to: good)
+    let result = try SystemCacheCleanup.clear([denied, good, good], allowedRoots: [root], fileManager: .default) { entry in
+        if entry == denied { throw CocoaError(.fileWriteNoPermission) }
+        try FileManager.default.removeItem(at: entry)
+    }
+    #expect(result.removedCount == 1)
+    #expect(result.failedItems.map(\.path) == [denied])
+    #expect(FileManager.default.fileExists(atPath: denied.path))
+    #expect(!FileManager.default.fileExists(atPath: good.path))
+    #expect(try JSONDecoder().decode(CacheCleanupResult.self, from: JSONEncoder().encode(result)) == result)
+}
+
+@Test func cacheCleanupAggregatesUserSystemAndSkippedResults() async throws {
+    let root = cacheTestRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let user = root.appendingPathComponent("user.cache")
+    try Data("remove".utf8).write(to: user)
+    let system = URL(fileURLWithPath: "/Library/Caches/test.cache")
+    let issue = CacheScanIssue(path: system, reason: "denied")
+    let skipped = CacheScanIssue(path: root.appendingPathComponent("skipped"), reason: "unreadable")
+    let privileged = RecordingPrivilegedOperator()
+    await privileged.setSystemResult(CacheCleanupResult(removedCount: 2, failedItems: [issue]))
+    let service = CacheService(privileged: privileged)
+    let scan = CacheScan(userTargets: [root], systemTargets: SystemCacheCleanup.roots, userEntries: [user], systemEntries: [system], estimatedBytes: 6, inaccessibleTargets: [skipped])
+    let result = try await service.clear(scan)
+    #expect(result.removedCount == 3)
+    #expect(result.failedItems == [issue])
+    #expect(result.skippedItems == [skipped])
+    #expect(await privileged.operations == [.healthCheck])
+    #expect(await privileged.cleanedSystemEntries == [system])
+}
+
+@Test func cacheDiscoveryReportsOnlyCacheLinksInsteadOfUnrelatedAppLinks() async throws {
+    let root = cacheTestRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let support = root.appendingPathComponent("Library/Application Support/App")
+    let outside = root.appendingPathComponent("outside")
+    try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+    let cacheLink = support.appendingPathComponent("Caches")
+    for name in ["SingletonLock", "c:", "Documents", "Caches"] {
+        try FileManager.default.createSymbolicLink(at: support.appendingPathComponent(name), withDestinationURL: outside)
+    }
+    let scan = await CacheService(privileged: RecordingPrivilegedOperator()).scan(homeURL: root, systemRoots: [])
+    #expect(scan.inaccessibleTargets.map { $0.path.path } == [cacheLink.path])
+    #expect(!scan.hasCleanableEntries)
+    #expect(FileManager.default.fileExists(atPath: outside.path))
 }

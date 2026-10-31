@@ -4,10 +4,29 @@ import XCTest
 #if SWIFT_PACKAGE
 @testable import MacGameToolboxClickFlow
 #else
+import SwiftUI
 @testable import Mac_游戏工具箱
 #endif
 
 final class ClickFlowTests: XCTestCase {
+    nonisolated(unsafe) private static var timingActivity: NSObjectProtocol?
+
+    override class func setUp() {
+        super.setUp()
+        // These tests assert real event timing. Prevent App Nap/timer coalescing
+        // while the test host is in the background (for example, behind a game).
+        timingActivity = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiated, .latencyCritical],
+            reason: "Validate ClickFlow event timing"
+        )
+    }
+
+    override class func tearDown() {
+        if let timingActivity { ProcessInfo.processInfo.endActivity(timingActivity) }
+        timingActivity = nil
+        super.tearDown()
+    }
+
     private func waitUntilStopped(
         _ service: AutoClickerService,
         timeout: Duration = .seconds(20)
@@ -647,15 +666,18 @@ extension ClickFlowTests {
         let clickFlowSettingsIndex = try! XCTUnwrap(SidebarItem.allCases.firstIndex(of: .cfSettings))
         let appDropIndex = try! XCTUnwrap(SidebarItem.allCases.firstIndex(of: .appDropWishlist))
         let appDropSettingsIndex = try! XCTUnwrap(SidebarItem.allCases.firstIndex(of: .appDropSettings))
-        let appearanceIndex = try! XCTUnwrap(SidebarItem.allCases.firstIndex(of: .appearanceWallpaper))
+        let settingsIndex = try! XCTUnwrap(SidebarItem.allCases.firstIndex(of: .settings))
         XCTAssertLessThan(clickFlowSettingsIndex, appDropIndex)
-        XCTAssertLessThan(appDropSettingsIndex, appearanceIndex)
+        XCTAssertLessThan(appDropSettingsIndex, settingsIndex)
         XCTAssertEqual(SidebarItem.appDropWishlist.appDropPage, .wishlist)
         XCTAssertEqual(SidebarItem.appDropTodayDrops.appDropPage, .todayDrops)
         XCTAssertEqual(SidebarItem.appDropHistoricalLows.appDropPage, .historicalLows)
         XCTAssertEqual(SidebarItem.appDropSettings.appDropPage, .settings)
 
         XCTAssertEqual(NavigationModel.persistedSelection(in: defaults), .metalHUD)
+        defaults.set("appearanceWallpaper", forKey: SidebarItem.storageKey)
+        XCTAssertEqual(NavigationModel.persistedSelection(in: defaults), .settings)
+        XCTAssertEqual(defaults.string(forKey: SidebarItem.storageKey), SidebarItem.settings.rawValue)
         defaults.removeObject(forKey: SidebarItem.storageKey)
         defaults.set("steamDeckSpoof", forKey: SidebarItem.storageKey)
         XCTAssertEqual(NavigationModel.persistedSelection(in: defaults), .hoYoAssistant)
@@ -1764,6 +1786,126 @@ extension ClickFlowTests {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [UpdateCheckerURLProtocol.self]
         return URLSession(configuration: configuration)
+    }
+}
+#endif
+
+#if !SWIFT_PACKAGE
+extension ClickFlowTests {
+    @MainActor
+    func testCacheScopeChangeInvalidatesScanAndConfirmation() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = ConfigurationStore(configurationURL: root.appendingPathComponent("configuration.json"))
+        let model = AppModel(configurationStore: store, launchAutomatically: false)
+        let item = root.appendingPathComponent("cache")
+        model.cacheScan = CacheScan(userTargets: [root], systemTargets: [], userEntries: [item], estimatedBytes: 1)
+        model.requestCacheCleaning()
+        XCTAssertTrue(model.showingCacheConfirmation)
+        XCTAssertEqual(model.cacheConfirmationStage, 1)
+        model.setExcludesSensitiveCacheFiles(false)
+        XCTAssertNil(model.cacheScan)
+        XCTAssertFalse(model.showingCacheConfirmation)
+        XCTAssertEqual(model.cacheConfirmationStage, 0)
+        model.confirmCacheCleaning()
+        XCTAssertFalse(model.isCacheBusy)
+        // Allow the asynchronous config save to complete before removing the fixture.
+        for _ in 0..<40 {
+            if FileManager.default.fileExists(atPath: root.appendingPathComponent("configuration.json").path) { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let saved = try await store.load(importLegacy: false)
+        XCTAssertFalse(saved.excludesSensitiveCacheFiles)
+    }
+
+    @MainActor
+    func testSkippedCacheItemsDoNotBlockConfirmationAndEmptyScansDo() {
+        let model = AppModel(launchAutomatically: false)
+        let root = URL(fileURLWithPath: "/unused-fixture")
+        let skipped = CacheScanIssue(path: root.appendingPathComponent("blocked"), reason: "denied")
+        model.cacheScan = CacheScan(userTargets: [root], systemTargets: [], estimatedBytes: 0, inaccessibleTargets: [skipped])
+        model.requestCacheCleaning()
+        XCTAssertFalse(model.showingCacheConfirmation)
+        model.cacheScan = CacheScan(userTargets: [root], systemTargets: [], userEntries: [root.appendingPathComponent("readable")], estimatedBytes: 1, inaccessibleTargets: [skipped])
+        model.requestCacheCleaning()
+        XCTAssertTrue(model.showingCacheConfirmation)
+    }
+
+    @MainActor
+    func testGlobalLanguageAppliesImmediatelyAndPersistsForNextController() {
+        let defaults = UserDefaults.standard
+        let oldValue = defaults.object(forKey: AppLanguage.preferenceKey)
+        defer {
+            if let oldValue { defaults.set(oldValue, forKey: AppLanguage.preferenceKey) }
+            else { defaults.removeObject(forKey: AppLanguage.preferenceKey) }
+        }
+        let controller = LocalizationController()
+        controller.setPreference(.simplifiedChinese)
+        let previousToken = controller.refreshToken
+        controller.setPreference(.english)
+        XCTAssertNotEqual(previousToken, controller.refreshToken)
+        XCTAssertEqual(tr("设置", "Settings"), "Settings")
+        XCTAssertEqual(LocalizationController().preference, .english)
+        controller.setPreference(.simplifiedChinese)
+        XCTAssertEqual(tr("设置", "Settings"), "设置")
+    }
+
+    @MainActor
+    func testUpdateCheckerReportsRateLimitingWhenFallbacksFail() async {
+        let session = makeUpdateCheckSession()
+        defer { UpdateCheckerURLProtocol.handler = nil }
+        UpdateCheckerURLProtocol.handler = { request in
+            if request.url?.host == "api.github.com" {
+                return (HTTPURLResponse(url: request.url!, statusCode: 429, httpVersion: nil, headerFields: nil)!, Data())
+            }
+            throw URLError(.notConnectedToInternet)
+        }
+        let result = await GitHubReleaseChecker.check(currentVersion: "4.0.0", session: session)
+        XCTAssertEqual(result, .rateLimited)
+    }
+}
+#endif
+
+#if !SWIFT_PACKAGE
+extension ClickFlowTests {
+    @MainActor
+    func testSettingsAndDiskPagesRenderInBothAppearancesAtMinimumWidth() throws {
+        let output = URL(fileURLWithPath: "/tmp/mac-toolbox-ui-qa")
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        let model = AppModel(launchAutomatically: false)
+        let localization = LocalizationController()
+        let pages: [(String, AnyView)] = [
+            ("settings", AnyView(ToolboxSettingsDetailView())),
+            ("disk", AnyView(DiskManagerDetailView()))
+        ]
+        for (name, page) in pages {
+            for (style, scheme, appearance) in [("light", ColorScheme.light, NSAppearance.Name.aqua), ("dark", ColorScheme.dark, NSAppearance.Name.darkAqua)] {
+                let rootView = ZStack {
+                    AppBackgroundView()
+                    page
+                }
+                .environmentObject(model)
+                .environmentObject(localization)
+                .environment(\.colorScheme, scheme)
+                .preferredColorScheme(scheme)
+                let host = NSHostingView(rootView: rootView)
+                let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 640), styleMask: [.borderless], backing: .buffered, defer: false)
+                window.isReleasedWhenClosed = false
+                window.appearance = NSAppearance(named: appearance)
+                window.contentView = host
+                host.frame = NSRect(x: 0, y: 0, width: 720, height: 640)
+                host.layoutSubtreeIfNeeded()
+                window.displayIfNeeded()
+                let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                window.appearance?.performAsCurrentDrawingAppearance {
+                    host.cacheDisplay(in: host.bounds, to: bitmap)
+                }
+                let data = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                XCTAssertGreaterThan(data.count, 1_000)
+                try data.write(to: output.appendingPathComponent("\(name)-\(style).png"))
+                window.close()
+            }
+        }
     }
 }
 #endif

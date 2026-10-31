@@ -3,6 +3,17 @@ import SwiftUI
 struct ChangelogView: View {
     var body: some View {
         List {
+                Section("4.0.1") {
+                    Text(tr("调整磁盘挂载页面布局，将启动时自动恢复移至默认路径与磁盘预设下方", "Moved automatic mount restoration below default paths and volume presets"))
+                    Text(tr("修复缓存扫描将受保护目录误判为缺少完全磁盘访问权限的问题，支持跳过受限项目继续清理", "Fixed cache scanning treating protected folders as missing Full Disk Access and allowed cleanup to continue after skipping inaccessible items"))
+                    Text(tr("缓存清理逐项汇总成功、跳过和失败结果，切换扫描范围后旧结果自动失效", "Cache cleanup now reports removed, skipped, and failed items and invalidates results when the scan scope changes"))
+                    Text(tr("特权辅助服务升级至 v10，系统清理限定为扫描确认的项目，单项失败不再中断其余清理", "Updated the privileged helper to v10 with cleanup limited to scanned entries and continued processing after individual failures"))
+                    Text(tr("移除自定义壁纸功能，将原外观与壁纸入口改为全局设置", "Removed custom wallpapers and replaced Appearance & Wallpaper with global Settings"))
+                    Text(tr("显示语言、启动时检查更新和立即检查更新统一放入设置，支持菜单与 ⌘, 快捷键打开", "Unified display language and automatic and manual update checks in Settings, accessible from the app menu and Command-comma"))
+                    Text(tr("移除侧边栏底部的 SIP 状态、语言切换和更新按钮", "Removed the SIP indicator, language menu, and update button from the sidebar footer"))
+                    Text(tr("修复更新检查对 HTTP 429 限流响应的识别", "Fixed detection of HTTP 429 rate limiting during update checks"))
+                    Text(tr("采用明亮蓝色手柄图标，接入 macOS 26 及以上原生分层图标并修复额外白色底板", "Introduced a bright blue controller icon with native layered icons on macOS 26 and later, removing the extra white backing plate"))
+                }
                 Section("4.0.0") {
                     Text(tr("采用全局两栏式导航，统一游戏工具、磁盘维护、ClickFlow、AppDrop 和帮助页面", "Introduced global two-column navigation for gaming tools, storage, ClickFlow, AppDrop, and help"))
                     Text(tr("移除标题栏控件注入，改用系统原生侧边栏和工具栏", "Removed title-bar control injection in favor of a native sidebar and toolbar"))
