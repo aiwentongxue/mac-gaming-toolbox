@@ -82,7 +82,7 @@ public actor ConfigurationStore {
 
     private func uniquePresets(_ values: [DiskPreset]) -> [DiskPreset] {
         var seen = Set<String>()
-        return values.filter { seen.insert($0.diskIdentifier).inserted }
+        return values.filter { seen.insert($0.volumeUUID.map { "uuid:" + $0.lowercased() } ?? "legacy:" + $0.diskIdentifier).inserted }
     }
 
     private func uniqueRecentApps(_ values: [RecentMetalHUDApp]) -> [RecentMetalHUDApp] {

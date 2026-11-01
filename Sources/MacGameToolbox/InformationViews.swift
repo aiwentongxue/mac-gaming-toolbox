@@ -34,6 +34,8 @@ struct ChangelogView: View {
     private var releases: [Release] {
         [
             Release(version: "4.0.2", entries: [
+                tr("修复磁盘列表选择与详情不同步，单盘操作明确绑定当前磁盘，批量操作提供独立清单", "Fixed mismatched volume selection and details; single-volume actions now target the displayed volume, with a separate batch operation list"),
+                tr("磁盘预设按 UUID 识别，完善路径校验、操作互斥、状态刷新和失败回滚", "Volume presets now use UUIDs, with improved path validation, operation locking, state refresh, and rollback"),
                 tr("修复后台助手通知显示系统占位图标的问题，统一使用工具箱图标", "Fixed the background helper's placeholder notification icon by sharing the toolbox app icon"),
                 tr("修复 AppDrop 详情页价格曲线空白和立即检查导致崩溃的问题", "Fixed missing AppDrop price-history charts and crashes when checking an app from its detail page"),
                 tr("区分工具箱与后台助手通知权限，支持前台通知和测试通知", "Added separate toolbox and helper notification permissions, foreground presentation, and test notifications"),

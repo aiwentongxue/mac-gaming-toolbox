@@ -11,7 +11,14 @@ final class AppModel: ObservableObject {
     @Published var status = TaskStatus()
     @Published var configuration = AppConfiguration()
     @Published var disks: [DiskVolume] = []
-    @Published var selectedDiskIDs = Set<String>()
+    @Published var activeDiskID: String?
+    @Published var selectedDiskIDs = Set<String>() // Explicit batch checkboxes only.
+    @Published private(set) var isDiskBusy = false
+    @Published private(set) var isRefreshingDisks = false
+    @Published private(set) var diskOperationResult: DiskBatchResult?
+    @Published private(set) var diskRefreshError: String?
+    private var diskDraftsByUUID: [String: String] = [:]
+    private var automaticRestoreNotBefore = Date.distantPast
     @Published var diskPaths: [String: String] = [:]
     @Published var metalHUDEnabled = false
     @Published var cacheScan: CacheScan?
@@ -44,10 +51,12 @@ final class AppModel: ObservableObject {
     private var hoyoTask: Task<Void, Never>?
     private var automaticMountTask: Task<Void, Never>?
     private var didLaunch = false
+    private let mountDirectoryCreator: (@MainActor (String) async throws -> Void)?
 
-    init(configurationStore: ConfigurationStore = ConfigurationStore(), launchAutomatically: Bool = true) {
+    init(configurationStore: ConfigurationStore = ConfigurationStore(), launchAutomatically: Bool = true, diskService: DiskService = DiskService(), mountDirectoryCreator: (@MainActor (String) async throws -> Void)? = nil) {
         self.configurationStore = configurationStore
-        diskService = DiskService()
+        self.diskService = diskService
+        self.mountDirectoryCreator = mountDirectoryCreator
         gamingService = GamingService(privileged: privileged)
         hostnameService = HostnameService(privileged: privileged)
         cacheService = CacheService(privileged: privileged)
@@ -464,15 +473,48 @@ final class AppModel: ObservableObject {
     }
 
     func refreshDisks() {
+        guard !isDiskBusy, !isRefreshingDisks else { return }
+        isRefreshingDisks = true
         Task {
-            do {
-                disks = try await diskService.listEligibleVolumes()
-                for preset in configuration.diskPresets { if let path = preset.mountPath { diskPaths[preset.diskIdentifier] = path } }
-            } catch { report(error) }
+            defer { isRefreshingDisks = false }
+            do { applyDiskRefresh(try await diskService.listEligibleVolumes()) }
+            catch { report(error) }
         }
     }
 
+    func applyDiskRefresh(_ available: [DiskVolume]) {
+        let previous = disks
+        let focused = previous.first { $0.id == activeDiskID }
+        let counts = Dictionary(available.compactMap { $0.volumeUUID?.lowercased() }.map { ($0, 1) }, uniquingKeysWith: +)
+        let oldCounts = Dictionary(previous.compactMap { $0.volumeUUID?.lowercased() }.map { ($0, 1) }, uniquingKeysWith: +)
+        for volume in previous {
+            if let uuid = volume.volumeUUID?.lowercased(), oldCounts[uuid] == 1, let draft = diskPaths[volume.id] { diskDraftsByUUID[uuid] = draft }
+        }
+        func rematch(_ volume: DiskVolume) -> DiskVolume? {
+            if let exact = available.first(where: { DiskService.sameIdentity($0, volume) }) { return exact }
+            if let uuid = volume.volumeUUID, counts[uuid.lowercased()] == 1 {
+                return available.first { $0.volumeUUID?.caseInsensitiveCompare(uuid) == .orderedSame }
+            }
+            return nil
+        }
+        selectedDiskIDs = Set(previous.filter { selectedDiskIDs.contains($0.id) }.compactMap { rematch($0)?.id })
+        activeDiskID = focused.flatMap { rematch($0)?.id } ?? available.first?.id
+        var drafts: [String: String] = [:]
+        for volume in available {
+            if let old = previous.first(where: { rematch($0)?.id == volume.id }), let path = diskPaths[old.id] {
+                drafts[volume.id] = path
+            } else if let uuid = volume.volumeUUID, counts[uuid.lowercased()] == 1, let path = diskDraftsByUUID[uuid.lowercased()] {
+                drafts[volume.id] = path
+            } else if let preset = configuration.diskPresets.first(where: { DiskService.matchingVolume(for: $0, in: available)?.id == volume.id }) {
+                drafts[volume.id] = preset.mountPath
+            }
+        }
+        diskPaths = drafts
+        disks = available
+    }
+
     func choosePath(for diskID: String) {
+        guard !isDiskBusy else { return }
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
@@ -481,48 +523,99 @@ final class AppModel: ObservableObject {
         if panel.runModal() == .OK, let url = panel.url { diskPaths[diskID] = url.path }
     }
 
-    func mountSelectedDisks() {
-        let assignments = selectedDiskIDs.compactMap { id -> (String, String)? in
-            guard let path = diskPaths[id], !path.isEmpty else { return nil }
-            return (id, path)
-        }
-        guard assignments.count == selectedDiskIDs.count, !assignments.isEmpty else {
-            report(ToolboxError.invalidPath(tr("请为每个磁盘选择路径", "Choose a path for every volume")))
-            return
-        }
-        runTask(tr("正在挂载磁盘", "Mounting volumes")) {
-            for (_, path) in assignments {
-                if !FileManager.default.fileExists(atPath: path) { try await self.privileged.perform(.createDirectory(path)) }
+    func mountDisks(_ requests: [DiskMountRequest]) {
+        guard !isDiskBusy, !isRefreshingDisks, !requests.isEmpty else { return }
+        isDiskBusy = true
+        diskOperationResult = nil
+        diskRefreshError = nil
+        status = TaskStatus(phase: .running, message: tr("正在挂载磁盘", "Mounting volumes"))
+        Task {
+            defer { isDiskBusy = false }
+            do {
+                let available = try await diskService.listEligibleVolumes()
+                let prepared = try DiskService.validateMountRequests(requests, volumes: available)
+                // All paths and identities are checked before requesting directory creation.
+                // Cancellation of administrator authorization stops before any unmount.
+                for request in prepared where !FileManager.default.fileExists(atPath: request.path) {
+                    if let mountDirectoryCreator { try await mountDirectoryCreator(request.path) }
+                    else {
+                        do { try FileManager.default.createDirectory(atPath: request.path, withIntermediateDirectories: true) }
+                        catch { try await privileged.perform(.createDirectory(request.path)) }
+                    }
+                }
+                let result = await diskService.mountVolumes(prepared)
+                rememberRestorableMounts(prepared.filter { request in result.items.contains { $0.volume.id == request.volume.id && $0.succeeded } })
+                await finishDiskOperation(result)
+            } catch {
+                automaticRestoreNotBefore = Date().addingTimeInterval(30)
+                diskOperationResult = .rejected(requests.map(\.volume), message: error.localizedDescription)
+                report(error)
             }
-            let results = await self.diskService.mountBatch(assignments)
-            let failures = results.compactMap { key, result -> String? in if case .failure = result { return key }; return nil }
-            guard failures.isEmpty else { throw ToolboxError.commandFailed(tr("挂载失败并已回滚：\(failures.joined(separator: ", "))", "Mount failed and rolled back: \(failures.joined(separator: ", "))")) }
-            self.rememberRestorableMounts(assignments)
-            return tr("已成功挂载 \(assignments.count) 个卷", "Mounted \(assignments.count) volume(s)")
         }
     }
 
-    func restoreSelectedDisks() {
-        runTask(tr("正在恢复默认挂载", "Restoring default mounts")) {
-            for identifier in self.selectedDiskIDs { try await self.diskService.restoreDefaultMount(identifier) }
-            let selectedUUIDs = Set(self.disks.filter { self.selectedDiskIDs.contains($0.id) }.compactMap(\.volumeUUID))
-            self.configuration.restorableDiskMounts.removeAll {
-                self.selectedDiskIDs.contains($0.diskIdentifier) || ($0.volumeUUID.map(selectedUUIDs.contains) ?? false)
+    func restoreDisks(_ volumes: [DiskVolume]) {
+        guard !isDiskBusy, !isRefreshingDisks, !volumes.isEmpty else { return }
+        isDiskBusy = true
+        diskOperationResult = nil
+        diskRefreshError = nil
+        status = TaskStatus(phase: .running, message: tr("正在恢复默认挂载", "Restoring default mounts"))
+        Task {
+            defer { isDiskBusy = false }
+            let result = await diskService.restoreVolumes(volumes)
+            let restored = result.items.filter(\.succeeded).map(\.volume)
+            configuration.restorableDiskMounts.removeAll { record in
+                restored.contains { volume in DiskService.matchingVolume(for: record, in: [volume]) != nil }
             }
-            self.saveConfiguration()
-            return tr("已恢复系统默认挂载路径", "Default mounts restored")
+            saveConfiguration()
+            await finishDiskOperation(result)
         }
+    }
+
+    private func finishDiskOperation(_ result: DiskBatchResult) async {
+        if !result.isSuccess { automaticRestoreNotBefore = Date().addingTimeInterval(30) }
+        diskOperationResult = result
+        do { applyDiskRefresh(try await diskService.listEligibleVolumes()) }
+        catch {
+            diskRefreshError = tr("操作已结束，但状态刷新失败，请手动刷新。", "The operation finished, but the status could not be refreshed. Refresh manually.") + " " + error.localizedDescription
+            DiagnosticFileLogger.write("Post-operation disk refresh failed: \(error.localizedDescription)")
+        }
+        status = TaskStatus(phase: result.isSuccess && diskRefreshError == nil ? .succeeded : .failed,
+                            message: diskRefreshError ?? (result.isSuccess ? tr("磁盘操作完成", "Volume operation completed") : tr("磁盘操作未全部完成，请查看逐项结果", "Volume operation incomplete; review the results")),
+                            log: [result.description])
+        DiagnosticFileLogger.write("Disk operation: \(result.description)")
     }
 
     func saveDiskPreset(_ identifier: String) {
-        configuration.diskPresets.removeAll { $0.diskIdentifier == identifier }
-        configuration.diskPresets.insert(DiskPreset(diskIdentifier: identifier, mountPath: diskPaths[identifier]), at: 0)
-        configuration.diskPresets = Array(configuration.diskPresets.prefix(ConfigurationStore.maxPresets))
+        guard !isDiskBusy, let volume = disks.first(where: { $0.id == identifier }), let uuid = volume.volumeUUID else { return }
+        do {
+            let path = try InputValidation.normalizedAbsolutePath(diskPaths[identifier, default: ""])
+            configuration.diskPresets.removeAll { $0.volumeUUID?.caseInsensitiveCompare(uuid) == .orderedSame }
+            configuration.diskPresets.insert(DiskPreset(diskIdentifier: identifier, volumeUUID: uuid, mountPath: path), at: 0)
+            configuration.diskPresets = Array(configuration.diskPresets.prefix(ConfigurationStore.maxPresets))
+            saveConfiguration()
+        } catch { report(error) }
+    }
+
+    func deleteDiskPreset(_ preset: DiskPreset, automatic: Bool = false) {
+        guard !isDiskBusy else { return }
+        if automatic { configuration.restorableDiskMounts.removeAll { $0 == preset } }
+        else { configuration.diskPresets.removeAll { $0 == preset } }
         saveConfiguration()
     }
 
-    func deleteDiskPreset(_ identifier: String) {
-        configuration.diskPresets.removeAll { $0.diskIdentifier == identifier }
+    func associateDiskRecord(_ preset: DiskPreset, with volume: DiskVolume, automatic: Bool) {
+        guard !isDiskBusy, preset.volumeUUID == nil, let uuid = volume.volumeUUID,
+              disks.contains(where: { DiskService.sameIdentity($0, volume) }) else { return }
+        let updated = DiskPreset(diskIdentifier: volume.id, volumeUUID: uuid, mountPath: preset.mountPath)
+        if automatic {
+            configuration.restorableDiskMounts.removeAll { $0 == preset || $0.volumeUUID?.caseInsensitiveCompare(uuid) == .orderedSame }
+            configuration.restorableDiskMounts.insert(updated, at: 0)
+        } else {
+            configuration.diskPresets.removeAll { $0 == preset || $0.volumeUUID?.caseInsensitiveCompare(uuid) == .orderedSame }
+            configuration.diskPresets.insert(updated, at: 0)
+            diskPaths[volume.id] = preset.mountPath
+        }
         saveConfiguration()
     }
 
@@ -533,16 +626,16 @@ final class AppModel: ObservableObject {
     }
 
     func restorePreviousMounts() {
-        status = TaskStatus(phase: .running, message: tr("正在恢复上次挂载", "Restoring previous mounts"))
+        guard !isDiskBusy, !isRefreshingDisks else { return }
+        isDiskBusy = true
+        diskOperationResult = nil
+        diskRefreshError = nil
         Task {
+            defer { isDiskBusy = false }
             do {
-                let availableVolumes = try await diskService.listEligibleVolumes()
-                disks = availableVolumes
-                enrichRestorableMountUUIDs(from: availableVolumes)
-                guard !configuration.restorableDiskMounts.isEmpty else {
-                    throw ToolboxError.commandFailed(tr("没有可恢复的挂载记录", "No previous mounts to restore"))
-                }
-                await restoreMounts(from: availableVolumes, manual: true)
+                let available = try await diskService.listEligibleVolumes()
+                applyDiskRefresh(available)
+                await restoreMounts(from: available, manual: true)
             } catch { report(error) }
         }
     }
@@ -749,10 +842,15 @@ final class AppModel: ObservableObject {
         let startedAt = clock.now
         var nextLogSecond = 0
         while !Task.isCancelled, configuration.automaticallyRestoreMountsOnLaunch {
+            if isDiskBusy || isRefreshingDisks {
+                do { try await Task.sleep(for: .seconds(1)) } catch { return }
+                continue
+            }
+            isRefreshingDisks = true
             do {
                 let availableVolumes = try await diskService.listEligibleVolumes()
-                disks = availableVolumes
-                enrichRestorableMountUUIDs(from: availableVolumes)
+                guard !Task.isCancelled, configuration.automaticallyRestoreMountsOnLaunch else { isRefreshingDisks = false; return }
+                applyDiskRefresh(availableVolumes)
                 let elapsedSeconds = Int(startedAt.duration(to: clock.now).components.seconds)
                 if elapsedSeconds >= nextLogSecond {
                     let identifiers = availableVolumes.map {
@@ -761,8 +859,14 @@ final class AppModel: ObservableObject {
                     DiagnosticFileLogger.write("Automatic disk scan \(elapsedSeconds)s: \(identifiers.isEmpty ? "no eligible volumes" : identifiers)")
                     nextLogSecond = max(10, ((elapsedSeconds / 10) + 1) * 10)
                 }
-                if elapsedSeconds >= 10 { await restoreMounts(from: availableVolumes) }
+                isRefreshingDisks = false
+                if elapsedSeconds >= 10, Date() >= automaticRestoreNotBefore, !isDiskBusy {
+                    isDiskBusy = true
+                    await restoreMounts(from: availableVolumes)
+                    isDiskBusy = false
+                }
             } catch {
+                isRefreshingDisks = false
                 DiagnosticFileLogger.write("Automatic disk refresh failed: \(error.localizedDescription)")
             }
             do { try await Task.sleep(for: .seconds(1)) }
@@ -771,63 +875,42 @@ final class AppModel: ObservableObject {
     }
 
     private func restoreMounts(from volumes: [DiskVolume], manual: Bool = false) async {
-        let assignments = configuration.restorableDiskMounts.compactMap { preset -> (String, String)? in
-            guard let path = preset.mountPath,
-                  let volume = DiskService.matchingVolume(for: preset, in: volumes),
-                  volume.mountPoint != path,
-                  FileManager.default.fileExists(atPath: path) else { return nil }
-            return (volume.id, path)
-        }
-        guard !assignments.isEmpty else {
+        let plan = DiskRestorationPlan(presets: configuration.restorableDiskMounts, volumes: volumes)
+        if plan.requests.isEmpty {
             if manual {
-                report(ToolboxError.commandFailed(tr("没有找到可恢复的磁盘和路径", "No matching volume and path found to restore")))
-                return
-            }
-            if !configuration.restorableDiskMounts.isEmpty {
-                DiagnosticFileLogger.write("Automatic mount restore waiting: no matching unmounted target with an existing path")
+                let message = plan.entries.isEmpty ? tr("没有可恢复的挂载记录", "No previous mounts to restore") : plan.entries.map { "\($0.preset.diskIdentifier): \(restorationStateText($0.state))" }.joined(separator: "\n")
+                status = TaskStatus(phase: plan.entries.allSatisfy { $0.state == .alreadyMounted } ? .succeeded : .failed, message: message)
             }
             return
         }
-
-        status = TaskStatus(phase: .running, message: tr("正在自动恢复上次挂载", "Restoring previous mounts"))
-        let results = await diskService.mountBatch(assignments)
-        let succeeded = assignments.filter {
-            guard case .success? = results[$0.0] else { return false }
-            return true
-        }
-        if succeeded.count == assignments.count {
-            rememberRestorableMounts(succeeded)
-            status = TaskStatus(phase: .succeeded, message: tr("已自动恢复 \(succeeded.count) 个卷的挂载", "Restored \(succeeded.count) previous mount(s)"), progress: 1)
-            DiagnosticFileLogger.write("Automatically restored \(succeeded.count) mount(s)")
-        } else {
-            report(ToolboxError.commandFailed(tr("自动恢复上次挂载失败", "Failed to restore previous mounts")))
+        diskRefreshError = nil
+        let result = await diskService.mountVolumes(plan.requests)
+        rememberRestorableMounts(plan.requests.filter { request in result.items.contains { $0.volume.id == request.volume.id && $0.succeeded } })
+        if !result.isSuccess { automaticRestoreNotBefore = Date().addingTimeInterval(30) }
+        await finishDiskOperation(result)
+        if manual, plan.entries.contains(where: { $0.state != .ready && $0.state != .alreadyMounted }) {
+            status.log += plan.entries.filter { $0.state != .ready }.map { "\($0.preset.diskIdentifier): \(restorationStateText($0.state))" }
+            status.message += tr("；部分记录需要处理", "; some records need attention")
         }
     }
 
-    private func rememberRestorableMounts(_ assignments: [(String, String)]) {
-        let identifiers = Set(assignments.map(\.0))
-        let presets = assignments.map { identifier, path in
-            let volume = disks.first { $0.id == identifier }
-            return DiskPreset(diskIdentifier: identifier, volumeUUID: volume?.volumeUUID, mountPath: path)
+    func restorationStateText(_ state: DiskRestorationState) -> String {
+        switch state {
+        case .ready: return tr("可以恢复", "Ready to restore")
+        case .alreadyMounted: return tr("已在目标路径，无需恢复", "Already at the requested path")
+        case .offline: return tr("磁盘未连接", "Volume offline")
+        case .needsAssociation: return tr("旧记录需要重新关联", "Legacy record needs association")
+        case .invalidPath: return tr("目标目录失效", "Destination unavailable")
         }
-        let volumeUUIDs = Set(presets.compactMap(\.volumeUUID))
-        configuration.restorableDiskMounts.removeAll {
-            identifiers.contains($0.diskIdentifier) || ($0.volumeUUID.map(volumeUUIDs.contains) ?? false)
-        }
-        configuration.restorableDiskMounts.insert(contentsOf: presets, at: 0)
-        saveConfiguration()
     }
 
-    private func enrichRestorableMountUUIDs(from volumes: [DiskVolume]) {
-        var changed = false
-        for index in configuration.restorableDiskMounts.indices where configuration.restorableDiskMounts[index].volumeUUID == nil {
-            let identifier = configuration.restorableDiskMounts[index].diskIdentifier
-            guard let volumeUUID = volumes.first(where: { $0.id == identifier })?.volumeUUID else { continue }
-            configuration.restorableDiskMounts[index].volumeUUID = volumeUUID
-            changed = true
-            DiagnosticFileLogger.write("Added volume UUID to automatic restore record: \(identifier) -> \(volumeUUID)")
+    private func rememberRestorableMounts(_ requests: [DiskMountRequest]) {
+        for request in requests {
+            guard let uuid = request.volume.volumeUUID else { continue }
+            configuration.restorableDiskMounts.removeAll { $0.volumeUUID?.caseInsensitiveCompare(uuid) == .orderedSame }
+            configuration.restorableDiskMounts.insert(DiskPreset(diskIdentifier: request.volume.id, volumeUUID: uuid, mountPath: request.path), at: 0)
         }
-        if changed { saveConfiguration() }
+        if !requests.isEmpty { saveConfiguration() }
     }
 
     private func saveConfiguration() {

@@ -124,14 +124,14 @@ import Testing
     #expect(loaded.defaultPaths.last == "/tmp/Games-1000")
 }
 
-@Test func automaticMountMatchingPrefersStableVolumeUUIDAndFallsBackToIdentifier() {
+@Test func automaticMountMatchingUsesUUIDAndDoesNotGuessLegacyIdentity() {
     let oldIdentifier = DiskPreset(diskIdentifier: "disk4s1", volumeUUID: "VOLUME-UUID", mountPath: "/tmp/Games")
     let renumberedVolume = DiskVolume(id: "disk8s2", volumeUUID: "volume-uuid", name: "Games", fileSystem: "apfs", mountPoint: nil, size: 1, wholeDisk: "disk8", isInternal: false)
     #expect(DiskService.matchingVolume(for: oldIdentifier, in: [renumberedVolume])?.id == "disk8s2")
 
     let legacyPreset = DiskPreset(diskIdentifier: "disk4s1", mountPath: "/tmp/Games")
     let legacyVolume = DiskVolume(id: "disk4s1", name: "Games", fileSystem: "apfs", mountPoint: nil, size: 1, wholeDisk: "disk4", isInternal: false)
-    #expect(DiskService.matchingVolume(for: legacyPreset, in: [legacyVolume])?.id == "disk4s1")
+    #expect(DiskService.matchingVolume(for: legacyPreset, in: [legacyVolume]) == nil)
 }
 
 @Test func hostsEditorIsIdempotentAndRollsBack() {
@@ -593,79 +593,112 @@ actor RejectingPrivilegedOperator: PrivilegedOperating {
     #expect(result.standardOutput.count > 65_536)
 }
 
+func diskFixture(_ id: String = "disk4s1", path: String? = nil, uuid: String? = nil) -> DiskVolume {
+    DiskVolume(id: id, volumeUUID: uuid ?? "UUID-" + id, name: "Fixture-" + id, fileSystem: "apfs", mountPoint: path, size: 1024, wholeDisk: "disk4", isInternal: false)
+}
+
 actor MockRunner: CommandRunning {
     var calls: [[String]] = []
+    let ids: [String]
+    let originalPaths: [String: String]
+    var paths: [String: String]
     var failingMount: String?
     var staleInfoReads: [String: Int]
     var reportedMountPaths: [String: String]
+    var mounted = Set<String>()
+    var failUnmountIDs = Set<String>()
+    var failRollbackIDs = Set<String>()
+    var failDefaultIDs = Set<String>()
+    var changedIdentityIDs = Set<String>()
+    var changeIdentityAfterUnmount = Set<String>()
+    var delayMount = false
 
-    init(failingMount: String? = nil, staleInfoReads: [String: Int] = [:], reportedMountPaths: [String: String] = [:]) {
-        self.failingMount = failingMount
-        self.staleInfoReads = staleInfoReads
-        self.reportedMountPaths = reportedMountPaths
+    init(failingMount: String? = nil, staleInfoReads: [String: Int] = [:], reportedMountPaths: [String: String] = [:], ids: [String] = ["disk4s1", "disk5s1"], paths: [String: String] = [:]) {
+        self.failingMount = failingMount; self.staleInfoReads = staleInfoReads; self.reportedMountPaths = reportedMountPaths
+        self.ids = ids; self.paths = paths; originalPaths = paths
     }
-
+    func configure(unmount: Set<String> = [], rollback: Set<String> = [], defaults: Set<String> = [], identityAfterUnmount: Set<String> = [], delay: Bool = false) {
+        failUnmountIDs = unmount; failRollbackIDs = rollback; failDefaultIDs = defaults; changeIdentityAfterUnmount = identityAfterUnmount; delayMount = delay
+    }
     func run(_ executable: String, arguments: [String]) async throws -> CommandResult {
         calls.append(arguments)
-        if arguments.contains("mount"), let failingMount, arguments.contains(where: { $0.contains(failingMount) }) {
-            throw ToolboxError.commandFailed("fixture failure")
+        var plist: [String: Any] = [:]
+        if arguments.first == "list" { plist = ["AllDisks": ids] }
+        if arguments.first == "unmount", let id = arguments.last {
+            if failUnmountIDs.contains(id) { throw ToolboxError.commandFailed("busy") }
+            paths[id] = nil
+            if changeIdentityAfterUnmount.contains(id) { changedIdentityIDs.insert(id) }
         }
-        if arguments.first == "info" {
-            let identifier = arguments.last ?? ""
-            if let remaining = staleInfoReads[identifier], remaining > 0 {
-                staleInfoReads[identifier] = remaining - 1
-                let data = try PropertyListSerialization.data(fromPropertyList: ["MountPoint": "/Volumes/Stale"], format: .xml, options: 0)
-                return CommandResult(exitCode: 0, standardOutput: data, standardError: Data())
+        if arguments.first == "mount" {
+            let custom = arguments.contains("-mountPoint")
+            let id = custom ? String(arguments.last!.dropFirst(5)) : arguments.last!
+            if delayMount { try await Task.sleep(for: .milliseconds(80)) }
+            if custom {
+                let path = arguments[2]
+                if (failingMount == id && path != originalPaths[id]) || (failRollbackIDs.contains(id) && path == originalPaths[id]) { throw ToolboxError.commandFailed("fixture mount failure") }
+                paths[id] = path
+            } else {
+                if failDefaultIDs.contains(id) { throw ToolboxError.commandFailed("fixture default failure") }
+                paths[id] = "/Volumes/Default-" + id
             }
-            let path = reportedMountPaths[identifier]
-                ?? calls.last(where: { $0.contains("-mountPoint") && $0.last?.contains(identifier) == true })?.dropFirst(2).first
-                ?? "/Volumes/Test"
-            let data = try PropertyListSerialization.data(fromPropertyList: ["MountPoint": path], format: .xml, options: 0)
-            return CommandResult(exitCode: 0, standardOutput: data, standardError: Data())
+            mounted.insert(id)
         }
-        return CommandResult(exitCode: 0, standardOutput: Data(), standardError: Data())
+        if arguments.first == "info", let id = arguments.last {
+            if id == "/" { plist = ["DeviceIdentifier":"disk0s1", "ParentWholeDisk":"disk0", "MountPoint":"/", "APFSVolumeGroupID":"SYSTEM"] }
+            else {
+                var path = paths[id] ?? ""
+                if mounted.contains(id) {
+                    if let count = staleInfoReads[id], count > 0 { staleInfoReads[id] = count - 1; path = "/Volumes/Stale" }
+                    else { path = reportedMountPaths[id] ?? path }
+                }
+                plist = ["DeviceIdentifier":id, "ParentWholeDisk":"disk4", "WholeDisk":false, "VolumeName":"Fixture-" + id, "FilesystemType":"apfs", "MountPoint":path, "VolumeUUID": changedIdentityIDs.contains(id) ? "REPLACED" : "UUID-" + id]
+            }
+        }
+        let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+        return CommandResult(exitCode: 0, standardOutput: data, standardError: Data())
     }
 }
 
-@Test func batchMountRollsBackEarlierVolumeOnFailure() async {
-    let runner = MockRunner(failingMount: "disk5s1")
+@Test func batchMountRollsBackEarlierVolumeOnFailure() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let runner = MockRunner(failingMount: "disk5s1", paths: ["disk4s1":"/Volumes/Original-A", "disk5s1":"/Volumes/Original-B"])
     let service = DiskService(runner: runner)
-    _ = await service.mountBatch([("disk4s1", "/tmp/one"), ("disk5s1", "/tmp/two")])
+    let volumes = try await service.listEligibleVolumes()
+    let result = await service.mountVolumes(volumes.enumerated().map { DiskMountRequest(volume: $0.element, path: root.appendingPathComponent("target-\($0.offset)").path) })
     let calls = await runner.calls
-    #expect(calls.contains(["mount", "disk4s1"]))
-    #expect(calls.filter { $0 == ["unmount", "disk5s1"] }.count == 2)
+    #expect(result.items.map(\.outcome) == [.rolledBack, .rolledBack])
+    #expect(calls.contains(["mount", "-mountPoint", "/Volumes/Original-A", "/dev/disk4s1"]))
+    #expect(await runner.paths["disk4s1"] == "/Volumes/Original-A")
 }
 
 @Test func mountWaitsForDiskutilInfoToReflectTheRequestedPath() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
     let runner = MockRunner(staleInfoReads: ["disk4s1": 2])
     let service = DiskService(runner: runner)
-
-    try await service.mount("disk4s1", at: "/tmp/delayed")
-
+    try await service.mount("disk4s1", at: root.path)
     let calls = await runner.calls
-    #expect(calls.filter { $0 == ["info", "-plist", "disk4s1"] }.count == 3)
+    let mountIndex = try #require(calls.firstIndex { $0.first == "mount" && $0.contains("-mountPoint") })
+    #expect(calls.dropFirst(mountIndex + 1).filter { $0 == ["info", "-plist", "disk4s1"] }.count == 3)
 }
 
 @Test func mountAcceptsEquivalentCanonicalMountPaths() async throws {
     let mountPath = "/tmp/mac-game-toolbox-canonical-\(UUID().uuidString)"
-    try FileManager.default.createDirectory(atPath: mountPath, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(atPath: mountPath) }
     let runner = MockRunner(reportedMountPaths: ["disk4s1": "/private\(mountPath)"])
-    let service = DiskService(runner: runner)
-
-    try await service.mount("disk4s1", at: mountPath)
+    try await DiskService(runner: runner).mount("disk4s1", at: mountPath)
 }
 
-@Test func batchMountProcessesAllVolumesWithoutANumericalCap() async {
-    let runner = MockRunner()
-    let service = DiskService(runner: runner)
-    let assignments = (1...1_000).map { ("disk\($0)s1", "/tmp/volume-\($0)") }
-
-    let results = await service.mountBatch(assignments)
-
-    #expect(results.count == assignments.count)
-    #expect(results["disk4s1"] != nil)
-    #expect(results["disk1000s1"] != nil)
+@Test func batchMountProcessesAllVolumesWithoutANumericalCap() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let ids = (1...1_000).map { "disk\($0)s1" }
+    let service = DiskService(runner: MockRunner(ids: ids))
+    let volumes = try await service.listEligibleVolumes()
+    let result = await service.mountVolumes(volumes.map { DiskMountRequest(volume: $0, path: root.appendingPathComponent($0.id).path) })
+    #expect(result.isSuccess)
+    #expect(result.items.count == ids.count)
 }
 
 // A deterministic filesystem failure lets these tests run with any user/ACL.

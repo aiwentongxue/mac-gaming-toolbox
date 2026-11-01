@@ -98,6 +98,7 @@ public enum InputValidation {
     public static func normalizedAbsolutePath(_ value: String, home: String = NSHomeDirectory()) throws -> String {
         var path = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if path.hasPrefix("~/") { path = home + String(path.dropFirst()) }
+        guard path.hasPrefix("/"), !path.contains("\0") else { throw ToolboxError.invalidPath(value) }
         path = URL(fileURLWithPath: path).standardizedFileURL.path
         guard path.hasPrefix("/"), path != "/", !path.contains("\0") else {
             throw ToolboxError.invalidPath(value)

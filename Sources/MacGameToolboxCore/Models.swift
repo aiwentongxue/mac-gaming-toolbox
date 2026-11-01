@@ -32,8 +32,9 @@ public struct DiskVolume: Identifiable, Hashable, Sendable {
     public let size: UInt64
     public let wholeDisk: String
     public let isInternal: Bool
+    public let isRemovable: Bool
 
-    public init(id: String, volumeUUID: String? = nil, name: String, fileSystem: String, mountPoint: String?, size: UInt64, wholeDisk: String, isInternal: Bool) {
+    public init(id: String, volumeUUID: String? = nil, name: String, fileSystem: String, mountPoint: String?, size: UInt64, wholeDisk: String, isInternal: Bool, isRemovable: Bool = false) {
         self.id = id
         self.volumeUUID = volumeUUID
         self.name = name
@@ -42,6 +43,7 @@ public struct DiskVolume: Identifiable, Hashable, Sendable {
         self.size = size
         self.wholeDisk = wholeDisk
         self.isInternal = isInternal
+        self.isRemovable = isRemovable
     }
 }
 
