@@ -9,8 +9,10 @@ struct MetalHUDDetailView: View {
     @State private var mode = MetalHUDMode.desktop
     @State private var appSearchText = ""
     @State private var showsPresetGuide = false
+    @State private var isDropTargeted = false
 
     var body: some View {
+        GeometryReader { viewport in
         ToolboxPage(
             icon: SidebarItem.metalHUD.iconName,
             title: tr("MetalHUD 性能监控", "MetalHUD Performance Monitor"),
@@ -35,10 +37,24 @@ struct MetalHUDDetailView: View {
                 iosContent
             }
         }
+        .frame(width: viewport.size.width, height: viewport.size.height)
+        .dropDestination(for: URL.self) { urls, _ in
+            let accepted = model.addMetalHUDApps(urls)
+            if accepted { mode = .desktop }
+            return accepted
+        } isTargeted: { isDropTargeted = $0 }
+        .overlay {
+            if isDropTargeted {
+                RoundedRectangle(cornerRadius: 16).stroke(Color.accentColor, style: StrokeStyle(lineWidth: 3, dash: [8, 5]))
+                    .padding(8).allowsHitTesting(false)
+            }
+        }
+        .accessibilityIdentifier("metalHUD.page")
         .onChange(of: mode) { _, newMode in
             if newMode == .ios, model.iosDevices.isEmpty, !model.isRefreshingIOSDevices {
                 model.refreshIOSDevices()
             }
+        }
         }
     }
 
@@ -75,15 +91,15 @@ struct MetalHUDDetailView: View {
             ToolboxCard(
                 tr("为单个 App 启动", "Launch a Single App"),
                 subtitle: tr(
-                    "最近使用的 App 可快速再次启动；右键可保存、移除 HUD 预设或删除记录。",
-                    "Relaunch recent apps quickly. Use the context menu to save or remove a HUD preset and clear a record."
+                    "将访达中的 .app 拖入此页面，或点“添加 App”。添加后不会自动启动，请点击卡片右上角的启动按钮。",
+                    "Drag .app files from Finder onto this page, or choose Add App. Adding does not launch an app; use the play button at the top right of its card."
                 )
             ) {
                 if model.configuration.recentMetalHUDApps.isEmpty {
                     ContentUnavailableText(
                         icon: "app.dashed",
                         title: tr("暂无最近 App", "No Recent Apps"),
-                        message: tr("选择一个 App 后，它会出现在这里。", "Choose an app and it will appear here.")
+                        message: tr("拖入 .app 或点击添加，无需重新查找目录。", "Drop an .app here or add it directly, without finding the folder again.")
                     )
                 } else {
                     LazyVGrid(
@@ -97,9 +113,9 @@ struct MetalHUDDetailView: View {
                 }
                 HStack {
                     Button {
-                        model.launchAppWithMetalHUD()
+                        model.chooseMetalHUDApps()
                     } label: {
-                        Label(tr("选择其他 App", "Choose Another App"), systemImage: "plus.app")
+                        Label(tr("添加 App", "Add App"), systemImage: "plus.app")
                     }
                     Spacer()
                     Button {
@@ -332,59 +348,28 @@ private struct MetalHUDRecentAppCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Button {
-                launch()
-            } label: {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(nsImage: NSWorkspace.shared.icon(forFile: app.path))
-                            .resizable()
-                            .interpolation(.high)
-                            .scaledToFit()
-                            .frame(width: 48, height: 48)
-                            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                                    .stroke(.white.opacity(0.14), lineWidth: 0.7)
-                            }
-
-                        Spacer(minLength: 2)
-
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(nsImage: NSWorkspace.shared.icon(forFile: app.path))
+                        .resizable().interpolation(.high).scaledToFit()
+                        .frame(width: 48, height: 48)
+                        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    Spacer(minLength: 2)
+                    Button { launch() } label: {
                         ZStack {
-                            Circle()
-                                .fill(Color.blue)
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(.white)
-                                .offset(x: 1)
-                        }
-                        .frame(width: 31, height: 31)
-                        .scaleEffect(isHovering ? 1.07 : 1)
-                        .shadow(
-                            color: Color.blue.opacity(isHovering ? 0.36 : 0.18),
-                            radius: isHovering ? 8 : 4,
-                            y: 2
-                        )
+                            Circle().fill(Color.blue)
+                            Image(systemName: "play.fill").font(.system(size: 12, weight: .bold)).foregroundStyle(.white).offset(x: 1)
+                        }.frame(width: 31, height: 31)
                     }
-
-                    Text(app.displayName)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, minHeight: 34, alignment: .topLeading)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(tr("使用 MetalHUD 启动", "Launch with MetalHUD") + ", \(app.displayName)")
+                    .accessibilityIdentifier("metalHUD.launch.\(app.path)")
+                    .help(tr("使用 MetalHUD 启动", "Launch with MetalHUD") + " " + app.displayName)
                 }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .contentShape(Rectangle())
+                Text(app.displayName).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                    .lineLimit(2).multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, minHeight: 34, alignment: .topLeading)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(
-                tr("使用 MetalHUD 启动", "Launch with MetalHUD")
-                    + ", \(app.displayName)"
-            )
-            .help(
-                tr("使用 MetalHUD 启动 \(app.displayName)", "Launch \(app.displayName) with MetalHUD")
-            )
 
             presetControls
         }

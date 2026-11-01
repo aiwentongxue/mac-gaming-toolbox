@@ -36,12 +36,11 @@ struct DiskManagerDetailView: View {
             if viewport.size.width >= 720 {
                 HStack(alignment: .top, spacing: 16) {
                     volumeList.frame(minWidth: 240, idealWidth: 300, maxWidth: 350)
-                    volumeDetail.frame(minWidth: 300, maxWidth: .infinity)
+                    Group { if batchMode { batchCard } else { volumeDetail } }.frame(minWidth: 300, maxWidth: .infinity)
                 }
             } else {
-                VStack(alignment: .leading, spacing: 16) { volumeList; volumeDetail }
+                VStack(alignment: .leading, spacing: 16) { volumeList; if batchMode { batchCard } else { volumeDetail } }
             }
-            if batchMode { batchCard }
             if let result = model.diskOperationResult { resultCard(result) }
             configurationCard
             automaticRestoreCard
@@ -125,8 +124,18 @@ struct DiskManagerDetailView: View {
                     }
                 }
                 .listStyle(.inset)
-                .frame(height: 310)
+                .frame(height: batchMode ? 180 : 310)
                 .accessibilityIdentifier("disk.volumes")
+            }
+            if batchMode {
+                Divider()
+                Text("\(tr("已选择", "Selected")) \(batchVolumes.count)").font(.subheadline.weight(.semibold))
+                let missing = batchVolumes.filter { !validPath($0) }.count
+                if missing > 0 {
+                    Text("\(tr("待设置路径", "Paths to Set")): \(missing)")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+                VStack(alignment: .leading, spacing: 8) { batchMountButton; batchRestoreButton }
             }
         }
         .disabled(model.isDiskBusy)
@@ -190,28 +199,39 @@ struct DiskManagerDetailView: View {
     private func validPath(_ disk: DiskVolume) -> Bool { (try? InputValidation.normalizedAbsolutePath(model.diskPaths[disk.id, default: ""])) != nil }
 
     private var batchCard: some View {
-        ToolboxCard(tr("批量操作清单", "Batch Operation List"), subtitle: tr("仅操作下方列出的磁盘。请分别设置挂载路径。", "Only the volumes listed below will be affected. Set a destination for each volume.")) {
-            Text("\(tr("已选择", "Selected")) \(batchVolumes.count)").font(.subheadline)
-            ForEach(batchVolumes) { disk in
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("\(disk.name) · \(disk.id)").font(.headline)
-                    pathEditor(disk)
-                    Divider()
+        ToolboxCard(tr("批量挂载配置", "Batch Mount Configuration"), subtitle: tr("为勾选的磁盘设置路径，然后在可用磁盘下方执行批量操作。", "Set paths for the checked volumes, then run batch actions below Available Volumes.")) {
+            if batchVolumes.isEmpty {
+                Text(tr("请先勾选可用磁盘。", "Check the volumes you want to use first.")).foregroundStyle(.secondary)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        ForEach(batchVolumes) { disk in
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("\(disk.name) · \(disk.id)").font(.headline)
+                                pathEditor(disk)
+                                Divider()
+                            }
+                        }
+                    }.frame(maxWidth: .infinity, alignment: .leading)
                 }
-            }
-            ViewThatFits(in: .horizontal) {
-                HStack { batchRestoreButton; batchMountButton }.fixedSize(horizontal: true, vertical: false)
-                VStack(alignment: .leading) { batchRestoreButton; batchMountButton }
+                .frame(height: 280)
+                .accessibilityIdentifier("disk.batchPaths")
             }
         }
         .disabled(model.isDiskBusy)
     }
     private var batchRestoreButton: some View {
-        Button(tr("批量恢复默认挂载", "Restore Batch Defaults")) { pendingAction = PendingDiskAction(requests: batchVolumes.map(request), restore: true) }
+        Button { pendingAction = PendingDiskAction(requests: batchVolumes.map(request), restore: true) } label: {
+            Text(tr("批量恢复默认挂载", "Restore Batch Defaults")).fixedSize(horizontal: false, vertical: true)
+        }
+            .accessibilityIdentifier("disk.batchRestore")
             .disabled(busy || batchVolumes.isEmpty)
     }
     private var batchMountButton: some View {
-        Button(tr("批量挂载", "Mount Batch")) { pendingAction = PendingDiskAction(requests: batchVolumes.map(request), restore: false) }
+        Button { pendingAction = PendingDiskAction(requests: batchVolumes.map(request), restore: false) } label: {
+            Text(tr("批量挂载", "Mount Batch")).fixedSize(horizontal: false, vertical: true)
+        }
+            .accessibilityIdentifier("disk.batchMount")
             .toolboxProminentButton().disabled(busy || batchVolumes.isEmpty || !batchVolumes.allSatisfy(validPath))
     }
 

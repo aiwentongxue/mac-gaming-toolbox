@@ -33,6 +33,13 @@ struct ChangelogView: View {
 
     private var releases: [Release] {
         [
+            Release(version: "4.0.3", entries: [
+                tr("将批量挂载及恢复按钮移到可用磁盘列表下方，勾选数量与执行入口集中显示", "Moved batch mount and restore buttons below the volume list, keeping selection counts and actions together"),
+                tr("批量模式右侧显示挂载路径配置，提示尚未设置路径的卷数量", "Batch mode now shows path configuration on the right and identifies volumes that still need a destination"),
+                tr("MetalHUD 支持从访达拖入 .app 添加最近使用的 App，兼容 Steam 等自定义目录", "MetalHUD now accepts .app files dragged from Finder, including games in Steam and other custom folders"),
+                tr("添加 MetalHUD 快捷方式不再自动打开应用，仅点击卡片右上角启动按钮才启动", "Adding a MetalHUD shortcut no longer launches the app; use the play button at the top right of its card"),
+                tr("保留磁盘 UUID 识别、路径校验、操作互斥与失败回滚修复", "Retained volume UUID matching, path validation, operation locking, and rollback fixes")
+            ]),
             Release(version: "4.0.2", entries: [
                 tr("修复磁盘列表选择与详情不同步，单盘操作明确绑定当前磁盘，批量操作提供独立清单", "Fixed mismatched volume selection and details; single-volume actions now target the displayed volume, with a separate batch operation list"),
                 tr("磁盘预设按 UUID 识别，完善路径校验、操作互斥、状态刷新和失败回滚", "Volume presets now use UUIDs, with improved path validation, operation locking, state refresh, and rollback"),

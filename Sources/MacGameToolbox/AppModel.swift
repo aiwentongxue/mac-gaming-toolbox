@@ -53,11 +53,11 @@ final class AppModel: ObservableObject {
     private var didLaunch = false
     private let mountDirectoryCreator: (@MainActor (String) async throws -> Void)?
 
-    init(configurationStore: ConfigurationStore = ConfigurationStore(), launchAutomatically: Bool = true, diskService: DiskService = DiskService(), mountDirectoryCreator: (@MainActor (String) async throws -> Void)? = nil) {
+    init(configurationStore: ConfigurationStore = ConfigurationStore(), launchAutomatically: Bool = true, diskService: DiskService = DiskService(), mountDirectoryCreator: (@MainActor (String) async throws -> Void)? = nil, gamingService: GamingService? = nil) {
         self.configurationStore = configurationStore
         self.diskService = diskService
         self.mountDirectoryCreator = mountDirectoryCreator
-        gamingService = GamingService(privileged: privileged)
+        self.gamingService = gamingService ?? GamingService(privileged: privileged)
         hostnameService = HostnameService(privileged: privileged)
         cacheService = CacheService(privileged: privileged)
         metalHUDPresetStore = MetalHUDPresetStore()
@@ -108,19 +108,58 @@ final class AppModel: ObservableObject {
         saveConfiguration()
     }
 
-    func launchAppWithMetalHUD() {
+    func chooseMetalHUDApps() {
         let panel = NSOpenPanel()
-        panel.title = tr("选择要启用 MetalHUD 的 App", "Choose an app for MetalHUD")
-        panel.prompt = tr("启用并打开", "Enable and Open")
+        panel.title = tr("添加 App", "Add App")
+        panel.prompt = tr("添加", "Add")
         panel.directoryURL = URL(fileURLWithPath: "/Applications", isDirectory: true)
         panel.allowedContentTypes = [.application]
-        panel.allowsMultipleSelection = false
+        panel.allowsMultipleSelection = true
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.resolvesAliases = true
-        guard panel.runModal() == .OK, let applicationURL = panel.url else { return }
+        guard panel.runModal() == .OK else { return }
+        addMetalHUDApps(panel.urls)
+    }
 
-        launchRecordedAppWithMetalHUD(applicationURL.path)
+    /// Picker and Finder drops share the same add-only path. Launching is a separate explicit action.
+    @discardableResult
+    func addMetalHUDApps(_ urls: [URL]) -> Bool {
+        var added = 0
+        var failures: [String] = []
+        for url in urls {
+            do {
+                let application = try Self.metalHUDShortcutURL(url)
+                rememberMetalHUDApp(application, save: false)
+                added += 1
+            } catch { failures.append("\(url.lastPathComponent): \(error.localizedDescription)") }
+        }
+        guard added > 0 else {
+            report(ToolboxError.invalidPath(tr("请添加有效的 .app 应用", "Add a valid .app application")))
+            return false
+        }
+        saveConfiguration()
+        status = TaskStatus(phase: .succeeded,
+                            message: tr("已添加快捷方式，点击卡片右上角启动", "Shortcut added. Use the play button at the top right of the card to launch."),
+                            log: failures)
+        return true
+    }
+
+    static func metalHUDShortcutURL(_ input: URL) throws -> URL {
+        guard input.isFileURL else { throw ToolboxError.invalidPath(input.absoluteString) }
+        var url = input
+        if (try? url.resourceValues(forKeys: [.isAliasFileKey]).isAliasFile) == true {
+            url = try URL(resolvingAliasFileAt: url, options: [.withoutUI])
+        }
+        url = url.standardizedFileURL.resolvingSymlinksInPath()
+        guard url.pathExtension.lowercased() == "app",
+              (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true,
+              let bundle = Bundle(url: url),
+              let executable = bundle.executableURL,
+              FileManager.default.isExecutableFile(atPath: executable.path) else {
+            throw ToolboxError.invalidPath(input.path)
+        }
+        return url
     }
 
     func refreshCrossOverBottles() {
@@ -926,15 +965,15 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func rememberMetalHUDApp(_ applicationURL: URL) {
-        let normalizedURL = applicationURL.standardizedFileURL
+    private func rememberMetalHUDApp(_ applicationURL: URL, save: Bool = true) {
+        let normalizedURL = applicationURL.standardizedFileURL.resolvingSymlinksInPath()
         let displayName = FileManager.default.displayName(atPath: normalizedURL.path)
         let name = (displayName as NSString).deletingPathExtension
-        let existingPreset = configuration.recentMetalHUDApps.first(where: { $0.path == normalizedURL.path })?.preset
-        configuration.recentMetalHUDApps.removeAll { $0.path == normalizedURL.path }
+        let existingPreset = configuration.recentMetalHUDApps.first(where: { URL(fileURLWithPath: $0.path).standardizedFileURL.resolvingSymlinksInPath().path == normalizedURL.path })?.preset
+        configuration.recentMetalHUDApps.removeAll { URL(fileURLWithPath: $0.path).standardizedFileURL.resolvingSymlinksInPath().path == normalizedURL.path }
         configuration.recentMetalHUDApps.insert(RecentMetalHUDApp(path: normalizedURL.path, displayName: name, preset: existingPreset), at: 0)
         configuration.recentMetalHUDApps = Array(configuration.recentMetalHUDApps.prefix(ConfigurationStore.maxRecentMetalHUDApps))
-        saveConfiguration()
+        if save { saveConfiguration() }
     }
 
     private func runTask(_ message: String, operation: @escaping @MainActor () async throws -> String) {
