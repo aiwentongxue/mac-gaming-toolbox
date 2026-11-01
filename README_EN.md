@@ -2,17 +2,17 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 4.0.2 improves AppDrop localization in nine languages, price history, and price-drop notifications, alongside a native sidebar and integrated ClickFlow 1.0.1, while remaining compatible with Intel and Apple Silicon Macs.
+Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 4.0.3 improves single-volume and batch operations, preset identity, and mount validation, and adds Finder drag-and-drop for MetalHUD app shortcuts. It retains AppDrop localization in nine languages, price history, price-drop notifications, and integrated ClickFlow 1.0.1, while remaining compatible with Intel and Apple Silicon Macs.
 
 ## Features
 
 - Use a unified two-column sidebar for gaming performance, storage maintenance, ClickFlow, AppDrop, and help pages. Display language and update checks are managed from the unified Settings page.
 - Use the built-in ClickFlow 1.0.1 auto clicker, mouse macros, and combined macros. Experimental XInput proxies can replay controller macros in CrossOver games with per-game installation, diagnostics, backup, and safe restore. After accepting the first-use notice, global shortcuts remain available while viewing other tool pages, while preferences, macro files, and adapter records stay completely isolated from the standalone ClickFlow app.
-- Enable or disable MetalHUD globally, or use the Recent Apps launcher to enable MetalHUD only for the selected app's next launch. Save parameter presets and apply them when you next launch a game.
+- Enable or disable MetalHUD globally, or use the Recent Apps launcher to enable MetalHUD only for the selected app's next launch. Drag a `.app` from Finder or use the file picker to add shortcuts from Steam and other custom folders. Adding a shortcut does not launch the app; use the play button at the top right of its card. Save parameter presets and apply them when you next launch a game.
 - Apply MetalHUD parameter presets to CrossOver bottles, or enable MetalHUD for games on a connected iOS device.
 - Assist with launching HoYo games after a configurable 10-, 15-, or 20-second delay, then restore the hosts entries managed by the app when the task finishes or is canceled.
 - Automatically detect CrossOver/Wine processes, with improved manual search and selection, favorite processes, and five independent priority levels for each mode.
-- Mount an external disk at a specified path, save presets, and automatically or manually restore the previous mount.
+- Mount a volume at a specified path, save UUID-associated presets, and automatically or manually restore the previous mount. Single-volume actions affect only the current detail volume. Batch mode groups the selected count, Mount, and Restore buttons below the available volumes list, validates destinations, and reports failures and rollback results.
 - Clear caches and logs in one click. By default, only user caches and user logs are removed; sensitive-file exclusions can be disabled for a complete, high-risk cleanup.
 - Switch to or restore a Steam Deck hostname mode for compatibility testing.
 - Export diagnostic information and access Mac gaming and CrossOver tutorials. Settings provides automatic update checks at launch and an immediate GitHub update check.
@@ -32,7 +32,7 @@ Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming u
 
 ### Download the DMG
 
-Download `MacGameToolbox-4.0.2.dmg` from the [4.0.2 Release](https://github.com/aiwentongxue/mac-gaming-toolbox/releases/tag/v4.0.2) and drag the app to Applications. The same Universal installer includes both `x86_64` and `arm64`; no separate download is needed for each chip. The app is signed with an Apple Development identity and is not notarized by Apple. The Release also includes a SHA-256 checksum file and a verification report.
+Download `MacGameToolbox-4.0.3.dmg` from the [4.0.3 Release](https://github.com/aiwentongxue/mac-gaming-toolbox/releases/tag/v4.0.3) and drag the app to Applications. The same Universal installer includes both `x86_64` and `arm64`; no separate download is needed for each chip. The app is signed with an Apple Development identity and is not notarized by Apple. The Release also includes a SHA-256 checksum file and a verification report.
 
 ### Build the App from Source
 

@@ -2,17 +2,17 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 4.0.2，采用原生 SwiftUI 侧边栏界面，完善 AppDrop 九语言适配、价格历史与降价通知，集成 ClickFlow 1.0.1，并兼容 Intel Mac 和 Apple Silicon Mac。
+Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 4.0.3，改进磁盘单盘与批量操作、预设识别和挂载校验，支持从访达拖入 App 添加 MetalHUD 快捷方式；保留 AppDrop 九语言适配、价格历史与降价通知，集成 ClickFlow 1.0.1，并兼容 Intel Mac 和 Apple Silicon Mac。
 
 ## 功能
 
 - 使用统一的两栏侧边栏访问游戏性能、存储维护、ClickFlow、AppDrop 与帮助页面，在统一的“设置”页面管理显示语言和更新检查。
 - 内置 ClickFlow 1.0.1 连点器、鼠标宏和组合宏；支持通过实验性 XInput 代理为 CrossOver 游戏回放手柄宏，并提供按游戏安装、诊断、备份和安全恢复。接受首次使用声明后，即使停留在其他工具页面也能通过全局快捷键使用，并与独立版 ClickFlow 的偏好、宏文件和适配记录完全隔离。
-- 全局开启或关闭 MetalHUD，或通过最近 App 启动台仅为选定 App 的本次启动启用 MetalHUD；可保存参数预设，并在下次开启游戏时应用。
+- 全局开启或关闭 MetalHUD，或通过最近 App 启动台仅为选定 App 的本次启动启用 MetalHUD。可从访达拖入 `.app` 或通过文件选择器添加快捷方式，支持 Steam 等自定义目录；添加不会自动启动，点击卡片右上角播放按钮才启动。可保存参数预设，并在下次开启游戏时应用。
 - 可为 CrossOver 容器写入 MetalHUD 参数预设，也可为已连接的 iOS 设备上的游戏开启 MetalHUD。
 - 按 10、15 或 20 秒的可选等待时间辅助启动 HoYoGames，并在任务结束或取消时恢复应用管理的 hosts 配置。
 - 自动检测 CrossOver/Wine 进程，支持优化后的手动搜索与选择、常用进程，以及三个模式独立保存的五档进程优先级。
-- 将外接磁盘挂载到指定路径，保存预设，并自动或手动恢复上次挂载。
+- 将磁盘挂载到指定路径，保存按 UUID 关联的预设，并自动或手动恢复上次挂载。单盘操作仅作用于当前详情磁盘；批量模式在可用磁盘列表下集中显示勾选数量、批量挂载和批量恢复按钮，并校验目标路径、报告失败和回滚结果。
 - 一键清理缓存日志，默认仅清理用户缓存和用户日志，也可关闭敏感文件排除执行完整高风险清理。
 - 在 HoYoGames 页面切换或恢复用于兼容性测试的 Steam Deck 主机名模式。
 - 导出诊断信息，并提供 Mac 游戏与 CrossOver 教程入口；在“设置”中开启启动时检查更新或立即检查 GitHub 更新。
@@ -32,7 +32,7 @@ Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常�
 
 ### 下载安装包
 
-从 [4.0.2 Release](https://github.com/aiwentongxue/mac-gaming-toolbox/releases/tag/v4.0.2) 下载 `MacGameToolbox-4.0.2.dmg`，将应用拖入 `Applications`。同一个 Universal 安装包同时包含 `x86_64` 与 `arm64`，无需按芯片分别下载。安装包使用 Apple Development 身份签名，未经过 Apple 公证；Release 同时提供 SHA-256 校验文件和核验记录。
+从 [4.0.3 Release](https://github.com/aiwentongxue/mac-gaming-toolbox/releases/tag/v4.0.3) 下载 `MacGameToolbox-4.0.3.dmg`，将应用拖入 `Applications`。同一个 Universal 安装包同时包含 `x86_64` 与 `arm64`，无需按芯片分别下载。安装包使用 Apple Development 身份签名，未经过 Apple 公证；Release 同时提供 SHA-256 校验文件和核验记录。
 
 ### 从源码构建应用
 
