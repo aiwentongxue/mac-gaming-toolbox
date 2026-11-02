@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 4.0.3 improves single-volume and batch operations, preset identity, and mount validation, and adds Finder drag-and-drop for MetalHUD app shortcuts. It retains AppDrop localization in nine languages, price history, price-drop notifications, and integrated ClickFlow 1.0.1, while remaining compatible with Intel and Apple Silicon Macs.
+Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 4.0.4 syncs the AppDrop 1.0.5 price chart with time ranges, hover prices, historical-low period counts, and an expanded Tutorial Hub. It retains MetalHUD, volume mounting, AppDrop localization in nine languages, price-drop notifications, and integrated ClickFlow 1.0.1, while remaining compatible with Intel and Apple Silicon Macs.
 
 ## Features
 
@@ -17,6 +17,7 @@ Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming u
 - Switch to or restore a Steam Deck hostname mode for compatibility testing.
 - Export diagnostic information and access Mac gaming and CrossOver tutorials. Settings provides automatic update checks at launch and an immediate GitHub update check.
 - The integrated AppDrop includes a wishlist, today's drops, historical lows, and price settings. It supports App Store links, keyword search, 17 storefront regions, `.wishdrop` import/export, price history, and price-drop notifications.
+- AppDrop price charts offer 3-, 6-, and 12-month ranges and all recorded history, with a stepped area chart, hover prices, the local history start date, and continuous historical-low period counts. Calculations use the current currency and never invent prices before the first observation.
 - AppDrop stores data independently at `~/Library/Application Support/MacGameToolbox/AppDrop` and does not read or modify standalone AppDrop data. Background checks use a dedicated user-level helper that is registered only when enabled in AppDrop Settings.
 - AppDrop supports Simplified Chinese, Traditional Chinese, English, Japanese, Korean, German, French, Spanish, and Portuguese. Settings provides separate notification permission, status, and test controls for the toolbox and background helper. After authorization is restored, prices are rechecked before still-valid missed drops are submitted in one summary.
 
@@ -32,7 +33,7 @@ Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming u
 
 ### Download the DMG
 
-Download `MacGameToolbox-4.0.3.dmg` from the [4.0.3 Release](https://github.com/aiwentongxue/mac-gaming-toolbox/releases/tag/v4.0.3) and drag the app to Applications. The same Universal installer includes both `x86_64` and `arm64`; no separate download is needed for each chip. The app is signed with an Apple Development identity and is not notarized by Apple. The Release also includes a SHA-256 checksum file and a verification report.
+Download `MacGameToolbox-4.0.4.dmg` from the [4.0.4 Release](https://github.com/aiwentongxue/mac-gaming-toolbox/releases/tag/v4.0.4) and drag the app to Applications. The same Universal installer includes both `x86_64` and `arm64`; no separate download is needed for each chip. The app is signed with an Apple Development identity and is not notarized by Apple. The Release also includes a SHA-256 checksum file and a verification report.
 
 ### Build the App from Source
 
@@ -70,7 +71,7 @@ swift build
 5. After enabling the HoYoGames launch helper, start the game before the countdown ends. Canceling the task will attempt to restore the hosts entries added by this project.
 6. Before using custom disk mounting, select the external disk and destination directory. To restore the mount at login, save a preset, enable automatic restoration, and add the app to Login Items.
 
-Video tutorial: [Mac Gaming Toolbox major release—MetalHUD, HoYo game launching, disk mounting, and more](https://b23.tv/qnJBcbk) · [YouTube](https://youtu.be/Y9g4F0_6ipI?si=i3G9dxiXMbk2NSzY)
+Video tutorials: [Mac Gaming Toolbox Tutorial Series](https://b23.tv/qW8NuD7) · [YouTube](https://youtu.be/Y9g4F0_6ipI?si=i3G9dxiXMbk2NSzY). The in-app Tutorial Hub also includes Switch game ports, Tears of the Kingdom / Breath of the Wild, MetalFrame, and GalGame guides.
 
 ## Testing
 

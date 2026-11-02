@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 4.0.3，改进磁盘单盘与批量操作、预设识别和挂载校验，支持从访达拖入 App 添加 MetalHUD 快捷方式；保留 AppDrop 九语言适配、价格历史与降价通知，集成 ClickFlow 1.0.1，并兼容 Intel Mac 和 Apple Silicon Mac。
+Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 4.0.4，同步 AppDrop 1.0.5 价格走势图，新增时间范围、悬停价格与历史低价次数统计，并扩充游戏教程导航；保留 MetalHUD、磁盘挂载、AppDrop 九语言适配与降价通知，集成 ClickFlow 1.0.1，并兼容 Intel Mac 和 Apple Silicon Mac。
 
 ## 功能
 
@@ -17,6 +17,7 @@ Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常�
 - 在 HoYoGames 页面切换或恢复用于兼容性测试的 Steam Deck 主机名模式。
 - 导出诊断信息，并提供 Mac 游戏与 CrossOver 教程入口；在“设置”中开启启动时检查更新或立即检查 GitHub 更新。
 - 内置 AppDrop 心愿单、今日降价、历史低价和价格设置；支持 App Store 链接、关键词搜索、17 个商店区域、`.wishdrop` 导入导出、价格历史与降价通知。
+- AppDrop 价格走势图支持 3、6、12 个月及全部范围，显示阶梯面积图、悬停价格、本机记录起始日期和连续史低区间次数；按当前币种统计，不补造首次记录之前的数据。
 - AppDrop 使用工具箱独立的 `~/Library/Application Support/MacGameToolbox/AppDrop` 数据目录，不读取或修改独立版 AppDrop 数据；需要后台检查时，可在 AppDrop 设置中注册专用的用户级 Helper。
 - AppDrop 支持简体中文、繁体中文、英文、日语、韩语、德语、法语、西班牙语和葡萄牙语。设置中分别提供工具箱与后台助手的通知授权、状态和测试入口；恢复授权后会先重新核实价格，再合并提醒仍有效的漏发降价。
 
@@ -32,7 +33,7 @@ Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常�
 
 ### 下载安装包
 
-从 [4.0.3 Release](https://github.com/aiwentongxue/mac-gaming-toolbox/releases/tag/v4.0.3) 下载 `MacGameToolbox-4.0.3.dmg`，将应用拖入 `Applications`。同一个 Universal 安装包同时包含 `x86_64` 与 `arm64`，无需按芯片分别下载。安装包使用 Apple Development 身份签名，未经过 Apple 公证；Release 同时提供 SHA-256 校验文件和核验记录。
+从 [4.0.4 Release](https://github.com/aiwentongxue/mac-gaming-toolbox/releases/tag/v4.0.4) 下载 `MacGameToolbox-4.0.4.dmg`，将应用拖入 `Applications`。同一个 Universal 安装包同时包含 `x86_64` 与 `arm64`，无需按芯片分别下载。安装包使用 Apple Development 身份签名，未经过 Apple 公证；Release 同时提供 SHA-256 校验文件和核验记录。
 
 ### 从源码构建应用
 
@@ -70,7 +71,7 @@ swift build
 5. HoYoGames 启动帮助开启后，请在倒计时内启动游戏；取消任务会尝试恢复由本项目添加的 hosts 项目。
 6. 自定义磁盘挂载前先选择外接磁盘和目标目录；需要开机恢复时，可保存预设、启用自动恢复，并将应用加入登录项。
 
-视频教程：[【Mac游戏工具箱重磅发布!支持MetalHUD米游启动磁盘挂载等功能!】](https://b23.tv/qnJBcbk) · [YouTube](https://youtu.be/Y9g4F0_6ipI?si=i3G9dxiXMbk2NSzY)
+视频教程：[Mac 游戏工具箱系列教程](https://b23.tv/qW8NuD7) · [YouTube](https://youtu.be/Y9g4F0_6ipI?si=i3G9dxiXMbk2NSzY)。应用内教程导航另含 Switch 游戏移植、王国之泪/旷野之息、MetalFrame 和 GalGame 等专题。
 
 ## 测试
 
