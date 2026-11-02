@@ -149,6 +149,17 @@ enum AppStrings {
     }
 
     static let englishFallbacks: [String: String] = [
+        "detail.chart.lowCount.all": "All recorded history: %d low periods",
+        "detail.chart.lowCount.sixMonths": "Past 6 months: %d low periods",
+        "detail.chart.lowCount.threeMonths": "Past 3 months: %d low periods",
+        "detail.chart.lowCount.twelveMonths": "Past 12 months: %d low periods",
+        "detail.chart.lowPrice": "All-time low",
+        "detail.chart.range": "Time range",
+        "detail.chart.range.all": "All",
+        "detail.chart.range.sixMonths": "6 months",
+        "detail.chart.range.threeMonths": "3 months",
+        "detail.chart.range.twelveMonths": "12 months",
+        "detail.chart.recordedSince": "Local price records since %@",
         "%@ · id%@": "%1$@ · id%2$@",
         "%@ %@": "%1$@ %2$@",
         "• %@": "• %@",

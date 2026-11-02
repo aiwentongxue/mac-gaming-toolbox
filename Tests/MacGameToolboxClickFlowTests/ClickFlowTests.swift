@@ -2129,21 +2129,24 @@ extension ClickFlowTests {
         func hasRenderedStep(_ host: NSView) throws -> Bool {
             let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
             host.cacheDisplay(in: host.bounds, to: bitmap)
-            var count = 0
-            var minX = bitmap.pixelsWide, maxX = 0, minY = bitmap.pixelsHigh, maxY = 0
-            // The lower chart must contain both a long horizontal segment and
-            // a price decrease, rather than the empty-history placeholder.
+            var longestColumn = 0, widestRow = 0
+            var columnRuns = [Int](repeating: 0, count: bitmap.pixelsWide)
+            // A loaded two-price chart has a long horizontal price segment
+            // and a tall vertical change. Text or an empty placeholder cannot
+            // satisfy both. Do not depend on the old blue accent color.
             for y in stride(from: bitmap.pixelsHigh * 2 / 5, to: bitmap.pixelsHigh, by: 2) {
+                var darkInRow = 0
                 for x in stride(from: bitmap.pixelsWide / 3, to: bitmap.pixelsWide, by: 2) {
-                    guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
-                    if color.blueComponent > 0.75 && color.redComponent < 0.35 && color.blueComponent - color.redComponent > 0.5 && color.greenComponent > 0.2 && color.greenComponent < 0.7 {
-                        count += 1
-                        minX = min(minX, x); maxX = max(maxX, x)
-                        minY = min(minY, y); maxY = max(maxY, y)
-                    }
+                    guard let color = bitmap.colorAt(x:x,y:y)?.usingColorSpace(.deviceRGB) else { continue }
+                    let channels = [color.redComponent, color.greenComponent, color.blueComponent]
+                    let isLine = channels.max()! < 0.5 && channels.max()! - channels.min()! < 0.12
+                    columnRuns[x] = isLine ? columnRuns[x]+2 : 0
+                    if isLine { darkInRow += 2 }
+                    longestColumn = max(longestColumn,columnRuns[x])
                 }
+                widestRow = max(widestRow,darkInRow)
             }
-            return count > 300 && maxX - minX > bitmap.pixelsWide / 3 && maxY - minY > bitmap.pixelsHigh / 15
+            return widestRow > bitmap.pixelsWide/3 && longestColumn > bitmap.pixelsHigh/15
         }
         for page in [AppDropPage.wishlist, .todayDrops, .historicalLows] {
             for layout in [AppDropLayoutMode.grid, .list] {

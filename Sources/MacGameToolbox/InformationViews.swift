@@ -33,6 +33,12 @@ struct ChangelogView: View {
 
     private var releases: [Release] {
         [
+            Release(version: "4.0.4", entries: [
+                tr("同步 AppDrop 1.0.5 价格走势图，新增 3、6、12 个月及全部范围", "Synced the AppDrop 1.0.5 price chart with 3-, 6-, and 12-month ranges and all recorded history"),
+                tr("新增价格悬停提示、阶梯面积图、本机记录起始日期与历史低价次数统计", "Added price tooltips, a stepped area chart, the local history start date, and historical-low period counts"),
+                tr("完善价格时间边界、币种隔离与九语言图表文案，保留已有价格历史", "Improved price timeline boundaries, currency isolation, and chart text in nine languages while preserving existing history"),
+                tr("教程导航新增工具箱系列、Switch 移植、塞尔达、MetalFrame 与 GalGame 教程", "Added toolbox series, Switch ports, Zelda, MetalFrame, and GalGame guides to the Tutorial Hub")
+            ]),
             Release(version: "4.0.3", entries: [
                 tr("将批量挂载及恢复按钮移到可用磁盘列表下方，勾选数量与执行入口集中显示", "Moved batch mount and restore buttons below the volume list, keeping selection counts and actions together"),
                 tr("批量模式右侧显示挂载路径配置，提示尚未设置路径的卷数量", "Batch mode now shows path configuration on the right and identifies volumes that still need a destination"),

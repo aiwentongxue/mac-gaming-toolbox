@@ -161,16 +161,11 @@ struct TutorialsDetailView: View {
     }
 
     private var filteredTutorials: [TutorialItem] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return TutorialItem.all.filter { item in
-            let matchesCategory = filter == .all || item.category == filter
-            let matchesSearch = query.isEmpty || item.title.localizedCaseInsensitiveContains(query)
-            return matchesCategory && matchesSearch
-        }
+        TutorialItem.filtered(search: searchText, category: filter)
     }
 }
 
-private enum TutorialCategory: String, CaseIterable, Identifiable {
+enum TutorialCategory: String, CaseIterable, Identifiable {
     case all
     case gettingStarted
     case crossOver
@@ -200,16 +195,25 @@ private enum TutorialCategory: String, CaseIterable, Identifiable {
     }
 }
 
-private struct TutorialItem: Identifiable {
+struct TutorialItem: Identifiable {
     let title: String
     let address: String
     let category: TutorialCategory
     var id: String { address }
     var url: URL { URL(string: address)! }
 
+    static func filtered(search: String, category: TutorialCategory) -> [TutorialItem] {
+        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        return all.filter { item in
+            (category == .all || item.category == category) &&
+                (query.isEmpty || item.title.localizedCaseInsensitiveContains(query))
+        }
+    }
+
     static var all: [TutorialItem] {
         let chinese = AppLanguage.isChinese
         return [
+            TutorialItem(title: chinese ? "Mac 游戏工具箱系列教程" : "Mac Gaming Toolbox Tutorial Series", address: "https://b23.tv/qW8NuD7", category: .gettingStarted),
             TutorialItem(
                 title: chinese ? "Mac 玩游戏从入门到精通" : "Mac Gaming: Beginner to Advanced",
                 address: "https://b23.tv/pEOGX4P",
@@ -250,6 +254,10 @@ private struct TutorialItem: Identifiable {
                 address: "https://b23.tv/HTFJ478",
                 category: .games
             ),
+            TutorialItem(title: chinese ? "Switch 游戏移植 Mac 最简单的教程" : "The Easiest Guide to Porting Switch Games to Mac", address: "https://b23.tv/JKMB60l", category: .games),
+            TutorialItem(title: chinese ? "Mac 原生游玩王国之泪/旷野之息详细教程" : "Native Mac Tears of the Kingdom / Breath of the Wild Guide", address: "https://b23.tv/8HWU3AQ", category: .games),
+            TutorialItem(title: chinese ? "MetalFrame 游戏插帧教程" : "MetalFrame Game Frame Generation Guide", address: "https://b23.tv/T436Fv7", category: .games),
+            TutorialItem(title: chinese ? "Mac 玩 GalGame 三种方式介绍" : "Three Ways to Play GalGames on Mac", address: "https://b23.tv/h1XPWtM", category: .games),
             TutorialItem(
                 title: chinese ? "问题反馈与日志教程" : "Feedback and Log Tutorial",
                 address: "https://b23.tv/1UfRohG",

@@ -163,8 +163,9 @@ struct AppDetailView: View {
 
     private var chartSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(AppStrings.string("detail.chart.title"))
-                .font(.headline)
+            if recordsError != nil || loadingRecords {
+                Text(AppStrings.string("detail.chart.title")).font(.headline)
+            }
             if let recordsError {
                 Label(recordsError, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.red)
@@ -176,12 +177,10 @@ struct AppDetailView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 200)
             } else {
-                PriceHistoryChartView(
-                    points: chartPoints,
-                    lowest: hasPriceComparison ? lowestPoint : nil
-                )
+                PriceHistoryChartView(records: records, currency: app.currency)
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("appdrop.priceHistory")
-                .accessibilityValue(String(chartPoints.count))
+                .accessibilityValue(String(records.count))
             }
         }
     }
@@ -217,26 +216,6 @@ struct AppDetailView: View {
             Spacer()
         }
         .padding(.top, 4)
-    }
-
-    /// Only records in the app's current currency are plotted; earlier records
-    /// in a different currency are excluded instead of mixed into one series.
-    private var chartPoints: [PriceHistoryChartView.ChartPoint] {
-        let currentCurrency = app.currency
-        return records
-            .filter { record in currentCurrency.map { record.currency.caseInsensitiveCompare($0) == .orderedSame } ?? true }
-            .map { record in
-                PriceHistoryChartView.ChartPoint(
-                    id: record.id,
-                    date: record.timestamp,
-                    price: NSDecimalNumber(decimal: record.price).doubleValue,
-                    formatted: record.formattedPrice
-                )
-            }
-    }
-
-    private var lowestPoint: PriceHistoryChartView.ChartPoint? {
-        chartPoints.min { $0.price < $1.price }
     }
 
     @MainActor
