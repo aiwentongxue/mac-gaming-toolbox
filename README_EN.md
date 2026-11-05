@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together in one place. Version 4.0.4 syncs the AppDrop 1.0.5 price chart with time ranges, hover prices, historical-low period counts, and an expanded Tutorial Hub. It retains MetalHUD, volume mounting, AppDrop localization in nine languages, price-drop notifications, and integrated ClickFlow 1.0.1, while remaining compatible with Intel and Apple Silicon Macs.
+Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming utilities together. Version 4.0.5 clarifies module settings, pins toolbox settings below the sidebar, loads manual process selection automatically, adapts process and MetalHUD device lists to the window, improves HoYoGames hostname switching, and updates the Genshin Impact tutorial link. It retains AppDrop 1.0.5, ClickFlow 1.0.1, nine languages, and Intel and Apple Silicon support.
 
 ## Features
 
@@ -33,7 +33,7 @@ Mac Gaming Toolbox is a native SwiftUI macOS app that brings common Mac gaming u
 
 ### Download the DMG
 
-Download `MacGameToolbox-4.0.4.dmg` from the [4.0.4 Release](https://github.com/aiwentongxue/mac-gaming-toolbox/releases/tag/v4.0.4) and drag the app to Applications. The same Universal installer includes both `x86_64` and `arm64`; no separate download is needed for each chip. The app is signed with an Apple Development identity and is not notarized by Apple. The Release also includes a SHA-256 checksum file and a verification report.
+Download `MacGameToolbox-4.0.5.dmg` from the [Releases](https://github.com/aiwentongxue/mac-gaming-toolbox/releases) and drag the app to Applications. The same Universal installer includes both `x86_64` and `arm64`; no separate download is needed for each chip. The app is signed with an Apple Development identity and is not notarized by Apple. The Release also includes a SHA-256 checksum file and a verification report.
 
 ### Build the App from Source
 

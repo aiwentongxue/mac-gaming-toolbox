@@ -159,7 +159,7 @@ struct AppDropSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle(AppStrings.string("settings.title"))
+        .navigationTitle(tr("AppDrop 设置", "AppDrop Settings"))
         .confirmationDialog(
             AppStrings.string("settings.changeAllConfirmTitle"),
             isPresented: $confirmingChangeAllRegions,

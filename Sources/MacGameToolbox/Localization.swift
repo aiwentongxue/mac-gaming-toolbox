@@ -95,6 +95,7 @@ enum AppLanguage {
             return translations[chinese]?[language]
                 ?? diskTranslations[chinese]?[language]
                 ?? additionalTranslations[chinese]?[language]
+                ?? version405Translations[chinese]?[language]
                 ?? english
         }
     }
@@ -562,4 +563,21 @@ final class LocalizationController: ObservableObject {
         UserDefaults.standard.set(preference.rawValue, forKey: AppLanguage.preferenceKey)
         refreshToken = UUID()
     }
+}
+
+private extension AppLanguage {
+    static let version405Translations: [String: [Preference: String]] = [
+        "工具箱设置": [.traditionalChinese: "工具箱設定", .japanese: "ツールボックス設定", .korean: "도구 상자 설정", .german: "Toolbox-Einstellungen", .french: "Réglages de la boîte à outils", .spanish: "Ajustes de la caja de herramientas", .portuguese: "Ajustes da caixa de ferramentas"],
+        "帮助": [.traditionalChinese: "說明", .japanese: "ヘルプ", .korean: "도움말", .german: "Hilfe", .french: "Aide", .spanish: "Ayuda", .portuguese: "Ajuda"],
+        "正在读取进程…": [.traditionalChinese: "正在讀取程序…", .japanese: "プロセスを読み込み中…", .korean: "프로세스 읽는 중…", .german: "Prozesse werden geladen…", .french: "Chargement des processus…", .spanish: "Cargando procesos…", .portuguese: "Carregando processos…"],
+        "暂无运行中的进程": [.traditionalChinese: "目前沒有執行中的程序", .japanese: "実行中のプロセスはありません", .korean: "실행 중인 프로세스 없음", .german: "Keine laufenden Prozesse", .french: "Aucun processus en cours", .spanish: "No hay procesos en ejecución", .portuguese: "Nenhum processo em execução"],
+        "读取进程失败": [.traditionalChinese: "讀取程序失敗", .japanese: "プロセスを読み込めませんでした", .korean: "프로세스를 읽지 못했습니다", .german: "Prozesse konnten nicht geladen werden", .french: "Impossible de charger les processus", .spanish: "No se pudieron cargar los procesos", .portuguese: "Não foi possível carregar os processos"],
+        "未找到匹配的进程": [.traditionalChinese: "找不到符合的程序", .japanese: "一致するプロセスがありません", .korean: "일치하는 프로세스 없음", .german: "Keine passenden Prozesse", .french: "Aucun processus correspondant", .spanish: "No hay procesos coincidentes", .portuguese: "Nenhum processo correspondente"],
+        "重试": [.traditionalChinese: "重試", .japanese: "再試行", .korean: "다시 시도", .german: "Erneut versuchen", .french: "Réessayer", .spanish: "Reintentar", .portuguese: "Tentar novamente"],
+        "请选择设备": [.traditionalChinese: "請選擇裝置", .japanese: "デバイスを選択", .korean: "기기를 선택하세요", .german: "Gerät auswählen", .french: "Choisir un appareil", .spanish: "Seleccionar un dispositivo", .portuguese: "Selecionar um dispositivo"],
+        "主机名兼容功能": [.traditionalChinese: "主機名稱相容功能", .japanese: "ホスト名の互換機能", .korean: "호스트 이름 호환 기능", .german: "Hostname-Kompatibilität", .french: "Compatibilité du nom d’hôte", .spanish: "Compatibilidad del nombre de host", .portuguese: "Compatibilidade do nome do host"],
+        "SteamDeck 主机名切换": [.traditionalChinese: "SteamDeck 主機名稱切換", .japanese: "SteamDeck ホスト名の切り替え", .korean: "SteamDeck 호스트 이름 전환", .german: "SteamDeck-Hostnamen wechseln", .french: "Changer le nom d’hôte SteamDeck", .spanish: "Cambiar el nombre de host de SteamDeck", .portuguese: "Alternar nomes de host SteamDeck"],
+        "当前使用 SteamDeck 主机名": [.traditionalChinese: "目前使用 SteamDeck 主機名稱", .japanese: "SteamDeck ホスト名を使用中", .korean: "SteamDeck 호스트 이름 사용 중", .german: "SteamDeck-Hostnamen aktiv", .french: "Noms d’hôte SteamDeck actifs", .spanish: "Nombres de host SteamDeck activos", .portuguese: "Nomes de host SteamDeck ativos"],
+        "当前使用原始设备名称": [.traditionalChinese: "目前使用原始裝置名稱", .japanese: "元のデバイス名を使用中", .korean: "원래 기기 이름 사용 중", .german: "Ursprüngliche Gerätenamen aktiv", .french: "Noms d’origine de l’appareil actifs", .spanish: "Nombres originales del dispositivo activos", .portuguese: "Nomes originais do dispositivo ativos"],
+    ]
 }

@@ -33,6 +33,14 @@ struct ChangelogView: View {
 
     private var releases: [Release] {
         [
+            Release(version: "4.0.5", entries: [
+                tr("明确 ClickFlow、AppDrop 与工具箱设置的归属，将工具箱设置固定在侧边栏底部", "Clarified ClickFlow, AppDrop, and toolbox settings, with toolbox settings pinned below the sidebar"),
+                tr("进入手动选择时自动读取进程，刷新保留列表及有效勾选，支持读取失败后重试", "Manual process selection now loads automatically, preserves the list and valid selections during refresh, and supports retrying failed reads"),
+                tr("进程列表与 MetalHUD 设备区随窗口大小伸缩，底部操作按钮始终可见", "Process and MetalHUD device lists now adapt to the window while keeping their action buttons visible"),
+                tr("优化小窗口下的工具栏、设备选择与启动参数编辑布局", "Improved toolbars, device selection, and launch-argument editing in smaller windows"),
+                tr("HoYoGames 单独分组展示 SteamDeck 主机名切换，明确当前名称状态与操作", "Separated SteamDeck hostname switching in HoYoGames and clarified its current state and actions"),
+                tr("更新 Mac 玩 PC 原神详细教程链接", "Updated the detailed Mac PC Genshin Impact tutorial link")
+            ]),
             Release(version: "4.0.4", entries: [
                 tr("同步 AppDrop 1.0.5 价格走势图，新增 3、6、12 个月及全部范围", "Synced the AppDrop 1.0.5 price chart with 3-, 6-, and 12-month ranges and all recorded history"),
                 tr("新增价格悬停提示、阶梯面积图、本机记录起始日期与历史低价次数统计", "Added price tooltips, a stepped area chart, the local history start date, and historical-low period counts"),

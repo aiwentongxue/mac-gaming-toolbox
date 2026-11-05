@@ -6,6 +6,13 @@ import UniformTypeIdentifiers
 import MacGameToolboxCore
 #endif
 
+enum RunningProcessLoadState: Equatable {
+    case idle
+    case loading
+    case loaded
+    case failed(String)
+}
+
 @MainActor
 final class AppModel: ObservableObject {
     @Published var status = TaskStatus()
@@ -28,6 +35,8 @@ final class AppModel: ObservableObject {
     @Published var cacheConfirmationStage = 0
     @Published var isHoYoAssistantRunning = false
     @Published var runningProcesses: [SystemProcess] = []
+    @Published private(set) var runningProcessLoadState = RunningProcessLoadState.idle
+    var isRefreshingRunningProcesses: Bool { runningProcessLoadState == .loading }
     @Published var selectedProcessIDs = Set<Int32>()
     @Published var crossOverBottles: [CrossOverBottle] = []
     @Published var iosDevices: [IOSDevice] = []
@@ -360,12 +369,12 @@ final class AppModel: ObservableObject {
     }
 
     func refreshRunningProcesses() {
-        runningProcesses = []
-        selectedProcessIDs.removeAll()
+        guard !isRefreshingRunningProcesses else { return }
+        runningProcessLoadState = .loading
         Task {
             do {
                 let processes = try await gamingService.runningProcesses()
-                runningProcesses = processes.map { process in
+                let refreshed = processes.map { process in
                     SystemProcess(
                         pid: process.pid,
                         parentPID: process.parentPID,
@@ -374,14 +383,21 @@ final class AppModel: ObservableObject {
                         applicationPath: NSRunningApplication(processIdentifier: process.pid)?.bundleURL?.path
                     )
                 }
+                let previous = Dictionary(runningProcesses.map { ($0.pid, $0.command) }, uniquingKeysWith: { first, _ in first })
+                selectedProcessIDs = Set(refreshed.compactMap { process in
+                    selectedProcessIDs.contains(process.pid) && previous[process.pid] == process.command
+                        ? process.pid : nil
+                })
+                runningProcesses = refreshed
+                runningProcessLoadState = .loaded
             }
-            catch { report(error) }
+            catch { runningProcessLoadState = .failed(error.localizedDescription) }
         }
     }
 
     func increaseSelectedProcessPriority(priority level: ProcessPriorityLevel) {
         let identifiers = Array(selectedProcessIDs)
-        guard !identifiers.isEmpty else { return }
+        guard !identifiers.isEmpty, !isRefreshingRunningProcesses else { return }
         runTask(tr("正在应用所选进程优先级", "Applying selected process priority")) {
             self.status.phase = .awaitingAuthorization
             try await self.privileged.perform(.renice(identifiers, level.rawValue))

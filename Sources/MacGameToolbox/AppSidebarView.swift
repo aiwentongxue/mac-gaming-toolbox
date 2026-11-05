@@ -15,7 +15,7 @@ struct AppSidebarView: View {
             ForEach(SidebarSection.allCases) { section in
                 Section {
                     if navigation.isExpanded(section) {
-                        ForEach(section.items) { item in
+                        ForEach(section.items.filter { $0 != .settings }) { item in
                             SidebarLabel(
                                 item: item,
                                 badge: badge(for: item),
@@ -62,12 +62,36 @@ struct AppSidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                Divider()
+                Button {
+                    navigation.select(.settings)
+                } label: {
+                    SidebarLabel(item: .settings, badge: nil, isActive: false)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 9)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .foregroundStyle(navigation.selection == .settings ? Color.white : Color.primary)
+                        .background(
+                            navigation.selection == .settings ? Color.accentColor : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 7)
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("sidebar.settings")
+                .accessibilityAddTraits(navigation.selection == .settings ? [.isSelected] : [])
+                .padding(10)
+            }
+            .background(.regularMaterial)
+        }
         .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 300)
     }
 
     private var selectionBinding: Binding<SidebarItem?> {
         Binding(
-            get: { navigation.selection },
+            get: { navigation.selection == .settings ? nil : navigation.selection },
             set: { item in
                 if let item {
                     navigation.select(item)

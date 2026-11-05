@@ -28,7 +28,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .appDrop:
             "AppDrop"
         case .information:
-            tr("帮助与设置", "Help & Settings")
+            tr("帮助", "Help")
         }
     }
 
@@ -122,7 +122,7 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
         case .appDropSettings:
             tr("AppDrop 设置", "AppDrop Settings")
         case .settings:
-            tr("设置", "Settings")
+            tr("工具箱设置", "Toolbox Settings")
         case .tutorials:
             tr("游戏教程", "Tutorials")
         case .changelogAbout:
@@ -149,7 +149,7 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
         case .cfCombinedMacros:
             tr("组合宏", "Combined Macros")
         case .cfSettings:
-            tr("设置", "Settings")
+            tr("ClickFlow 设置", "ClickFlow Settings")
         case .appDropWishlist:
             tr("心愿单", "Wishlist")
         case .appDropTodayDrops:
@@ -157,9 +157,9 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
         case .appDropHistoricalLows:
             tr("历史低价", "Lowest")
         case .appDropSettings:
-            tr("设置", "Settings")
+            tr("AppDrop 设置", "AppDrop Settings")
         case .settings:
-            tr("设置", "Settings")
+            tr("工具箱设置", "Toolbox Settings")
         case .tutorials:
             tr("游戏教程", "Tutorials")
         case .changelogAbout:

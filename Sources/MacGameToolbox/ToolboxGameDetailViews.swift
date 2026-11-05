@@ -6,10 +6,19 @@ import MacGameToolboxCore
 
 struct MetalHUDDetailView: View {
     @EnvironmentObject private var model: AppModel
-    @State private var mode = MetalHUDMode.desktop
+    @State private var mode: MetalHUDMode
+    private let automaticallyLoadsDevices: Bool
+    @State private var iosWorkspaceHeight: CGFloat = 0
+    @State private var iosArgumentsHeight: CGFloat = 240
+    @State private var presentsArgumentsSheet = false
     @State private var appSearchText = ""
     @State private var showsPresetGuide = false
     @State private var isDropTargeted = false
+
+    init(initialMode: MetalHUDMode = .desktop, automaticallyLoadsDevices: Bool = true) {
+        _mode = State(initialValue: initialMode)
+        self.automaticallyLoadsDevices = automaticallyLoadsDevices
+    }
 
     var body: some View {
         GeometryReader { viewport in
@@ -19,7 +28,8 @@ struct MetalHUDDetailView: View {
             subtitle: tr(
                 "查看全局注入状态，或只为指定 App、CrossOver 容器及 iOS 游戏开启 MetalHUD。",
                 "Manage global injection or enable MetalHUD for a specific app, CrossOver bottle, or iOS game."
-            )
+            ),
+            layout: mode == .ios ? .fillsAvailableHeight : .scrolling
         ) {
             Picker(tr("MetalHUD 模式", "MetalHUD Mode"), selection: $mode) {
                 ForEach(MetalHUDMode.allCases) { item in
@@ -29,6 +39,7 @@ struct MetalHUDDetailView: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .frame(maxWidth: 520)
+            .accessibilityIdentifier("metalHUD.mode")
 
             switch mode {
             case .desktop:
@@ -51,7 +62,7 @@ struct MetalHUDDetailView: View {
         }
         .accessibilityIdentifier("metalHUD.page")
         .onChange(of: mode) { _, newMode in
-            if newMode == .ios, model.iosDevices.isEmpty, !model.isRefreshingIOSDevices {
+            if automaticallyLoadsDevices, newMode == .ios, model.iosDevices.isEmpty, !model.isRefreshingIOSDevices {
                 model.refreshIOSDevices()
             }
         }
@@ -178,51 +189,136 @@ struct MetalHUDDetailView: View {
     }
 
     private var iosContent: some View {
-        VStack(spacing: 18) {
-            ToolboxCard(
-                tr("iOS / iPadOS 设备", "iOS / iPadOS Device"),
-                subtitle: tr(
-                    "选择已连接、已信任并在 Xcode 中完成配对的设备。MetalHUD 只注入本次启动的进程。",
-                    "Choose a connected, trusted, Xcode-paired device. MetalHUD is injected only into the app launched by this action."
-                )
-            ) {
-                HStack(spacing: 10) {
-                    TextField(tr("搜索应用名称或包名", "Search app name or bundle ID"), text: $appSearchText)
-                        .textFieldStyle(.roundedBorder)
-                    Button { model.refreshIOSDevices() } label: {
-                        Label(tr("刷新设备", "Refresh Devices"), systemImage: "arrow.clockwise")
+        ToolboxCard(
+            tr("iOS / iPadOS 设备", "iOS / iPadOS Device"),
+            subtitle: tr(
+                "选择已连接、已信任并在 Xcode 中完成配对的设备。MetalHUD 只注入本次启动的进程。",
+                "Choose a connected, trusted, Xcode-paired device. MetalHUD is injected only into the app launched by this action."
+            )
+        ) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { iosSearchField; refreshDevicesButton }
+                VStack(alignment: .leading, spacing: 8) { iosSearchField; refreshDevicesButton }
+            }
+            GeometryReader { workspace in
+                VStack(spacing: 14) {
+                    if workspace.size.width < 720 {
+                        compactDevicePicker
+                        appList
+                    } else {
+                        HStack(alignment: .top, spacing: 14) {
+                            deviceList
+                            Divider()
+                            appList
+                        }
                     }
-                    .disabled(model.isRefreshingIOSDevices)
-                }
-
-                HStack(alignment: .top, spacing: 14) {
-                    deviceList
-                    Divider()
-                    appList
-                }
-                .frame(minHeight: 320)
-
-                if let app = model.iosLaunchArgumentsApp {
-                    IOSLaunchArgumentsInlineEditor(app: app)
-                }
-
-                HStack {
-                    Text(model.selectedIOSBundleIdentifier ?? tr("请选择要启动的应用", "Select an app to launch"))
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Spacer()
-                    Button(tr("带 MetalHUD 启动", "Launch with MetalHUD")) {
-                        model.launchSelectedIOSAppWithMetalHUD()
+                    if let app = model.iosLaunchArgumentsApp, !presentsArgumentsSheet {
+                        IOSLaunchArgumentsInlineEditor(app: app)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .toolboxLayoutFrame("metalHUD.ios.arguments")
+                            .background {
+                                GeometryReader { editor in
+                                    Color.clear.preference(key: IOSArgumentsEditorHeightKey.self, value: editor.size.height)
+                                }
+                            }
                     }
-                    .toolboxProminentButton()
-                    .disabled(model.selectedIOSDeviceID == nil || model.selectedIOSBundleIdentifier == nil)
                 }
+                .onAppear { updateIOSWorkspaceHeight(workspace.size.height) }
+                .onChange(of: workspace.size.height) { _, height in updateIOSWorkspaceHeight(height) }
+            }
+            .frame(minHeight: 0, maxHeight: .infinity)
+            .accessibilityIdentifier("metalHUD.ios.workspace")
+            .toolboxLayoutFrame("metalHUD.ios.workspace")
+            .onPreferenceChange(IOSArgumentsEditorHeightKey.self) { height in
+                guard height > 0 else { return }
+                iosArgumentsHeight = height
+                presentArgumentsSheetIfNeeded()
+            }
+
+            ViewThatFits(in: .horizontal) {
+                HStack { selectedIOSAppLabel; Spacer(); launchIOSButton }
+                VStack(alignment: .leading, spacing: 6) { selectedIOSAppLabel; launchIOSButton }
+            }
+            .accessibilityIdentifier("metalHUD.ios.footer")
+        }
+        .frame(maxHeight: .infinity)
+        .accessibilityIdentifier("metalHUD.ios.card")
+        .task {
+            if automaticallyLoadsDevices, model.iosDevices.isEmpty, !model.isRefreshingIOSDevices {
+                model.refreshIOSDevices()
             }
         }
-        .task {
-            if model.iosDevices.isEmpty { model.refreshIOSDevices() }
+        .onChange(of: model.iosLaunchArgumentsApp?.bundleIdentifier) { _, identifier in
+            if identifier == nil { presentsArgumentsSheet = false }
+            else { presentArgumentsSheetIfNeeded() }
         }
+        .sheet(isPresented: $presentsArgumentsSheet, onDismiss: { model.iosLaunchArgumentsApp = nil }) {
+            if let app = model.iosLaunchArgumentsApp {
+                IOSLaunchArgumentsInlineEditor(app: app)
+                    .padding(20)
+                    .frame(minWidth: 440, idealWidth: 520, minHeight: 280, idealHeight: 340)
+            }
+        }
+    }
+
+    private var iosSearchField: some View {
+        TextField(tr("搜索应用名称或包名", "Search app name or bundle ID"), text: $appSearchText)
+            .textFieldStyle(.roundedBorder)
+            .frame(minWidth: 160)
+    }
+
+    private var refreshDevicesButton: some View {
+        Button { model.refreshIOSDevices() } label: {
+            Label(tr("刷新设备", "Refresh Devices"), systemImage: "arrow.clockwise")
+        }
+        .fixedSize()
+        .disabled(model.isRefreshingIOSDevices)
+    }
+
+    private var selectedIOSAppLabel: some View {
+        Text(model.selectedIOSBundleIdentifier ?? tr("请选择要启动的应用", "Select an app to launch"))
+            .font(.caption.monospaced())
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+    }
+
+    private var launchIOSButton: some View {
+        Button(tr("带 MetalHUD 启动", "Launch with MetalHUD")) {
+            model.launchSelectedIOSAppWithMetalHUD()
+        }
+        .toolboxProminentButton()
+        .fixedSize()
+        .disabled(model.selectedIOSDeviceID == nil || model.selectedIOSBundleIdentifier == nil)
+        .accessibilityIdentifier("metalHUD.ios.launch")
+        .toolboxLayoutFrame("metalHUD.ios.launch")
+    }
+
+    private var compactDevicePicker: some View {
+        HStack(spacing: 8) {
+            if model.isRefreshingIOSDevices { ProgressView().controlSize(.small) }
+            Picker(tr("设备", "Devices"), selection: Binding(
+                get: { model.selectedIOSDeviceID },
+                set: { model.selectIOSDevice($0) }
+            )) {
+                Text(tr("请选择设备", "Select a Device")).tag(String?.none)
+                ForEach(model.iosDevices) { device in
+                    Text("\(device.displayName) · \(device.state)").tag(Optional(device.id))
+                }
+            }
+            .disabled(model.iosDevices.isEmpty)
+        }
+        .accessibilityIdentifier("metalHUD.ios.devicePicker")
+    }
+
+    private func updateIOSWorkspaceHeight(_ height: CGFloat) {
+        iosWorkspaceHeight = height
+        presentArgumentsSheetIfNeeded()
+    }
+
+    private func presentArgumentsSheetIfNeeded() {
+        guard model.iosLaunchArgumentsApp != nil, !presentsArgumentsSheet, iosWorkspaceHeight > 0 else { return }
+        if iosWorkspaceHeight - iosArgumentsHeight - 14 < 160 { presentsArgumentsSheet = true }
     }
 
     private var deviceList: some View {
@@ -233,7 +329,7 @@ struct MetalHUDDetailView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.iosDevices.isEmpty {
-                ContentUnavailableText(
+                ToolboxFlexiblePlaceholder(
                     icon: "iphone.slash",
                     title: tr("未发现设备", "No Devices Found"),
                     message: tr("连接并信任设备，完成 Xcode 配对后刷新。", "Connect and trust the device, pair it with Xcode, then refresh.")
@@ -254,10 +350,11 @@ struct MetalHUDDetailView: View {
                     }
                 }
                 .listStyle(.inset)
-                .frame(width: 250)
+                .frame(maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
             }
         }
-        .frame(width: 260, alignment: .topLeading)
+        .frame(width: 220, alignment: .topLeading)
+        .frame(minHeight: 0, maxHeight: .infinity)
     }
 
     private var appList: some View {
@@ -265,7 +362,7 @@ struct MetalHUDDetailView: View {
             Text(tr("设备上的应用", "Apps on Device"))
                 .font(.subheadline.weight(.semibold))
             if model.selectedIOSDeviceID == nil {
-                ContentUnavailableText(
+                ToolboxFlexiblePlaceholder(
                     icon: "iphone",
                     title: tr("先选择设备", "Select a Device First"),
                     message: ""
@@ -274,7 +371,7 @@ struct MetalHUDDetailView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if filteredIOSApps.isEmpty {
-                ContentUnavailableText(
+                ToolboxFlexiblePlaceholder(
                     icon: "magnifyingglass",
                     title: tr("未找到应用", "No Apps Found"),
                     message: tr("可尝试刷新应用列表或更改搜索条件。", "Refresh the app list or change the search terms.")
@@ -308,7 +405,7 @@ struct MetalHUDDetailView: View {
                 .listStyle(.inset)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var filteredIOSApps: [IOSInstalledApp] {
@@ -321,7 +418,7 @@ struct MetalHUDDetailView: View {
     }
 }
 
-private enum MetalHUDMode: String, CaseIterable, Identifiable {
+enum MetalHUDMode: String, CaseIterable, Identifiable {
     case desktop
     case ios
 
@@ -638,7 +735,13 @@ struct HoYoGamesDetailView: View {
                 }
             }
 
-            SteamDeckModeSection()
+            VStack(alignment: .leading, spacing: 14) {
+                Divider().padding(.top, 4)
+                Text(tr("主机名兼容功能", "Hostname Compatibility"))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                SteamDeckModeSection()
+            }
 
             if !model.status.log.isEmpty {
                 ToolboxCard(tr("执行记录", "Activity Log")) {
@@ -677,7 +780,8 @@ struct HoYoGamesDetailView: View {
 
 struct ProcessPriorityDetailView: View {
     @EnvironmentObject private var model: AppModel
-    @State private var mode = ProcessPriorityMode.crossOver
+    @State private var mode: ProcessPriorityMode
+    private let automaticallyLoadsProcesses: Bool
     @State private var searchText = ""
     @State private var sortOrder = ProcessSortOrder.cpu
     @State private var favoriteName = ""
@@ -688,6 +792,11 @@ struct ProcessPriorityDetailView: View {
     @AppStorage(ProcessPriorityStorageKey.favorites.rawValue)
     private var favoritesPriorityRaw = Int(ProcessPriorityLevel.highest.rawValue)
 
+    init(initialMode: ProcessPriorityMode = .crossOver, automaticallyLoadsProcesses: Bool = true) {
+        _mode = State(initialValue: initialMode)
+        self.automaticallyLoadsProcesses = automaticallyLoadsProcesses
+    }
+
     var body: some View {
         ToolboxPage(
             icon: SidebarItem.processPriority.iconName,
@@ -696,7 +805,8 @@ struct ProcessPriorityDetailView: View {
                 "通过系统特权 Helper 调整 CrossOver、手动选择的进程或收藏进程的调度优先级。",
                 "Adjust scheduling priority for CrossOver, selected, or favorite processes through the privileged helper."
             ),
-            maxContentWidth: 1180
+            maxContentWidth: 1180,
+            layout: mode == .manual ? .fillsAvailableHeight : .scrolling
         ) {
             Picker(tr("优化模式", "Optimization Mode"), selection: $mode) {
                 ForEach(ProcessPriorityMode.allCases) { item in
@@ -706,6 +816,7 @@ struct ProcessPriorityDetailView: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .frame(maxWidth: 620)
+            .accessibilityIdentifier("process.mode")
 
             switch mode {
             case .crossOver:
@@ -715,6 +826,9 @@ struct ProcessPriorityDetailView: View {
             case .favorites:
                 favoritesContent
             }
+        }
+        .task(id: mode) {
+            if automaticallyLoadsProcesses, mode == .manual { model.loadProcessesForManualSelection() }
         }
     }
 
@@ -748,88 +862,152 @@ struct ProcessPriorityDetailView: View {
                 "Select up to 64 processes. Search matches complete paths, names, and PIDs."
             )
         ) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 10) {
-                    TextField(tr("搜索名称、路径或 PID", "Search name, path, or PID"), text: $searchText)
-                        .textFieldStyle(.roundedBorder)
-                        .layoutPriority(1)
-                        .frame(minWidth: 220, maxWidth: .infinity)
-                    Picker(tr("排序", "Sort"), selection: $sortOrder) {
-                        ForEach(ProcessSortOrder.allCases) { item in
-                            Text(item.title).tag(item)
-                        }
-                    }
-                    .frame(width: 120)
-                    priorityPicker(manualPriorityBinding)
-                    Button { model.refreshRunningProcesses() } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .help(tr("刷新进程", "Refresh Processes"))
-                }
-                priorityHelp
-
-                if model.runningProcesses.isEmpty {
-                    ContentUnavailableText(
-                        icon: "list.bullet.rectangle",
-                        title: tr("尚未读取进程", "Processes Not Loaded"),
-                        message: tr("点击刷新读取当前可运行的进程。", "Refresh to read the currently running processes.")
-                    )
-                    HStack {
-                        Spacer()
-                        Button(tr("读取进程", "Load Processes")) {
-                            model.refreshRunningProcesses()
-                        }
-                        Spacer()
-                    }
-                } else {
-                    List(sortedProcesses) { process in
-                        HStack(spacing: 10) {
-                            Toggle("", isOn: processBinding(process))
-                                .labelsHidden()
-                                .toggleStyle(.checkbox)
-                                .fixedSize()
-                                .accessibilityLabel(
-                                    tr("选择进程", "Select Process") + ", \(process.displayName)"
-                                )
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(process.displayName)
-                                    .font(.subheadline.weight(.medium))
-                                Text("CPU \(process.cpuUsage.formatted(.number.precision(.fractionLength(1))))% · PID \(process.pid) · \(process.locationPath ?? process.command)")
-                                    .font(.caption.monospaced())
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            Button {
-                                model.toggleFavoriteProcess(process)
-                            } label: {
-                                Image(systemName: model.isFavoriteProcess(process) ? "star.fill" : "star")
-                                    .foregroundStyle(model.isFavoriteProcess(process) ? .yellow : .secondary)
-                                    .frame(width: 24)
-                            }
-                            .buttonStyle(.borderless)
-                            .fixedSize()
-                            .help(tr("收藏进程", "Favorite Process"))
-                        }
-                        .padding(.vertical, 3)
-                    }
-                    .frame(minHeight: 380, idealHeight: 450, maxHeight: 520)
-                }
-
-                HStack {
-                    Text(tr("已选择 \(model.selectedProcessIDs.count) 个进程", "\(model.selectedProcessIDs.count) process(es) selected"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Button(tr("应用到所选进程", "Apply to Selected")) {
-                        model.increaseSelectedProcessPriority(priority: manualPriority)
-                    }
-                    .toolboxProminentButton()
-                    .disabled(model.selectedProcessIDs.isEmpty)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { processSearchField; processControls }
+                VStack(alignment: .leading, spacing: 8) {
+                    processSearchField
+                    HStack { processControls; Spacer(minLength: 0) }
                 }
             }
+            priorityHelp
+            ZStack(alignment: .top) {
+                if !model.runningProcesses.isEmpty {
+                    processList
+                } else {
+                    processPlaceholder
+                }
+                if !model.runningProcesses.isEmpty {
+                    if model.isRefreshingRunningProcesses {
+                        ProgressView(tr("正在读取进程…", "Loading Processes…"))
+                            .controlSize(.small)
+                            .padding(8)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    } else if case .failed(let message) = model.runningProcessLoadState {
+                        processError(message)
+                            .padding(10)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+            .clipped()
+            .accessibilityIdentifier("process.listArea")
+            .toolboxLayoutFrame("process.listArea")
+            ViewThatFits(in: .horizontal) {
+                HStack { processSelectionLabel; Spacer(); applyProcessButton }
+                VStack(alignment: .leading, spacing: 6) { processSelectionLabel; applyProcessButton }
+            }
+            .accessibilityIdentifier("process.footer")
         }
+        .frame(maxHeight: .infinity)
+        .accessibilityIdentifier("process.card")
+    }
+
+    private var processSearchField: some View {
+        TextField(tr("搜索名称、路径或 PID", "Search name, path, or PID"), text: $searchText)
+            .textFieldStyle(.roundedBorder)
+            .frame(minWidth: 220, maxWidth: .infinity)
+            .accessibilityIdentifier("process.search")
+    }
+
+    private var processControls: some View {
+        HStack(spacing: 10) {
+            Picker(tr("排序", "Sort"), selection: $sortOrder) {
+                ForEach(ProcessSortOrder.allCases) { item in Text(item.title).tag(item) }
+            }
+            .frame(width: 120)
+            priorityPicker(manualPriorityBinding)
+            Button { model.refreshRunningProcesses() } label: { Image(systemName: "arrow.clockwise") }
+                .help(tr("刷新进程", "Refresh Processes"))
+                .disabled(model.isRefreshingRunningProcesses)
+                .accessibilityIdentifier("process.refresh")
+        }
+        .fixedSize()
+    }
+
+    private var processSelectionLabel: some View {
+        Text(tr("已选择 \(model.selectedProcessIDs.count) 个进程", "\(model.selectedProcessIDs.count) process(es) selected"))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+    }
+
+    private var applyProcessButton: some View {
+        Button(tr("应用到所选进程", "Apply to Selected")) {
+            model.increaseSelectedProcessPriority(priority: manualPriority)
+        }
+        .toolboxProminentButton()
+        .fixedSize()
+        .disabled(model.selectedProcessIDs.isEmpty || model.isRefreshingRunningProcesses)
+        .accessibilityIdentifier("process.apply")
+        .toolboxLayoutFrame("process.apply")
+    }
+
+    @ViewBuilder private var processPlaceholder: some View {
+        switch model.runningProcessLoadState {
+        case .idle:
+            ToolboxFlexiblePlaceholder(icon: "list.bullet.rectangle", title: tr("尚未读取进程", "Processes Not Loaded"), message: "")
+        case .loading:
+            ProgressView(tr("正在读取进程…", "Loading Processes…"))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .loaded:
+            ToolboxFlexiblePlaceholder(icon: "list.bullet.rectangle", title: tr("暂无运行中的进程", "No Running Processes"), message: "")
+        case .failed(let message):
+            ScrollView {
+                processError(message).padding(16)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func processError(_ message: String) -> some View {
+        VStack(spacing: 6) {
+            Label(tr("读取进程失败", "Could Not Load Processes"), systemImage: "exclamationmark.triangle")
+                .font(.headline)
+            Text(message).font(.caption).lineLimit(3).textSelection(.enabled)
+            Button(tr("重试", "Retry")) { model.refreshRunningProcesses() }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var processList: some View {
+        List(sortedProcesses) { process in
+            HStack(spacing: 10) {
+                Toggle("", isOn: processBinding(process))
+                    .labelsHidden()
+                    .toggleStyle(.checkbox)
+                    .fixedSize()
+                    .accessibilityLabel(
+                        tr("选择进程", "Select Process") + ", \(process.displayName)"
+                    )
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(process.displayName)
+                        .font(.subheadline.weight(.medium))
+                    Text("CPU \(process.cpuUsage.formatted(.number.precision(.fractionLength(1))))% · PID \(process.pid) · \(process.locationPath ?? process.command)")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    model.toggleFavoriteProcess(process)
+                } label: {
+                    Image(systemName: model.isFavoriteProcess(process) ? "star.fill" : "star")
+                        .foregroundStyle(model.isFavoriteProcess(process) ? .yellow : .secondary)
+                        .frame(width: 24)
+                }
+                .buttonStyle(.borderless)
+                .fixedSize()
+                .help(tr("收藏进程", "Favorite Process"))
+            }
+            .padding(.vertical, 3)
+        }
+        .overlay {
+            if sortedProcesses.isEmpty {
+                ToolboxFlexiblePlaceholder(icon: "magnifyingglass", title: tr("未找到匹配的进程", "No Matching Processes"), message: "")
+            }
+        }
+        .frame(minHeight: 0, maxHeight: .infinity)
     }
 
     private var favoritesContent: some View {
@@ -1002,7 +1180,7 @@ enum ProcessPriorityStorageKey: String, CaseIterable {
     }
 }
 
-private enum ProcessPriorityMode: String, CaseIterable, Identifiable {
+enum ProcessPriorityMode: String, CaseIterable, Identifiable {
     case crossOver
     case manual
     case favorites
@@ -1041,7 +1219,7 @@ struct SteamDeckModeSection: View {
     var body: some View {
         VStack(spacing: 18) {
             ToolboxCard(
-                isActive ? tr("SteamDeck 模式已启用", "SteamDeck Mode Enabled") : tr("当前使用原始设备名称", "Original Names Active"),
+                tr("SteamDeck 主机名切换", "SteamDeck Hostname Switching"),
                 subtitle: tr(
                     "此功能只修改主机名，不是完整的硬件或 AppID 欺骗。",
                     "This changes hostnames only; it is not a complete hardware or AppID spoof."
@@ -1052,9 +1230,9 @@ struct SteamDeckModeSection: View {
                         .font(.title2)
                         .foregroundStyle(isActive ? .green : .secondary)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(isActive ? "steamdeck" : "macOS")
+                        Text(isActive ? "SteamDeck" : "macOS")
                             .font(.headline.monospaced())
-                        Text(tr("设备名称配置", "Hostname profile"))
+                        Text(isActive ? tr("当前使用 SteamDeck 主机名", "Using SteamDeck Hostnames") : tr("当前使用原始设备名称", "Original Names Active"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -1139,5 +1317,27 @@ struct ContentUnavailableText: View {
         }
         .frame(maxWidth: .infinity, minHeight: 130)
         .padding(12)
+    }
+}
+
+
+private struct IOSArgumentsEditorHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+struct ToolboxFlexiblePlaceholder: View {
+    let icon: String
+    let title: String
+    let message: String
+
+    var body: some View {
+        GeometryReader { viewport in
+            ScrollView {
+                ContentUnavailableText(icon: icon, title: title, message: message)
+                    .frame(minHeight: viewport.size.height)
+            }
+        }
+        .frame(minHeight: 0, maxHeight: .infinity)
     }
 }

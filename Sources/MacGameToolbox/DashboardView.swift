@@ -16,11 +16,17 @@ struct AppBackgroundView: View {
     }
 }
 
+enum ToolboxPageLayout {
+    case scrolling
+    case fillsAvailableHeight
+}
+
 struct ToolboxPage<Content: View>: View {
     let icon: String
     let title: String
     let subtitle: String
     let maxContentWidth: CGFloat
+    let layout: ToolboxPageLayout
     @ViewBuilder let content: Content
 
     init(
@@ -28,26 +34,62 @@ struct ToolboxPage<Content: View>: View {
         title: String,
         subtitle: String,
         maxContentWidth: CGFloat = 980,
+        layout: ToolboxPageLayout = .scrolling,
         @ViewBuilder content: () -> Content
     ) {
         self.icon = icon
         self.title = title
         self.subtitle = subtitle
         self.maxContentWidth = maxContentWidth
+        self.layout = layout
         self.content = content()
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                ToolboxPageHeader(icon: icon, title: title, subtitle: subtitle)
-                content
+        Group {
+            if layout == .scrolling {
+                ScrollView {
+                    pageContent
+                        .frame(maxWidth: maxContentWidth, alignment: .leading)
+                        .padding(24)
+                        .frame(maxWidth: .infinity, alignment: .top)
+                }
+                .scrollIndicators(.automatic)
+            } else {
+                pageContent
+                    .frame(maxWidth: maxContentWidth, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(24)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
-            .frame(maxWidth: maxContentWidth, alignment: .leading)
-            .padding(24)
-            .frame(maxWidth: .infinity, alignment: .top)
         }
-        .scrollIndicators(.automatic)
+        .coordinateSpace(name: "toolbox.page")
+    }
+
+    private var pageContent: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            ToolboxPageHeader(icon: icon, title: title, subtitle: subtitle)
+            content
+        }
+    }
+}
+
+struct ToolboxLayoutFrameKey: PreferenceKey {
+    static let defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
+}
+
+extension View {
+    func toolboxLayoutFrame(_ identifier: String) -> some View {
+        background {
+            GeometryReader { geometry in
+                Color.clear.preference(
+                    key: ToolboxLayoutFrameKey.self,
+                    value: [identifier: geometry.frame(in: .named("toolbox.page"))]
+                )
+            }
+        }
     }
 }
 

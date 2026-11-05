@@ -10,7 +10,7 @@ struct ToolboxSettingsDetailView: View {
     var body: some View {
         ToolboxPage(
             icon: SidebarItem.settings.iconName,
-            title: tr("设置", "Settings"),
+            title: tr("工具箱设置", "Toolbox Settings"),
             subtitle: tr("管理显示语言与应用更新。", "Manage your display language and app updates.")
         ) {
             ToolboxCard(
@@ -236,7 +236,7 @@ struct TutorialItem: Identifiable {
             ),
             TutorialItem(
                 title: chinese ? "Mac 玩 PC 原神详细教程" : "Mac PC Genshin Impact Detailed Guide",
-                address: "https://b23.tv/aVH2i2K",
+                address: "https://b23.tv/l6ctHlr",
                 category: .games
             ),
             TutorialItem(

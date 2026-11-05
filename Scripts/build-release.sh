@@ -34,15 +34,14 @@ codesign --force --sign "$SIGN_IDENTITY" -i com.iven.macgametoolbox.appdrop.help
 codesign --force --sign "$SIGN_IDENTITY" "$APPDROP_HELPER_APP"
 codesign --force --sign "$SIGN_IDENTITY" -i com.iven.macgametoolbox.helper "$HELPER"
 for attempt in 1 2 3 4 5; do
-  xattr -d com.apple.FinderInfo "$APP" 2>/dev/null || true
-  xattr -d 'com.apple.fileprovider.fpfs#P' "$APP" 2>/dev/null || true
+  # File Provider can add Finder metadata to nested resource bundles after signing.
+  xattr -cr "$APP"
   if codesign --force --sign "$SIGN_IDENTITY" -i com.iven.macgametoolbox "$APP"; then break; fi
   [[ "$attempt" == 5 ]] && exit 1
   sleep 0.2
 done
 for attempt in 1 2 3 4 5; do
-  xattr -d com.apple.FinderInfo "$APP" 2>/dev/null || true
-  xattr -d 'com.apple.fileprovider.fpfs#P' "$APP" 2>/dev/null || true
+  xattr -cr "$APP"
   if codesign --verify --deep --strict --verbose=2 "$APP"; then break; fi
   [[ "$attempt" == 5 ]] && exit 1
   sleep 0.2
