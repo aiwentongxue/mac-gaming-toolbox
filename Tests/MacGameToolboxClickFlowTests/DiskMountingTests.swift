@@ -8,9 +8,12 @@ private actor DiskHostRunner: CommandRunning {
     var paths: [String:String]=[:]
     let failedDefault: String?
     let failRefresh: Bool
+    var listDelay: Duration = .zero
     init(failedDefault: String? = nil, failRefresh: Bool = false) {self.failedDefault=failedDefault;self.failRefresh=failRefresh}
+    func delayLists() { listDelay = .milliseconds(100) }
     func run(_ executable:String,arguments:[String]) async throws -> CommandResult {
         calls.append(arguments)
+        if arguments.first == "list" { try await Task.sleep(for: listDelay) }
         var info:[String:Any]=[:]
         if arguments.first == "list" && failRefresh && !paths.isEmpty {throw ToolboxError.commandFailed("refresh fixture failure")}
         if arguments.first == "list" {info=["AllDisks":["disk4s1","disk5s1"]]}
@@ -133,6 +136,70 @@ private actor DiskHostRunner: CommandRunning {
         XCTAssertTrue(model.diskOperationResult?.isSuccess == true)
         XCTAssertNotNil(model.diskRefreshError)
         XCTAssertEqual(model.status.phase,.failed)
+    }
+    func testAutomaticDiskObservationDoesNotLockActionsOrRewriteUnchangedDrafts() async throws {
+        let root=root();defer {try? FileManager.default.removeItem(at:root)}
+        let runner=DiskHostRunner(), service=DiskService(runner:runner)
+        let model=AppModel(configurationStore:ConfigurationStore(configurationURL:root.appendingPathComponent("config.json")),launchAutomatically:false,diskService:service)
+        let volumes=try await service.listEligibleVolumes()
+        model.applyDiskRefresh(volumes)
+        model.configuration.automaticallyRestoreMountsOnLaunch=true
+        model.configuration.restorableDiskMounts=[DiskPreset(diskIdentifier:"disk4s1",volumeUUID:"OFFLINE",mountPath:root.path)]
+        model.diskPaths["disk4s1"]="/tmp/draft"; model.activeDiskID="disk5s1"
+        await runner.delayLists()
+        var busyStates:[Bool]=[], refreshStates:[Bool]=[]
+        let busy=model.$isDiskBusy.sink { busyStates.append($0) }
+        let refresh=model.$isRefreshingDisks.sink { refreshStates.append($0) }
+        defer { busy.cancel(); refresh.cancel() }
+        for _ in 0..<3 { try await model.refreshDisksForAutomaticRestoration(allowRestore:true) }
+        XCTAssertFalse(busyStates.contains(true))
+        XCTAssertFalse(refreshStates.contains(true))
+        XCTAssertEqual(model.diskPaths["disk4s1"],"/tmp/draft")
+        XCTAssertEqual(model.activeDiskID,"disk5s1")
+        let calls=await runner.calls
+        XCTAssertTrue(calls.filter{$0.first == "mount" || $0.first == "unmount"}.isEmpty)
+    }
+    func testAutomaticDiskObservationSkipsEmptyRecordsAndDiscardsStaleScan() async throws {
+        let runner=DiskHostRunner(), service=DiskService(runner:runner)
+        let model=AppModel(launchAutomatically:false,diskService:service)
+        model.configuration.automaticallyRestoreMountsOnLaunch=true
+        try await model.refreshDisksForAutomaticRestoration(allowRestore:true)
+        let emptyCalls=await runner.calls
+        XCTAssertTrue(emptyCalls.isEmpty)
+        model.configuration.restorableDiskMounts=[DiskPreset(diskIdentifier:"disk4s1",volumeUUID:"OFFLINE",mountPath:"/tmp/unused")]
+        await runner.delayLists()
+        let background=Task {try await model.refreshDisksForAutomaticRestoration(allowRestore:true)}
+        for _ in 0..<100 {
+            if await runner.calls.contains(where:{$0.first == "list"}) {break}
+            try await Task.sleep(for:.milliseconds(2))
+        }
+        let newer=volume("disk8s1",uuid:"NEW")
+        model.applyDiskRefresh([newer])
+        let result=try await background.value
+        XCTAssertNil(result)
+        XCTAssertEqual(model.disks,[newer])
+    }
+    func testAutomaticDiskRestorationLocksOnlyDuringActualMountAndDoesNotRepeat() async throws {
+        let root=root();defer {try? FileManager.default.removeItem(at:root)}
+        try FileManager.default.createDirectory(at:root,withIntermediateDirectories:true)
+        let runner=DiskHostRunner(), service=DiskService(runner:runner)
+        let model=AppModel(configurationStore:ConfigurationStore(configurationURL:root.appendingPathComponent("config.json")),launchAutomatically:false,diskService:service)
+        let volumes=try await service.listEligibleVolumes(); model.applyDiskRefresh(volumes)
+        model.configuration.automaticallyRestoreMountsOnLaunch=true
+        model.configuration.restorableDiskMounts=[DiskPreset(diskIdentifier:"disk4s1",volumeUUID:volumes[0].volumeUUID,mountPath:root.path)]
+        try await model.refreshDisksForAutomaticRestoration(allowRestore:false)
+        let before=await runner.calls
+        XCTAssertTrue(before.filter{$0.first == "mount"}.isEmpty)
+        var busyStates:[Bool]=[]
+        let subscription=model.$isDiskBusy.sink { busyStates.append($0) }; defer {subscription.cancel()}
+        try await model.refreshDisksForAutomaticRestoration(allowRestore:true)
+        XCTAssertEqual(model.disks.first{$0.id=="disk4s1"}?.mountPoint,root.path)
+        XCTAssertTrue(busyStates.contains(true)); XCTAssertFalse(model.isDiskBusy)
+        busyStates=[]
+        try await model.refreshDisksForAutomaticRestoration(allowRestore:true)
+        XCTAssertFalse(busyStates.contains(true))
+        let calls=await runner.calls
+        XCTAssertEqual(calls.filter{$0.first == "mount"}.count,1)
     }
     func testDiskPageFitsMinimumDetailWidthInNineLanguagesAndBothAppearances() throws {
         let defaults=UserDefaults.standard,old=UserDefaults.standard.object(forKey:AppLanguage.preferenceKey)

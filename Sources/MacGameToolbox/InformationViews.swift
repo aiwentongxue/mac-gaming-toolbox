@@ -33,6 +33,12 @@ struct ChangelogView: View {
 
     private var releases: [Release] {
         [
+            Release(version: "4.0.6", entries: [
+                tr("修复目标目录含 .DS_Store 等原有文件时无法挂载的问题，恢复 3.2.1 的目录挂载兼容性", "Fixed mounting into directories containing .DS_Store or other existing files, restoring 3.2.1 compatibility"),
+                tr("挂载保留目标目录原有文件，确认界面说明临时遮盖与卸载后恢复的行为", "Mounting preserves existing destination files; confirmation explains that they are hidden until unmounting"),
+                tr("修复自动恢复反复显示读取状态、禁用操作按钮的问题，后台扫描不再打断手动操作", "Fixed recurring loading indicators and disabled actions during automatic restoration; background scans no longer interrupt manual actions"),
+                tr("没有挂载记录时跳过后台扫描，已在目标路径的磁盘不再重复进入操作状态", "Skip background scans without mount records and avoid repeated busy states for volumes already at their destination")
+            ]),
             Release(version: "4.0.5", entries: [
                 tr("明确 ClickFlow、AppDrop 与工具箱设置的归属，将工具箱设置固定在侧边栏底部", "Clarified ClickFlow, AppDrop, and toolbox settings, with toolbox settings pinned below the sidebar"),
                 tr("进入手动选择时自动读取进程，刷新保留列表及有效勾选，支持读取失败后重试", "Manual process selection now loads automatically, preserves the list and valid selections during refresh, and supports retrying failed reads"),

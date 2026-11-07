@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | [English](README_EN.md)
 
-Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 4.0.5，明确模块设置归属并固定全局设置入口，支持手动进程自动读取、自适应进程与 MetalHUD 设备列表，优化 HoYoGames 主机名切换，并更新原神教程链接；保留 AppDrop 1.0.5、ClickFlow 1.0.1、九语言适配及 Intel / Apple Silicon 支持。
+Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常见的 Mac 游戏辅助操作。当前版本为 4.0.6，修复磁盘挂载对已有目录的兼容性，保留目标目录原有文件，并消除自动恢复时反复读取和禁用按钮的问题；保留 AppDrop 1.0.5、ClickFlow 1.0.1、九语言适配及 Intel / Apple Silicon 支持。
 
 ## 功能
 
@@ -33,7 +33,7 @@ Mac 游戏工具箱是一款原生 SwiftUI macOS 应用，用于集中管理常�
 
 ### 下载安装包
 
-从 [Releases](https://github.com/aiwentongxue/mac-gaming-toolbox/releases) 下载 `MacGameToolbox-4.0.5.dmg`，将应用拖入 `Applications`。同一个 Universal 安装包同时包含 `x86_64` 与 `arm64`，无需按芯片分别下载。安装包使用 Apple Development 身份签名，未经过 Apple 公证；Release 同时提供 SHA-256 校验文件和核验记录。
+从 [Releases](https://github.com/aiwentongxue/mac-gaming-toolbox/releases) 下载 `MacGameToolbox-4.0.6.dmg`，将应用拖入 `Applications`。同一个 Universal 安装包同时包含 `x86_64` 与 `arm64`，无需按芯片分别下载。安装包使用 Apple Development 身份签名，未经过 Apple 公证；Release 同时提供 SHA-256 校验文件和核验记录。
 
 ### 从源码构建应用
 

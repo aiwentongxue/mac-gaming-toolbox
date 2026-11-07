@@ -22,14 +22,64 @@ private func diskRoot() -> URL { FileManager.default.temporaryDirectory.appendin
     let selfHosted = diskFixture(path:root.path)
     #expect(throws: (any Error).self) { try DiskService.validateMountRequests([DiskMountRequest(volume:selfHosted,path:root.appendingPathComponent("child").path)], volumes:[selfHosted]) }
 }
-@Test func mountingPreflightRejectsNonemptyFileAndIdentityChanges() throws {
+@Test func mountingPreflightAllowsExistingContentsButRejectsFilesAndIdentityChanges() throws {
     let root=diskRoot()
     try FileManager.default.createDirectory(at:root,withIntermediateDirectories:true)
     defer { try? FileManager.default.removeItem(at:root) }
     let file=root.appendingPathComponent("content")
     try Data("existing user content".utf8).write(to:file)
-    for path in [root.path,file.path] { #expect(throws: (any Error).self) { try DiskService.validateMountRequests([DiskMountRequest(volume:diskFixture(),path:path)],volumes:[diskFixture()]) } }
+    let metadata = root.appendingPathComponent(".DS_Store")
+    try Data("Finder metadata".utf8).write(to: metadata)
+    let hidden = root.appendingPathComponent(".game-data")
+    try Data("hidden user content".utf8).write(to: hidden)
+    let requests = try DiskService.validateMountRequests([DiskMountRequest(volume: diskFixture(), path: root.path)], volumes: [diskFixture()])
+    #expect(requests.count == 1)
+    #expect(try String(contentsOf: file, encoding: .utf8) == "existing user content")
+    #expect(try String(contentsOf: metadata, encoding: .utf8) == "Finder metadata")
+    #expect(try String(contentsOf: hidden, encoding: .utf8) == "hidden user content")
+    #expect(throws: (any Error).self) { try DiskService.validateMountRequests([DiskMountRequest(volume:diskFixture(),path:file.path)],volumes:[diskFixture()]) }
     #expect(throws: (any Error).self) { try DiskService.validateMountRequests([DiskMountRequest(volume:diskFixture(uuid:"expected"),path:root.path)],volumes:[diskFixture(uuid:"replacement")]) }
+}
+
+/// Opt in to a real mount test using only a newly created disposable disk image.
+@Test(.enabled(if: ProcessInfo.processInfo.environment["TOOLBOX_DISK_IMAGE_INTEGRATION"] == "1"))
+func disposableAPFSImageMountPreservesDestinationContents() async throws {
+    let root = diskRoot()
+    let target = root.appendingPathComponent("Game's 数据/Data")
+    let image = root.appendingPathComponent("test.dmg")
+    let name = "Toolbox406-" + UUID().uuidString.prefix(8)
+    let runner = ProcessCommandRunner()
+    try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+    let contents = [".DS_Store": "Finder metadata", ".game-data": "hidden game data", "save.dat": "original game save"]
+    for (file, value) in contents { try Data(value.utf8).write(to: target.appendingPathComponent(file)) }
+    _ = try await runner.run("/usr/bin/hdiutil", arguments: ["create", "-size", "64m", "-fs", "APFS", "-volname", name, image.path])
+    let attached = try await runner.run("/usr/bin/hdiutil", arguments: ["attach", "-nobrowse", "-plist", image.path])
+    let plist = try #require(try PropertyListSerialization.propertyList(from: attached.standardOutput, format: nil) as? [String: Any])
+    let entities = try #require(plist["system-entities"] as? [[String: Any]])
+    let device = try #require(entities.first?["dev-entry"] as? String)
+    do {
+        let service = DiskService(runner: runner)
+        let volumes = try await service.listEligibleVolumes()
+        let volume = try #require(volumes.first { $0.name == name })
+        let original = try #require(volume.mountPoint)
+        try Data("volume data".utf8).write(to: URL(fileURLWithPath: original).appendingPathComponent("volume-marker"))
+        let mounted = await service.mountVolumes([DiskMountRequest(volume: volume, path: target.path)])
+        #expect(mounted.isSuccess, "\(mounted.description)")
+        #expect(try String(contentsOf: target.appendingPathComponent("volume-marker"), encoding: .utf8) == "volume data")
+        #expect(!FileManager.default.fileExists(atPath: target.appendingPathComponent("save.dat").path))
+        let restored = await service.restoreVolumes([volume])
+        #expect(restored.isSuccess, "\(restored.description)")
+        for (file, value) in contents {
+            #expect(try String(contentsOf: target.appendingPathComponent(file), encoding: .utf8) == value)
+        }
+        #expect(try String(contentsOf: URL(fileURLWithPath: original).appendingPathComponent("volume-marker"), encoding: .utf8) == "volume data")
+    } catch {
+        _ = try await runner.run("/usr/bin/hdiutil", arguments: ["detach", device])
+        try FileManager.default.removeItem(at: root)
+        throw error
+    }
+    _ = try await runner.run("/usr/bin/hdiutil", arguments: ["detach", device])
+    try FileManager.default.removeItem(at: root)
 }
 @Test func busyUnmountDoesNotAttemptMountOrRollback() async throws {
     let root=diskRoot(); defer { try? FileManager.default.removeItem(at:root) }

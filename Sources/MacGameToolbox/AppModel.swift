@@ -25,6 +25,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var diskOperationResult: DiskBatchResult?
     @Published private(set) var diskRefreshError: String?
     private var diskDraftsByUUID: [String: String] = [:]
+    private var diskStateRevision: UInt = 0
     private var automaticRestoreNotBefore = Date.distantPast
     @Published var diskPaths: [String: String] = [:]
     @Published var metalHUDEnabled = false
@@ -532,12 +533,18 @@ final class AppModel: ObservableObject {
         isRefreshingDisks = true
         Task {
             defer { isRefreshingDisks = false }
-            do { applyDiskRefresh(try await diskService.listEligibleVolumes()) }
-            catch { report(error) }
+            do {
+                applyDiskRefresh(try await diskService.listEligibleVolumes())
+                diskRefreshError = nil
+            } catch {
+                diskRefreshError = error.localizedDescription
+                report(error)
+            }
         }
     }
 
     func applyDiskRefresh(_ available: [DiskVolume]) {
+        diskStateRevision &+= 1
         let previous = disks
         let focused = previous.first { $0.id == activeDiskID }
         let counts = Dictionary(available.compactMap { $0.volumeUUID?.lowercased() }.map { ($0, 1) }, uniquingKeysWith: +)
@@ -897,36 +904,47 @@ final class AppModel: ObservableObject {
         let startedAt = clock.now
         var nextLogSecond = 0
         while !Task.isCancelled, configuration.automaticallyRestoreMountsOnLaunch {
-            if isDiskBusy || isRefreshingDisks {
-                do { try await Task.sleep(for: .seconds(1)) } catch { return }
-                continue
-            }
-            isRefreshingDisks = true
             do {
-                let availableVolumes = try await diskService.listEligibleVolumes()
-                guard !Task.isCancelled, configuration.automaticallyRestoreMountsOnLaunch else { isRefreshingDisks = false; return }
-                applyDiskRefresh(availableVolumes)
                 let elapsedSeconds = Int(startedAt.duration(to: clock.now).components.seconds)
-                if elapsedSeconds >= nextLogSecond {
+                if let availableVolumes = try await refreshDisksForAutomaticRestoration(allowRestore: elapsedSeconds >= 10),
+                   elapsedSeconds >= nextLogSecond {
                     let identifiers = availableVolumes.map {
                         "\($0.id)[\($0.volumeUUID ?? "no-uuid")]=\($0.mountPoint ?? "unmounted")"
                     }.joined(separator: ", ")
                     DiagnosticFileLogger.write("Automatic disk scan \(elapsedSeconds)s: \(identifiers.isEmpty ? "no eligible volumes" : identifiers)")
                     nextLogSecond = max(10, ((elapsedSeconds / 10) + 1) * 10)
                 }
-                isRefreshingDisks = false
-                if elapsedSeconds >= 10, Date() >= automaticRestoreNotBefore, !isDiskBusy {
-                    isDiskBusy = true
-                    await restoreMounts(from: availableVolumes)
-                    isDiskBusy = false
-                }
             } catch {
-                isRefreshingDisks = false
                 DiagnosticFileLogger.write("Automatic disk refresh failed: \(error.localizedDescription)")
             }
             do { try await Task.sleep(for: .seconds(1)) }
             catch { return }
         }
+    }
+
+    /// Background observation must not disable manual actions or show a loading
+    /// indicator every second. Only an actual restoration acquires the busy state.
+    @discardableResult
+    func refreshDisksForAutomaticRestoration(allowRestore: Bool) async throws -> [DiskVolume]? {
+        guard configuration.automaticallyRestoreMountsOnLaunch,
+              !configuration.restorableDiskMounts.isEmpty,
+              !Task.isCancelled, !isDiskBusy, !isRefreshingDisks else { return nil }
+        let records = configuration.restorableDiskMounts
+        let revision = diskStateRevision
+        let available = try await diskService.listEligibleVolumes()
+        // A manual operation or a changed configuration takes precedence over
+        // the snapshot captured by this background scan.
+        guard !Task.isCancelled, configuration.automaticallyRestoreMountsOnLaunch,
+              records == configuration.restorableDiskMounts, revision == diskStateRevision,
+              !isDiskBusy, !isRefreshingDisks else { return nil }
+        if available != disks { applyDiskRefresh(available) }
+        if allowRestore, Date() >= automaticRestoreNotBefore,
+           !DiskRestorationPlan(presets: records, volumes: available).requests.isEmpty {
+            isDiskBusy = true
+            defer { isDiskBusy = false }
+            await restoreMounts(from: available)
+        }
+        return available
     }
 
     private func restoreMounts(from volumes: [DiskVolume], manual: Bool = false) async {

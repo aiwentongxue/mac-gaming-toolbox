@@ -239,6 +239,10 @@ struct DiskManagerDetailView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(action.restore ? tr("确认恢复默认挂载", "Confirm Default Restoration") : tr("确认挂载", "Confirm Mount")).font(.title2.bold())
             Text(tr("以下清单为本次操作对象。", "This list contains all volumes affected by this operation."))
+            if !action.restore {
+                Text(tr("挂载期间，目标目录原有内容会被临时遮住，卸载后重新显示。请先退出使用该目录的应用。", "Existing destination contents are hidden while the volume is mounted and reappear after unmounting. Quit apps using this directory first."))
+                    .font(.callout).foregroundStyle(.secondary)
+            }
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     ForEach(action.requests, id: \.volume.id) { request in

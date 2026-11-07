@@ -71,11 +71,9 @@ public actor DiskService {
             var directory: ObjCBool = false
             if FileManager.default.fileExists(atPath: path, isDirectory: &directory) {
                 guard directory.boolValue else { throw ToolboxError.invalidPath(path) }
-                if live.mountPoint.map(canonicalMountPath) != canonical {
-                    guard try FileManager.default.contentsOfDirectory(atPath: path).isEmpty else {
-                        throw ToolboxError.invalidPath(coreText("目标目录必须为空：", "Destination must be empty: ") + path)
-                    }
-                }
+                // Like 3.2.1, mount over an existing directory without deleting its
+                // contents. They remain underneath the mount, including .DS_Store
+                // and sandbox-created files, and reappear when it is unmounted.
             }
             canonicalPaths.append(canonical)
             normalized.append(DiskMountRequest(volume: live, path: path))
