@@ -45,7 +45,8 @@ final class AppState: ObservableObject {
     let macroPlayer = MacroPlayer()
     let macroStorage: MacroStorage
     let combinedMacroRecorder = CombinedMacroRecorder()
-    let controllerOutput: CrossOverXInputPublisher
+    let controllerOutput: ControllerOutputRouter
+    let ojdSetup: OJDSetupModel
     let combinedMacroPlayer: CombinedMacroPlayer
     let combinedMacroStorage: CombinedMacroStorage
     let automationCoordinator = AutomationCoordinator()
@@ -57,12 +58,13 @@ final class AppState: ObservableObject {
         macroStorage: MacroStorage = MacroStorage(),
         combinedMacroStorage: CombinedMacroStorage = CombinedMacroStorage(),
         permissionManager: PermissionManager = PermissionManager(),
-        controllerOutput: CrossOverXInputPublisher = CrossOverXInputPublisher()
+        controllerOutput: ControllerOutputRouter = ControllerOutputRouter()
     ) {
         self.permissionManager = permissionManager
         self.macroStorage = macroStorage
         self.combinedMacroStorage = combinedMacroStorage
         self.controllerOutput = controllerOutput
+        self.ojdSetup = OJDSetupModel(output: controllerOutput)
         combinedMacroPlayer = CombinedMacroPlayer(controllerOutput: controllerOutput)
         settingsStore = settings
         selectedPage = settings.loadSelectedPage()
@@ -479,6 +481,8 @@ final class AppState: ObservableObject {
         Task { @MainActor [weak self] in
             guard let self else { return }
             await stopOtherActivities(except: .combinedRecording)
+            let output = controllerOutput
+            await Task.detached { output.disconnectOJD() }.value
             do {
                 combinedRecordingContinuationMacroID = continuingMacroID
                 try await combinedMacroRecorder.start(mouseMode: mouseRecordingMode) { [weak self] progress in

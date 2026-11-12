@@ -352,7 +352,7 @@ struct CombinedMacroEvent: Codable, Identifiable, Hashable, Sendable {
 }
 
 struct CombinedMacro: Codable, Identifiable, Hashable, Sendable {
-    static let schemaVersion = 1
+    static let schemaVersion = 2
 
     var schemaVersion: Int
     var id: UUID
@@ -364,6 +364,7 @@ struct CombinedMacro: Codable, Identifiable, Hashable, Sendable {
     var repeatCount: Int
     var repeatDelayMilliseconds: Double
     var playbackSpeed: Double
+    var controllerBackend: ControllerOutputBackend
 
     init(
         id: UUID = UUID(),
@@ -374,7 +375,8 @@ struct CombinedMacro: Codable, Identifiable, Hashable, Sendable {
         repeatMode: MacroRepeatMode = .once,
         repeatCount: Int = 1,
         repeatDelayMilliseconds: Double = 0,
-        playbackSpeed: Double = 1
+        playbackSpeed: Double = 1,
+        controllerBackend: ControllerOutputBackend = .xinput
     ) {
         schemaVersion = Self.schemaVersion
         self.id = id
@@ -386,6 +388,31 @@ struct CombinedMacro: Codable, Identifiable, Hashable, Sendable {
         self.repeatCount = repeatCount
         self.repeatDelayMilliseconds = repeatDelayMilliseconds
         self.playbackSpeed = playbackSpeed
+        self.controllerBackend = controllerBackend
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, id, name, createdAt, updatedAt, events
+        case repeatMode, repeatCount, repeatDelayMilliseconds, playbackSpeed, controllerBackend
+    }
+
+    init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let version = try c.decode(Int.self, forKey: .schemaVersion)
+        guard (1...Self.schemaVersion).contains(version) else {
+            throw DecodingError.dataCorruptedError(forKey: .schemaVersion, in: c, debugDescription: "Unsupported combined macro version")
+        }
+        schemaVersion = Self.schemaVersion
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+        events = try c.decode([CombinedMacroEvent].self, forKey: .events)
+        repeatMode = try c.decode(MacroRepeatMode.self, forKey: .repeatMode)
+        repeatCount = try c.decode(Int.self, forKey: .repeatCount)
+        repeatDelayMilliseconds = try c.decode(Double.self, forKey: .repeatDelayMilliseconds)
+        playbackSpeed = try c.decode(Double.self, forKey: .playbackSpeed)
+        controllerBackend = version == 1 ? .xinput : try c.decode(ControllerOutputBackend.self, forKey: .controllerBackend)
     }
 
     var durationMilliseconds: Double {

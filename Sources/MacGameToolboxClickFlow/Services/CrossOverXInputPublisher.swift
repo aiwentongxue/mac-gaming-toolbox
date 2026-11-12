@@ -8,6 +8,17 @@ protocol ControllerOutputPublishing: Sendable {
     func resume() throws
     func reset() throws
     func end() throws
+    func selectBackend(_ backend: ControllerOutputBackend) throws
+    func checkHealth() throws
+    func applyBatch(_ events: [CombinedMacroEvent]) throws
+}
+
+extension ControllerOutputPublishing {
+    func selectBackend(_ backend: ControllerOutputBackend) throws {}
+    func checkHealth() throws {}
+    func applyBatch(_ events: [CombinedMacroEvent]) throws {
+        for event in events { try apply(controllerName: event.controllerName, controlName: event.controlName, value: event.controlValue) }
+    }
 }
 
 /// Publishes ClickFlow controller macro events to the native XInput proxy used
@@ -22,6 +33,8 @@ final class CrossOverXInputPublisher: ControllerOutputPublishing, @unchecked Sen
     private let pollInterval: Duration
     private let heartbeatInterval: Duration
     private let lock = NSLock()
+    private let stateSink: (@Sendable (CrossOverXInputState, Bool) throws -> Void)?
+    private var workerFailure: (any Error)?
     private var sequence: UInt32 = 0
     private var connected = false
     private var physicalPassthroughActive = false
@@ -40,12 +53,14 @@ final class CrossOverXInputPublisher: ControllerOutputPublishing, @unchecked Sen
         url: URL = defaultURL,
         physicalController: any PhysicalControllerStateProviding = GameControllerPhysicalStateProvider(),
         pollInterval: Duration = .milliseconds(8),
-        heartbeatInterval: Duration = .seconds(1)
+        heartbeatInterval: Duration = .seconds(1),
+        stateSink: (@Sendable (CrossOverXInputState, Bool) throws -> Void)? = nil
     ) {
         self.url = url.standardizedFileURL
         self.physicalController = physicalController
         self.pollInterval = pollInterval
         self.heartbeatInterval = heartbeatInterval
+        self.stateSink = stateSink
     }
 
     deinit {
@@ -87,6 +102,7 @@ final class CrossOverXInputPublisher: ControllerOutputPublishing, @unchecked Sen
 
     func begin(primaryControllerName: String?) throws {
         try lock.withLock {
+            workerFailure = nil
             macroActive = true
             self.primaryControllerName = primaryControllerName
             macroState = CrossOverXInputState()
@@ -99,25 +115,35 @@ final class CrossOverXInputPublisher: ControllerOutputPublishing, @unchecked Sen
     }
 
     func apply(controllerName: String?, controlName: String?, value: Float?) throws {
-        guard let controlName, let value, value.isFinite else { return }
         try lock.withLock {
-            guard macroActive, matchesPrimary(controllerName),
-                  let control = CrossOverXInputControl(controlName: controlName) else { return }
-            var updated = macroState
-            updated.apply(control: control, value: value)
-            let wasOverridden = macroOverrides.contains(control)
-            let shouldOverride = !control.isNeutral(value)
-            guard updated != macroState || wasOverridden != shouldOverride else { return }
-            macroState = updated
-            if shouldOverride {
-                macroOverrides.insert(control)
-            } else {
-                macroOverrides.remove(control)
-            }
-            suspendedMacroState = nil
-            suspendedMacroOverrides = nil
-            try publishIfNeeded()
+            if updateMacro(controllerName: controllerName, controlName: controlName, value: value) { try publishIfNeeded() }
         }
+    }
+
+    func applyBatch(_ events: [CombinedMacroEvent]) throws {
+        try lock.withLock {
+            var changed = false
+            for event in events {
+                let updated = updateMacro(controllerName: event.controllerName, controlName: event.controlName, value: event.controlValue)
+                changed = changed || updated
+            }
+            if changed { try publishIfNeeded() }
+        }
+    }
+
+    private func updateMacro(controllerName: String?, controlName: String?, value: Float?) -> Bool {
+        guard macroActive, matchesPrimary(controllerName), let controlName, let value, value.isFinite,
+              let control = CrossOverXInputControl(controlName: controlName) else { return false }
+        var updated = macroState
+        updated.apply(control: control, value: value)
+        let wasOverridden = macroOverrides.contains(control)
+        let shouldOverride = !control.isNeutral(value)
+        guard updated != macroState || wasOverridden != shouldOverride else { return false }
+        macroState = updated
+        if shouldOverride { macroOverrides.insert(control) } else { macroOverrides.remove(control) }
+        suspendedMacroState = nil
+        suspendedMacroOverrides = nil
+        return true
     }
 
     func pause() throws {
@@ -179,7 +205,13 @@ final class CrossOverXInputPublisher: ControllerOutputPublishing, @unchecked Sen
         let task = Task.detached(priority: .high) { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: interval)
-                if !Task.isCancelled { try? self?.refreshPhysicalState() }
+                if !Task.isCancelled {
+                    do { try self?.refreshPhysicalState() }
+                    catch {
+                        self?.lock.withLock { self?.workerFailure = error }
+                        break
+                    }
+                }
             }
         }
         lock.withLock {
@@ -223,7 +255,16 @@ final class CrossOverXInputPublisher: ControllerOutputPublishing, @unchecked Sen
         return ContinuousClock().now - lastWrite >= heartbeatInterval
     }
 
+    func checkHealth() throws {
+        try lock.withLock { if let workerFailure { throw workerFailure } }
+    }
+
     private func writeCurrentState() throws {
+        if let stateSink {
+            try stateSink(publishedState, connected)
+            lastWrite = ContinuousClock().now
+            return
+        }
         let data = CrossOverXInputSharedState(
             sequence: sequence,
             connected: connected,
@@ -251,19 +292,13 @@ final class GameControllerPhysicalStateProvider: PhysicalControllerStateProvidin
     }
 
     func stopMonitoring() {
-        GCController.shouldMonitorBackgroundEvents = false
+        // Other ClickFlow consumers may still be monitoring the same physical controller.
     }
 
     func currentState(preferredControllerName: String?) -> CrossOverXInputState? {
-        let candidates = GCController.controllers().enumerated().compactMap { index, controller in
-            controller.extendedGamepad.map {
-                (name: "\(controller.vendorName ?? "Controller") #\(index + 1)", gamepad: $0)
-            }
-        }
-        guard let selected = candidates.first(where: { $0.name == preferredControllerName })
-                ?? candidates.first else { return nil }
+        guard let selected = ControllerDeviceRegistry.shared.selectedController(preferredName: preferredControllerName),
+              let gamepad = selected.extendedGamepad else { return nil }
 
-        let gamepad = selected.gamepad
         var state = CrossOverXInputState()
         state.apply(control: .buttonA, value: gamepad.buttonA.value)
         state.apply(control: .buttonB, value: gamepad.buttonB.value)

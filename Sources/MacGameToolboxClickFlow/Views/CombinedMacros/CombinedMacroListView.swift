@@ -41,23 +41,17 @@ private struct CombinedMacroLibraryView: View {
                 Divider()
 
                 NavigationLink {
+                    OJDSetupView(model: appState.ojdSetup, appState: appState)
+                } label: {
+                    controllerSetupLabel("ojd.entry", detail: "ojd.entry.detail", systemImage: "gamecontroller")
+                }
+                .buttonStyle(.plain)
+                Divider()
+
+                NavigationLink {
                     CrossOverGameSetupView()
                 } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "pc")
-                            .font(.title3)
-                            .foregroundStyle(.tint)
-                            .frame(width: 24)
-                        Text(cf("combined.windowsGames.entry"))
-                            .fontWeight(.medium)
-                        Spacer()
-                        Image(systemName: "chevron.forward")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .contentShape(Rectangle())
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 11)
+                    controllerSetupLabel("combined.windowsGames.entry", detail: "combined.windowsGames.entry.detail", systemImage: "pc")
                 }
                 .buttonStyle(.plain)
             }
@@ -165,6 +159,27 @@ private struct CombinedMacroLibraryView: View {
             }
         }
     }
+
+    private func controllerSetupLabel(_ title: String, detail: String, systemImage: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.title3)
+                .foregroundStyle(.tint)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(cf(title)).fontWeight(.medium)
+                Text(cf(detail)).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.forward")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .contentShape(Rectangle())
+    }
 }
 
 private struct CombinedMacroEditorView: View {
@@ -189,10 +204,15 @@ private struct CombinedMacroEditorView: View {
                 repeatDelayMilliseconds: macroBinding(\.repeatDelayMilliseconds),
                 playbackSpeed: macroBinding(\.playbackSpeed)
             )
-            if macro.containsControllerEvents {
-                Label(cf("combined.controller.playbackLimitation"), systemImage: "exclamationmark.triangle")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 5) {
+                Picker(cf("controller.backend"), selection: macroBinding(\.controllerBackend)) {
+                    ForEach(ControllerOutputBackend.allCases) { backend in
+                        Text(backend.title).tag(backend)
+                    }
+                }
+                .disabled(appState.isPlayingCombinedMacro || appState.isRecordingCombinedMacro || appState.ojdSetup.busy)
+                Text(macro.controllerBackend.explanation)
+                    .font(.footnote).foregroundStyle(.secondary)
             }
 
             Table(macro.events, selection: $selection) {

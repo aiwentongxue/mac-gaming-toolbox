@@ -33,6 +33,12 @@ struct ChangelogView: View {
 
     private var releases: [Release] {
         [
+            Release(version: "4.0.7", entries: [
+                tr("内置 ClickFlow 更新至 1.0.3，新增 OJD 系统虚拟手柄，支持原生 Mac 与 PlayCover 游戏的组合宏", "Updated built-in ClickFlow to 1.0.3 with OJD virtual controller macros for native Mac and PlayCover games"),
+                tr("组合宏可单独选择 OJD 或 XInput 输出，支持实体手柄混合输入，并兼容旧宏", "Combined macros can choose OJD or XInput output individually, mix physical controller input, and open older macros"),
+                tr("HoYoGames 启动帮助新增 HSR 过场动画黑屏修复，可安装、打开和恢复 CrossOver 安全副本", "Added the HSR cutscene black screen fix to HoYoGames Launch Assistant, with safe CrossOver copy installation, launch, and restore"),
+                tr("新功能与操作状态支持九种语言，HSR 修复补丁随应用内置", "Localized new features and operation states in nine languages and bundled the HSR patch with the app")
+            ]),
             Release(version: "4.0.6", entries: [
                 tr("修复目标目录含 .DS_Store 等原有文件时无法挂载的问题，恢复 3.2.1 的目录挂载兼容性", "Fixed mounting into directories containing .DS_Store or other existing files, restoring 3.2.1 compatibility"),
                 tr("挂载保留目标目录原有文件，确认界面说明临时遮盖与卸载后恢复的行为", "Mounting preserves existing destination files; confirmation explains that they are hidden until unmounting"),

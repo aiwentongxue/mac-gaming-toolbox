@@ -144,7 +144,8 @@ actor CombinedMacroRecorder {
                 try? await Task.sleep(for: .milliseconds(8))
                 continue
             }
-            for (key, value) in values {
+            for key in Set(values.keys).union(previousControllerValues.keys) {
+                let value = values[key] ?? 0
                 let previous = previousControllerValues[key]
                 if (previous == nil && abs(value) >= 0.01) ||
                     (previous != nil && abs((previous ?? 0) - value) >= 0.01) {
@@ -165,7 +166,7 @@ actor CombinedMacroRecorder {
 
     private func controllerValues() -> [String: Float] {
         var result: [String: Float] = [:]
-        for (index, controller) in GCController.controllers().enumerated() {
+        for (index, controller) in ControllerDeviceRegistry.shared.physicalControllers().enumerated() {
             guard let gamepad = controller.extendedGamepad else { continue }
             let name = "\(controller.vendorName ?? "Controller") #\(index + 1)"
             func add(_ control: String, _ value: Float) { result["\(name)|\(control)"] = value }

@@ -735,6 +735,9 @@ struct HoYoGamesDetailView: View {
                 }
             }
 
+            Divider()
+            HSRMediaPatchView()
+
             VStack(alignment: .leading, spacing: 14) {
                 Divider().padding(.top, 4)
                 Text(tr("主机名兼容功能", "Hostname Compatibility"))

@@ -39,6 +39,8 @@
 		A10000000000000000000023 /* ToolboxMaintenanceDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000F /* ToolboxMaintenanceDetailViews.swift */; };
 		A10000000000000000000024 /* ToolboxInformationDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000010 /* ToolboxInformationDetailViews.swift */; };
 		A10000000000000000000025 /* ToolboxDetailRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000011 /* ToolboxDetailRouter.swift */; };
+		A10000000000000000000026 /* HSRMediaPatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000012 /* HSRMediaPatchView.swift */; };
+		A10000000000000000000027 /* HSR-Media-Patch-v1.0.0.zip in Resources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000013 /* HSR-Media-Patch-v1.0.0.zip */; };
 		A10000000000000000000030 /* AppDropCore in Frameworks */ = {isa = PBXBuildFile; productRef = P30000000000000000000001 /* AppDropCore */; };
 		A10000000000000000000031 /* com.iven.macgametoolbox.appdrop.helper.plist in Resources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000006 /* com.iven.macgametoolbox.appdrop.helper.plist */; };
 		A10000000000000000000032 /* AppDropHelper.app in Embed AppDrop Helper */ = {isa = PBXBuildFile; fileRef = F60000000000000000000001 /* AppDropHelper.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -144,6 +146,8 @@
 		F2000000000000000000000F /* ToolboxMaintenanceDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolboxMaintenanceDetailViews.swift; sourceTree = "<group>"; };
 		F20000000000000000000010 /* ToolboxInformationDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolboxInformationDetailViews.swift; sourceTree = "<group>"; };
 		F20000000000000000000011 /* ToolboxDetailRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolboxDetailRouter.swift; sourceTree = "<group>"; };
+		F20000000000000000000012 /* HSRMediaPatchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HSRMediaPatchView.swift; sourceTree = "<group>"; };
+		F20000000000000000000013 /* HSR-Media-Patch-v1.0.0.zip */ = {isa = PBXFileReference; lastKnownFileType = archive.zip; path = "HSRMediaPatch/HSR-Media-Patch-v1.0.0.zip"; sourceTree = "<group>"; };
 		F30000000000000000000001 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		F30000000000000000000003 /* App-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "App-Info.plist"; sourceTree = "<group>"; };
 		F30000000000000000000004 /* AppDropHelper-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "AppDropHelper-Info.plist"; sourceTree = "<group>"; };
@@ -280,6 +284,8 @@
 				F2000000000000000000000F /* ToolboxMaintenanceDetailViews.swift */,
 				F20000000000000000000010 /* ToolboxInformationDetailViews.swift */,
 				F20000000000000000000011 /* ToolboxDetailRouter.swift */,
+				F20000000000000000000012 /* HSRMediaPatchView.swift */,
+				F20000000000000000000013 /* HSR-Media-Patch-v1.0.0.zip */,
 			);
 			name = MacGameToolbox;
 			path = Sources/MacGameToolbox;
@@ -473,6 +479,7 @@
 			files = (
 				A10000000000000000000017 /* Assets.xcassets in Resources */,
 				C90000000000000000000001 /* AppIcon.icon in Resources */,
+				A10000000000000000000027 /* HSR-Media-Patch-v1.0.0.zip in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -524,6 +531,7 @@
 				A10000000000000000000023 /* ToolboxMaintenanceDetailViews.swift in Sources */,
 				A10000000000000000000024 /* ToolboxInformationDetailViews.swift in Sources */,
 				A10000000000000000000025 /* ToolboxDetailRouter.swift in Sources */,
+				A10000000000000000000026 /* HSRMediaPatchView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -621,14 +629,14 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4.0.6;
+				CURRENT_PROJECT_VERSION = 4.0.7;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_DEBUG_DYLIB = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/App-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 4.0.6;
+				MARKETING_VERSION = 4.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox;
 				PRODUCT_NAME = "Mac 游戏工具箱";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -645,12 +653,12 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4.0.6;
+				CURRENT_PROJECT_VERSION = 4.0.7;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/App-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 4.0.6;
+				MARKETING_VERSION = 4.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox;
 				PRODUCT_NAME = "Mac 游戏工具箱";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -735,12 +743,12 @@
 				CODE_SIGN_ENTITLEMENTS = Config/AppDropHelper.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4.0.6;
+				CURRENT_PROJECT_VERSION = 4.0.7;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/AppDropHelper-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 4.0.6;
+				MARKETING_VERSION = 4.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox.appdrop.helper;
 				PRODUCT_NAME = AppDropHelper;
 				SKIP_INSTALL = YES;
@@ -756,12 +764,12 @@
 				CODE_SIGN_ENTITLEMENTS = Config/AppDropHelper.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4.0.6;
+				CURRENT_PROJECT_VERSION = 4.0.7;
 				DEVELOPMENT_TEAM = HP5WBFL9G3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/AppDropHelper-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 4.0.6;
+				MARKETING_VERSION = 4.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.iven.macgametoolbox.appdrop.helper;
 				PRODUCT_NAME = AppDropHelper;
 				SKIP_INSTALL = YES;

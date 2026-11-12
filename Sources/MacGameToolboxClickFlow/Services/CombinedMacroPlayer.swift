@@ -8,7 +8,6 @@ actor CombinedMacroPlayer {
     private var delayTask: Task<Void, Never>?
     private var runID: UUID?
     private var isPaused = false
-    private var pauseWaiters: [CheckedContinuation<Void, Never>] = []
     private var pressedButtons: Set<MouseButton> = []
     private var pressedKeys: [UInt16: CGEventFlags] = [:]
     private var suspendedButtons: Set<MouseButton> = []
@@ -58,7 +57,6 @@ actor CombinedMacroPlayer {
         task?.cancel()
         delayTask?.cancel()
         isPaused = false
-        resumePauseWaiters()
         await task?.value
         if task == nil { cleanupAllPressedInputs() }
         AppLogger.automation.notice("Combined macro playback stopped")
@@ -72,7 +70,6 @@ actor CombinedMacroPlayer {
             timelineClock.resume()
             isPaused = false
             if controllerOutputActive { try? controllerOutput.resume() }
-            resumePauseWaiters()
             AppLogger.automation.notice("Combined macro playback resumed")
         } else {
             isPaused = true
@@ -92,7 +89,6 @@ actor CombinedMacroPlayer {
         delayTask = nil
         isPaused = false
         timelineClock.resume()
-        resumePauseWaiters()
         runID = nil
         runTask = nil
     }
@@ -105,6 +101,7 @@ actor CombinedMacroPlayer {
         var loopIndex = 0
         do {
             if macro.containsControllerEvents {
+                try controllerOutput.selectBackend(macro.controllerBackend)
                 try controllerOutput.begin(primaryControllerName: primaryControllerName(in: macro))
                 controllerOutputActive = true
             }
@@ -118,8 +115,11 @@ actor CombinedMacroPlayer {
                 if let totalLoops, loopIndex >= totalLoops { break }
                 loopIndex += 1
                 timelineClock.restart()
+                var controllerBatchEnd = -1
                 for (index, event) in macro.events.enumerated() {
+                    if index <= controllerBatchEnd { continue }
                     try Task.checkCancellation()
+                    if controllerOutputActive { try controllerOutput.checkHealth() }
                     try await pauseAwareSleep(untilMilliseconds: PlaybackTiming.scaledMilliseconds(
                         event.timestampMilliseconds,
                         speed: macro.playbackSpeed
@@ -129,13 +129,33 @@ actor CombinedMacroPlayer {
                     } else {
                         try restoreSuspendedInputs()
                     }
-                    try post(event)
+                    var reportedIndex = index
+                    if event.kind == .controller, controllerOutputActive {
+                        var end = index + 1
+                        var controls = Set<CrossOverXInputControl>()
+                        if let name = event.controlName, let control = CrossOverXInputControl(controlName: name) { controls.insert(control) }
+                        while end < macro.events.count, macro.events[end].kind == .controller,
+                              macro.events[end].timestampMilliseconds == event.timestampMilliseconds {
+                            if let name = macro.events[end].controlName, let control = CrossOverXInputControl(controlName: name),
+                               !controls.insert(control).inserted { break }
+                            end += 1
+                        }
+                        try controllerOutput.applyBatch(Array(macro.events[index..<end]))
+                        controllerBatchEnd = end - 1
+                        reportedIndex = end - 1
+                    } else {
+                        try post(event)
+                    }
                     progress(MacroPlaybackProgress(
-                        eventIndex: index + 1,
+                        eventIndex: reportedIndex + 1,
                         eventCount: macro.events.count,
                         loopIndex: loopIndex,
                         loopCount: totalLoops
                     ))
+                    // A paced controller feed may make later timestamps overdue.
+                    // Give stop/pause actor calls a chance between frames instead
+                    // of draining the overdue events before accepting them.
+                    await Task.yield()
                 }
                 // Each iteration starts with released input, including incomplete recordings.
                 cleanupAllPressedInputs()
@@ -198,10 +218,11 @@ actor CombinedMacroPlayer {
 
     private func pauseAwareSleep(untilMilliseconds milliseconds: Double) async throws {
         while true {
+            if controllerOutputActive { try controllerOutput.checkHealth() }
             try await waitUntilResumed()
             let sleepDuration = timelineClock.remaining(untilMilliseconds: milliseconds)
             guard sleepDuration > .zero else { return }
-            let deadline = timelineClock.deadline(untilMilliseconds: milliseconds)
+            let deadline = min(timelineClock.deadline(untilMilliseconds: milliseconds), ContinuousClock().now.advanced(by: .milliseconds(100)))
             let sleeper = Task<Void, Never>(priority: .high) { @Sendable [deadline] in
                 try? await ContinuousClock().sleep(until: deadline, tolerance: .zero)
             }
@@ -213,19 +234,12 @@ actor CombinedMacroPlayer {
     }
 
     private func waitUntilResumed() async throws {
-        if isPaused {
-            await withCheckedContinuation { continuation in
-                pauseWaiters.append(continuation)
-            }
+        while isPaused {
+            if controllerOutputActive { try controllerOutput.checkHealth() }
+            try await Task.sleep(for: .milliseconds(20))
         }
         try Task.checkCancellation()
         try restoreSuspendedInputs()
-    }
-
-    private func resumePauseWaiters() {
-        let waiters = pauseWaiters
-        pauseWaiters.removeAll()
-        waiters.forEach { $0.resume() }
     }
 
     private func restoreSuspendedInputs() throws {

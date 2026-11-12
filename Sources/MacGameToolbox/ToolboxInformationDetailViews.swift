@@ -241,7 +241,7 @@ struct TutorialItem: Identifiable {
             ),
             TutorialItem(
                 title: chinese ? "Mac 玩 PC 崩坏：星穹铁道详细教程" : "Mac PC Honkai: Star Rail Detailed Guide",
-                address: "https://b23.tv/OZ5wkvd",
+                address: "https://b23.tv/rQPbRDD",
                 category: .games
             ),
             TutorialItem(

@@ -31,6 +31,7 @@ let package = Package(
             resources: [
                 .process("Assets.xcassets"),
                 .copy("AppIcon.icon"),
+                .copy("HSRMediaPatch/HSR-Media-Patch-v1.0.0.zip"),
                 .process("AppDropFeature/Resources")
             ],
             linkerSettings: [.linkedFramework("ServiceManagement"), .linkedFramework("Security")]

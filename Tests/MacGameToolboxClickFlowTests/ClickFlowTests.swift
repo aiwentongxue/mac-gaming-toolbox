@@ -794,7 +794,7 @@ extension ClickFlowTests {
 
     @MainActor
     func testIntegratedFeatureRequiresConsentAndUsesIsolatedDefaults() async throws {
-        XCTAssertEqual(ClickFlowFeatureController.integratedVersion, "1.0.1")
+        XCTAssertEqual(ClickFlowFeatureController.integratedVersion, "1.0.3")
         let integratedSuite = "MacGameToolboxClickFlowTests.integrated.\(UUID().uuidString)"
         let standaloneSuite = "MacGameToolboxClickFlowTests.standalone.\(UUID().uuidString)"
         guard let integratedDefaults = UserDefaults(suiteName: integratedSuite),
