@@ -597,7 +597,25 @@ private extension AppLanguage {
         "刷新状态": [.traditionalChinese: "刷新狀態", .japanese: "状態を更新", .korean: "상태 새로 고침", .german: "Status aktualisieren", .french: "Actualiser l’état", .spanish: "Actualizar estado", .portuguese: "Atualizar status"],
         "运行诊断": [.traditionalChinese: "運行診斷", .japanese: "診断を実行", .korean: "진단 실행", .german: "Diagnose ausführen", .french: "Lancer le diagnostic", .spanish: "Ejecutar diagnóstico", .portuguese: "Executar diagnóstico"],
         "打开诊断日志": [.traditionalChinese: "打開診斷日誌", .japanese: "診断ログを開く", .korean: "진단 로그 열기", .german: "Diagnoseprotokolle öffnen", .french: "Ouvrir les journaux de diagnostic", .spanish: "Abrir registros de diagnóstico", .portuguese: "Abrir logs de diagnóstico"],
-        "补丁版本 1.0.0": [.traditionalChinese: "補丁版本 1.0.0", .japanese: "パッチバージョン 1.0.0", .korean: "패치 버전 1.0.0", .german: "Patch-Version 1.0.0", .french: "Version du correctif 1.0.0", .spanish: "Versión del parche 1.0.0", .portuguese: "Versão do patch 1.0.0"],
+        "补丁版本 %@": [.traditionalChinese: "補丁版本 %@", .japanese: "パッチバージョン %@", .korean: "패치 버전 %@", .german: "Patch-Version %@", .french: "Version du correctif %@", .spanish: "Versión del parche %@", .portuguese: "Versão do patch %@"],
+        "HoYoGames 启动帮助内置 HSR Media Patch 1.1.0，支持 CrossOver Preview 20261111（27.0.0.41303）的高分辨率过场动画黑屏修复": [
+            .traditionalChinese: "HoYoGames 啟動輔助內建 HSR Media Patch 1.1.0，支援修復 CrossOver Preview 20261111（27.0.0.41303）的高解析度過場動畫黑屏",
+            .japanese: "HoYoGames 起動アシスタントに HSR Media Patch 1.1.0 を同梱し、CrossOver Preview 20261111（27.0.0.41303）で高解像度カットシーンが黒くなる問題に対応",
+            .korean: "HoYoGames 실행 도우미에 HSR Media Patch 1.1.0을 포함하여 CrossOver Preview 20261111(27.0.0.41303)의 고해상도 컷신 검은 화면을 수정",
+            .german: "Der HoYoGames-Startassistent enthält HSR Media Patch 1.1.0 gegen schwarze Bildschirme in hochauflösenden Zwischensequenzen unter CrossOver Preview 20261111 (27.0.0.41303)",
+            .french: "L’assistant HoYoGames intègre HSR Media Patch 1.1.0 pour corriger les écrans noirs des cinématiques en haute résolution sous CrossOver Preview 20261111 (27.0.0.41303)",
+            .spanish: "El asistente de inicio de HoYoGames incluye HSR Media Patch 1.1.0 para corregir la pantalla negra en cinemáticas de alta resolución con CrossOver Preview 20261111 (27.0.0.41303)",
+            .portuguese: "O assistente de inicialização do HoYoGames inclui o HSR Media Patch 1.1.0 para corrigir a tela preta em cenas de alta resolução no CrossOver Preview 20261111 (27.0.0.41303)"
+        ],
+        "HSR 修复现将完整诊断结果保存到日志目录": [
+            .traditionalChinese: "HSR 修復現會將完整診斷結果儲存到記錄資料夾",
+            .japanese: "HSR 修正の診断結果がすべてログフォルダに保存されるようになりました",
+            .korean: "HSR 수정 도구가 전체 진단 결과를 로그 폴더에 저장합니다",
+            .german: "Der HSR-Fix speichert die vollständige Diagnose im Protokollordner",
+            .french: "Le correctif HSR enregistre désormais le diagnostic complet dans le dossier des journaux",
+            .spanish: "La solución de HSR ahora guarda el diagnóstico completo en la carpeta de registros",
+            .portuguese: "A correção do HSR agora salva o diagnóstico completo na pasta de registros"
+        ],
         "安装前请退出 CrossOver 和游戏。修复仅修改新副本；原版、游戏文件和容器保持原样。": [.traditionalChinese: "安裝前請退出 CrossOver 和遊戲。修復僅修改新副本；原版、遊戲文件和容器保持原樣。", .japanese: "インストール前に CrossOver とゲームを終了してください。修正するのは新しいコピーだけで、元のアプリ、ゲームファイル、ボトルは保持されます。", .korean: "설치 전에 CrossOver와 게임을 종료하세요. 새 복사본만 수정하며 원본 앱, 게임 파일과 보틀은 그대로 유지됩니다.", .german: "Beenden Sie CrossOver und das Spiel vor der Installation. Nur die neue Kopie wird gepatcht; Original-App, Spieldateien und Bottle bleiben erhalten.", .french: "Quittez CrossOver et le jeu avant l’installation. Seule la nouvelle copie est corrigée ; l’application originale, les fichiers du jeu et le conteneur restent intacts.", .spanish: "Cierra CrossOver y el juego antes de instalar. Solo se modifica la copia nueva; se conservan la app original, los archivos del juego y la botella.", .portuguese: "Feche o CrossOver e o jogo antes de instalar. Apenas a nova cópia é corrigida; o app original, os arquivos do jogo e a garrafa permanecem intactos."],
         "未检测到": [.traditionalChinese: "未檢測到", .japanese: "未検出", .korean: "감지되지 않음", .german: "Nicht gefunden", .french: "Non détecté", .spanish: "No detectado", .portuguese: "Não detectado"],
         "内置补丁文件缺失或校验失败。": [.traditionalChinese: "內置補丁文件缺失或校驗失敗。", .japanese: "内蔵パッチが見つからないか、検証に失敗しました。", .korean: "내장 패치 파일이 없거나 검증에 실패했습니다.", .german: "Der integrierte Patch fehlt oder die Prüfsumme stimmt nicht.", .french: "Le correctif intégré est absent ou sa vérification a échoué.", .spanish: "Falta el parche incluido o falló su verificación.", .portuguese: "O patch incluído está ausente ou falhou na verificação."],

@@ -33,6 +33,10 @@ struct ChangelogView: View {
 
     private var releases: [Release] {
         [
+            Release(version: "4.0.8", entries: [
+                tr("HoYoGames 启动帮助内置 HSR Media Patch 1.1.0，支持 CrossOver Preview 20261111（27.0.0.41303）的高分辨率过场动画黑屏修复", "HoYoGames Launch Assistant now includes HSR Media Patch 1.1.0 to fix black screens in high-resolution cutscenes on CrossOver Preview 20261111 (27.0.0.41303)"),
+                tr("HSR 修复现将完整诊断结果保存到日志目录", "The HSR fix now saves the full diagnosis to its log folder")
+            ]),
             Release(version: "4.0.7", entries: [
                 tr("内置 ClickFlow 更新至 1.0.3，新增 OJD 系统虚拟手柄，支持原生 Mac 与 PlayCover 游戏的组合宏", "Updated built-in ClickFlow to 1.0.3 with OJD virtual controller macros for native Mac and PlayCover games"),
                 tr("组合宏可单独选择 OJD 或 XInput 输出，支持实体手柄混合输入，并兼容旧宏", "Combined macros can choose OJD or XInput output individually, mix physical controller input, and open older macros"),

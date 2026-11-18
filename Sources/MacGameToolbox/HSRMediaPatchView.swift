@@ -7,7 +7,12 @@ private enum HSRProduct: String, CaseIterable, Identifiable {
     case stable, preview
     var id: String { rawValue }
     var name: String { self == .stable ? "CrossOver" : "CrossOver Preview" }
-    var expectedVersion: String { self == .stable ? "26.3.0.39832" : "27.0.0.41073" }
+    var supportedVersions: Set<String> {
+        switch self {
+        case .stable: ["26.3.0.39832"]
+        case .preview: ["27.0.0.41073", "27.0.0.41303"]
+        }
+    }
     var source: URL { URL(fileURLWithPath: self == .stable ? "/Applications/CrossOver.app" : "/Applications/CrossOver Preview.app") }
     var target: URL { URL(fileURLWithPath: self == .stable ? "/Applications/CrossOver-HSR-MediaFix.app" : "/Applications/CrossOver Preview-HSR-MediaFix.app") }
     var config: URL { source.appendingPathComponent("Contents/SharedSupport/CrossOver/etc/CrossOver.conf") }
@@ -23,7 +28,9 @@ private struct HSRInspection {
     let version: String?
     let targetExists: Bool
     let backup: HSRBackup?
-    var sourceExists: Bool { version != nil }
+    func isSupported(_ product: HSRProduct) -> Bool {
+        version.map(product.supportedVersions.contains) ?? false
+    }
 }
 
 @MainActor
@@ -34,8 +41,9 @@ private final class HSRMediaPatchModel: ObservableObject {
     @Published var activeProduct: HSRProduct?
     @Published var packageValid = false
 
-    nonisolated static let packageName = "HSR-Media-Patch-v1.0.0"
-    nonisolated static let packageSHA256 = "e136a9f5191c4082d2081f8afde333169e6399762b082c84f04b3c72c38ea8a8"
+    nonisolated static let packageVersion = "1.1.0"
+    nonisolated static let packageName = "HSR-Media-Patch-v\(packageVersion)"
+    nonisolated static let packageSHA256 = "299f8a8cfb7aeb1bcd6bdbd2540bc875faa3be21118eb4b4604d24e2eaf8c053"
     private static let backupIDPattern = try! NSRegularExpression(pattern: #"^[0-9]{8}-[0-9]{6}-[0-9]+-[0-9]+$"#)
 
     static var packageURL: URL? {
@@ -97,12 +105,13 @@ private final class HSRMediaPatchModel: ObservableObject {
         backupIDPattern.firstMatch(in: id, range: NSRange(id.startIndex..., in: id)) != nil
     }
 
+    func canInstall(_ product: HSRProduct) -> Bool {
+        guard phase != .working, packageValid, let inspection = inspections[product] else { return false }
+        return inspection.isSupported(product) && !inspection.targetExists
+    }
+
     func install(_ product: HSRProduct) {
-        guard phase != .working,
-              packageValid,
-              let state = inspections[product],
-              state.version == product.expectedVersion,
-              !state.targetExists else { return }
+        guard canInstall(product) else { return }
         run(.install, product: product, backupID: nil)
     }
 
@@ -128,7 +137,7 @@ private final class HSRMediaPatchModel: ObservableObject {
         Task {
             do {
                 try FileManager.default.createDirectory(at: Self.logRoot, withIntermediateDirectories: true)
-                try await Self.runDiagnosis(package: package)
+                try await Self.runDiagnosis(package: package, logDirectory: Self.logRoot)
                 phase = .diagnosed
             } catch {
                 phase = .failed
@@ -160,7 +169,7 @@ private final class HSRMediaPatchModel: ObservableObject {
         "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
-    private static func runDiagnosis(package: URL) async throws {
+    private static func runDiagnosis(package: URL, logDirectory: URL) async throws {
         let result = try await Task.detached(priority: .userInitiated) { () throws -> Int32 in
             let stage = FileManager.default.temporaryDirectory.appendingPathComponent("HSRMediaPatch-\(UUID().uuidString)")
             try FileManager.default.createDirectory(at: stage, withIntermediateDirectories: true)
@@ -178,7 +187,8 @@ private final class HSRMediaPatchModel: ObservableObject {
             guard unpack.terminationStatus == 0 else { throw NSError(domain: "HSRMediaPatch", code: 4) }
             let script = stage.appendingPathComponent("\(packageName)/scripts/hsr-media-patch")
             let process = Process()
-            let output = stage.appendingPathComponent("diagnose.txt")
+            let timestamp = Date().formatted(.iso8601.year().month().day().time(includingFractionalSeconds: true).timeSeparator(.omitted))
+            let output = logDirectory.appendingPathComponent("toolbox-diagnosis-\(timestamp)-\(UUID().uuidString.prefix(8)).log")
             FileManager.default.createFile(atPath: output.path, contents: nil)
             let stream = try FileHandle(forWritingTo: output)
             defer { try? stream.close() }
@@ -204,9 +214,9 @@ private final class HSRMediaPatchModel: ObservableObject {
         trap '/bin/rm -rf "$stage"' EXIT
         /usr/bin/ditto --norsrc --noextattr "$archive" "$stage/archive.zip"
         hash="$(/usr/bin/shasum -a 256 "$stage/archive.zip" | /usr/bin/awk '{print $1}')"
-        [[ "$hash" == e136a9f5191c4082d2081f8afde333169e6399762b082c84f04b3c72c38ea8a8 ]] || exit 4
+        [[ "$hash" == \#(packageSHA256) ]] || exit 4
         /usr/bin/ditto -x -k "$stage/archive.zip" "$stage"
-        root="$stage/HSR-Media-Patch-v1.0.0"
+        root="$stage/\#(packageName)"
         [[ -f "$root/scripts/hsr-media-patch" && -f "$root/payload/GStreamer.framework.tar.xz" ]] || exit 4
         expected="$(/usr/bin/tr -d '[:space:]' < "$root/payload/GStreamer.framework.tar.xz.sha256")"
         actual="$(/usr/bin/shasum -a 256 "$root/payload/GStreamer.framework.tar.xz" | /usr/bin/awk '{print $1}')"
@@ -246,8 +256,9 @@ private final class HSRMediaPatchModel: ObservableObject {
             process.standardOutput = output
             process.standardError = output
             try process.run()
+            let message = output.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
-            return (process.terminationStatus, String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self))
+            return (process.terminationStatus, String(decoding: message, as: UTF8.self))
         }.value
         guard result.0 == 0 else { throw NSError(domain: "HSRMediaPatch", code: Int(result.0), userInfo: [NSLocalizedDescriptionKey: result.1]) }
     }
@@ -278,7 +289,8 @@ struct HSRMediaPatchView: View {
                         .disabled(model.phase == .working || !model.packageValid)
                     Button(tr("打开诊断日志", "Open Diagnostic Logs")) { model.openLogs() }
                     Spacer()
-                    Text(tr("补丁版本 1.0.0", "Patch version 1.0.0")).foregroundStyle(.secondary)
+                    Text(String(format: tr("补丁版本 %@", "Patch version %@"), HSRMediaPatchModel.packageVersion))
+                        .foregroundStyle(.secondary)
                 }
                 Text(tr("安装前请退出 CrossOver 和游戏。修复仅修改新副本；原版、游戏文件和容器保持原样。", "Quit CrossOver and the game before installing. Only the new copy is patched; the original app, game files, and bottle remain intact."))
                     .font(.caption).foregroundStyle(.secondary)
@@ -302,19 +314,19 @@ struct HSRMediaPatchView: View {
                 Text(inspection?.backup == nil
                      ? tr("检测到已有修复副本，缺少可用备份记录。不会覆盖该副本。", "An existing patched copy has no usable backup record and will not be overwritten.")
                      : tr("已安装修复副本。", "Patched copy installed."))
-            } else if inspection?.version != nil && inspection?.version != product.expectedVersion {
-                Text(tr("当前 CrossOver 版本未经此补丁验证。", "This CrossOver version has not been verified with the patch."))
-                    .foregroundStyle(.orange)
-            } else if inspection?.sourceExists == false {
+            } else if inspection?.version == nil {
                 Text(tr("未检测到原版 CrossOver。", "Original CrossOver app not found."))
                     .foregroundStyle(.secondary)
+            } else if inspection?.isSupported(product) != true {
+                Text(tr("当前 CrossOver 版本未经此补丁验证。", "This CrossOver version has not been verified with the patch."))
+                    .foregroundStyle(.orange)
             } else {
                 Text(tr("已检测到兼容版本，可创建安全副本。", "Compatible version found; a safe patched copy can be created."))
                     .foregroundStyle(.green)
             }
             HStack {
                 Button(tr("安装修复副本", "Install Patched Copy")) { model.install(product) }
-                    .disabled(model.phase == .working || !model.packageValid || inspection?.version != product.expectedVersion || inspection?.targetExists == true)
+                    .disabled(!model.canInstall(product))
                 Button(tr("打开修复版", "Open Patched App")) { model.open(product) }
                     .disabled(inspection?.targetExists != true || model.phase == .working)
                 Button(tr("恢复／移除", "Restore / Remove")) { model.restore(product) }
